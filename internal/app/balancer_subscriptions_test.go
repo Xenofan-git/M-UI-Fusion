@@ -151,7 +151,7 @@ func TestBalancerSubscriptionValidation(t *testing.T) {
 func TestBalancerStandaloneUIWiring(t *testing.T) {
 	files := map[string][]string{
 		"web/index.html":         {"data-mihomo-tab=\"balancers\"", "id=\"mihomo-balancer-table\""},
-		"web/mihomo-settings.js": {"openTab:setTab", "subscriptionIds", "syncBalancerSubscriptionMembers", "onlyGroups=currentTab==='balancers'"},
+		"web/mihomo-settings.js": {"openTab:setTab", "subscriptionIds", "syncBalancerSubscriptionMembers", "manual=currentTab==='balancers'", "subscribed=currentTab==='subscriptions'", "isSubscriptionGroup(item)"},
 	}
 	// Balancers live inside Mihomo Settings, not the sidebar.
 	indexHTML, err := os.ReadFile("web/index.html")

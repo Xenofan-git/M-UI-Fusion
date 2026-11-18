@@ -97,7 +97,14 @@
     }
   }
   async function load(){
-    try{const data=await request('/api/mihomo/subscriptions');subs=Array.isArray(data)?data:[];renderList();status('Подписок: '+subs.length);}
+    try{
+      const data=await request('/api/mihomo/subscriptions');
+      subs=Array.isArray(data)?data:[];
+      renderList();status('Подписок: '+subs.length);
+      window.dispatchEvent(new CustomEvent('mui-balancer-subscriptions-loaded',{
+        detail:{subscriptions:subs.map(source=>({id:source.id,group:source.group,name:source.name}))}
+      }));
+    }
     catch(error){status(error.message,true);}
   }
   const matchWords=text=>String(text||'').replace(/\r\n/g,'\n').split('\n').map(x=>x.trim().toLowerCase()).filter(x=>x&&!x.startsWith('#'));

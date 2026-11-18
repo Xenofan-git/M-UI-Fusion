@@ -39,18 +39,26 @@
     $$('.mihomo-pane',root).forEach(pane=>pane.classList.toggle('active',pane.dataset.mihomoPane===tab));
     if(typeof syncInkBars==='function')syncInkBars();
     render();
-    if(tab==='balancers')window.MUIOutboundSubscriptions?.load();
+    if(tab==='subscriptions')window.MUIOutboundSubscriptions?.load();
   }
   function render(){
     renderWarpRouting();
     if(currentTab==='basics')renderBasicsIndicators();
     else if(currentTab==='routing')renderRules();
-    else if(currentTab==='outbounds'||currentTab==='balancers')renderOutbounds();
+    else if(currentTab==='outbounds'||currentTab==='balancers'||currentTab==='subscriptions')renderOutbounds();
     syncButtons();
   }
   function outboundAddress(item){
     if(item.vpngate)return `vpn_vpn${item.vpngate.slot} · table ${100+Number(item.vpngate.slot)}`;
-    if(item.kind==='group')return String((item.proxies||[]).length)+' узлов · '+String((item.subscriptionIds||[]).length)+' подписок';
+    if(item.kind==='group'){
+      const sources=app.state?.state?.outboundSubscriptions||[];
+      const subscribed=new Set(item.subscriptionIds||[]);
+      for(const source of [...(Array.isArray(sources)?sources:[]),...balancerSubscriptions]){
+        if(source.group===item.name&&source.id)subscribed.add(source.id);
+      }
+      const count=subscribed.size;
+      return String((item.proxies||[]).length)+' узлов · '+count+' '+(count===1?'подписка':count>1&&count<5?'подписки':'подписок');
+    }
     return `${item.server||'—'}${item.port?':'+item.port:''}`;
   }
   function outboundRows(){
@@ -65,12 +73,34 @@
   }
   function delayLabel(name){const value=delayResults.get(name);return value==='Testing'?muiT('mh.testing'):value||'';}
   function outboundSupportsDelay(item){return !['reject','reject-drop'].includes(String(item.type||'').toLowerCase());}
+  // Some existing subscription groups use the provider's group name and
+  // intentionally have no subscriptionIds field in state.json. Respect both
+  // the source's group binding and explicit subscriptionIds when classifying.
+  function subscriptionGroupNames(){
+    const saved=app.state?.state?.outboundSubscriptions||[];
+    const linked=[...(Array.isArray(saved)?saved:[]),...balancerSubscriptions];
+    return new Set(linked.map(source=>source?.group).filter(Boolean));
+  }
+  function isSubscriptionGroup(item){
+    return item?.kind==='group'&&(
+      (item.subscriptionIds||[]).length>0||subscriptionGroupNames().has(item.name)
+    );
+  }
+  function visibleGroupPeers(item){
+    return draft.outbounds.filter(entry=>entry.kind===item.kind&&(
+      entry.kind!=='group'||isSubscriptionGroup(entry)===isSubscriptionGroup(item)
+    ));
+  }
   function renderOutbounds(){
-    const onlyGroups=currentTab==='balancers';
-    const box=$(onlyGroups?'#mihomo-balancer-table':'#mihomo-outbound-table');
-    const rows=outboundRows().filter(item=>onlyGroups?item.kind==='group':item.kind!=='group'),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
+    const manual=currentTab==='balancers',subscribed=currentTab==='subscriptions';
+    const box=$(manual?'#mihomo-balancer-table':subscribed?'#mihomo-subscription-balancer-table':'#mihomo-outbound-table');
+    const rows=outboundRows().filter(item=>
+      manual?item.kind==='group'&&!isSubscriptionGroup(item):
+      subscribed?isSubscriptionGroup(item):
+      item.kind!=='group'
+    ),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
     box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
-      const custom=item.kind!=='builtin',position=draft.outbounds.filter(entry=>entry.kind===item.kind).findIndex(entry=>entry.id===item.id),lastPosition=draft.outbounds.filter(entry=>entry.kind===item.kind).length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
+      const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
       return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td><span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span></td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
     bindOutboundTable();
@@ -85,7 +115,9 @@
   function moveOutbound(id,delta){
     const index=draft.outbounds.findIndex(item=>item.id===id);
     const kind=draft.outbounds[index]?.kind;
-    const peers=draft.outbounds.map((item,position)=>({item,position})).filter(x=>x.item.kind===kind);
+    const peers=draft.outbounds.map((item,position)=>({item,position})).filter(x=>
+      x.item.kind===kind && (kind!=='group'||isSubscriptionGroup(x.item)===isSubscriptionGroup(draft.outbounds[index]))
+    );
     const at=peers.findIndex(x=>x.position===index);
     const next=peers[at+delta]?.position??-1;
     if(index<0||next<0||next>=draft.outbounds.length)return;
@@ -842,6 +874,12 @@
     if($('#mihomo-rule-modal')?.classList.contains('open')){$('#mihomo-rule-title').textContent=muiT(editingRule?'mh.editRule':'mh.addRule');syncRuleForm();}
     if($('#warp-modal')?.classList.contains('open'))renderWarpModal();
     if($('#vpngate-modal')?.classList.contains('open'))renderVPNGateModal();
+  });
+  // Subscription reload is asynchronous; refresh classification when it
+  // completes, without navigating away or overwriting unsaved edits.
+  window.addEventListener('mui-balancer-subscriptions-loaded',event=>{
+    balancerSubscriptions=Array.isArray(event.detail?.subscriptions)?event.detail.subscriptions:[];
+    if(currentTab==='subscriptions'||currentTab==='balancers')renderOutbounds();
   });
   window.MUIMihomoSettings={openTab:setTab,isDirty:()=>dirty,refreshOutbounds:syncFromState};
   setupBasics();syncFromState();setTab('basics');

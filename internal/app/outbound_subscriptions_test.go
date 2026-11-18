@@ -302,7 +302,7 @@ func TestOutboundSubscriptionUIWiring(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, disallowed := range []string{`data-view="outbound-subscriptions"`, `id="view-outbound-subscriptions"`, `data-mihomo-tab="subscriptions"`, `data-mihomo-pane="subscriptions"`} {
+	for _, disallowed := range []string{`data-view="outbound-subscriptions"`, `id="view-outbound-subscriptions"`} {
 		if strings.Contains(string(html), disallowed) {
 			t.Fatalf("redundant sidebar subscription entry: %s", disallowed)
 		}

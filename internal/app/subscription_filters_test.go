@@ -138,13 +138,13 @@ func TestUnifiedBalancerSubscriptionUIWiring(t *testing.T) {
 	html := string(b)
 	for _, want := range []string{
 		`id="mihomo-add-balancer"`, `id="mihomo-add-sub-balancer"`,
-		`data-mihomo-tab="balancers"`, `id="outsub-root"`,
+		`data-mihomo-tab="balancers"`, `data-mihomo-tab="subscriptions"`, `id="outsub-root"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("missing unified balancer component %s", want)
 		}
 	}
-	for _, forbidden := range []string{`data-mihomo-tab="subscriptions"`, `data-view="outbound-subscriptions"`, `data-mihomo-pane="subscriptions"`} {
+	for _, forbidden := range []string{`data-view="outbound-subscriptions"`, `id="view-outbound-subscriptions"`} {
 		if strings.Contains(html, forbidden) {
 			t.Errorf("obsolete separate subscriptions nav: %s", forbidden)
 		}
