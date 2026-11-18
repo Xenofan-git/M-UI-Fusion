@@ -252,6 +252,29 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
 }
 .mihomo-field textarea{height:auto;min-height:80px;resize:vertical}
 .mihomo-field select[multiple]{height:auto;min-height:140px}
+
+/* Subscribed balancer: slightly stronger, clearer provider name.
+   Scoped to subscription choices; protocol/member selects retain their style. */
+.mihomo-subscription-field select[name="subscriptionIds"]{
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.12px;
+  padding:7px 8px;
+}
+.mihomo-subscription-field select[name="subscriptionIds"] option{
+  font-size:14px;
+  font-weight:600;
+  line-height:1.6;
+  padding:8px 11px;
+  border-radius:7px;
+  color:var(--text-strong);
+}
+.mihomo-subscription-field select[name="subscriptionIds"] option:checked{
+  font-weight:650;
+  color:var(--text-strong,#f5f3ff);
+  background:color-mix(in srgb,var(--teal,#8d7bdb) 15%,var(--surface-strong,#27294b));
+}
+
 .mihomo-field input:hover,.mihomo-field select:hover,.mihomo-field textarea:hover{border-color:var(--teal-3)}
 .mihomo-field input:focus,.mihomo-field select:focus,.mihomo-field textarea:focus{
   border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft);background:var(--surface-strong);
