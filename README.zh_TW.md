@@ -77,7 +77,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/
 安裝程式會選擇一個未被占用的五位數面板連接埠，並產生 16 位面板路徑、14 位使用者名稱和 16 位密碼，安裝結束時只顯示一次存取網址和憑證。也可以明確指定：
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 

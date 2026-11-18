@@ -77,7 +77,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/
 Інсталятор обирає вільний п'ятизначний порт панелі та генерує шлях панелі з 16 символів, ім'я користувача з 14 символів і пароль із 16 символів. Адреса та облікові дані виводяться один раз наприкінці встановлення. Їх можна задати явно:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 

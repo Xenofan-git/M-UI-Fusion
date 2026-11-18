@@ -32,13 +32,13 @@ Then **on the Linux server** download, syntax-check, and run the Sniffer install
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
 bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl
 ```
 
 For an existing installation, first back up the binary and state, then use:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.1
+sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.2
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
@@ -132,13 +132,13 @@ Run as `root` on a Linux system using systemd or OpenRC:
 ```bash
 curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
 bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl
 ```
 
 The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a fixed port; optionally add `--listen-ip SERVER_LOCAL_IP` after replacing the placeholder with an address assigned to your server:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 

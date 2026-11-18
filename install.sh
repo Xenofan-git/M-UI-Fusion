@@ -41,7 +41,7 @@ Options:
   --username USERNAME     Login username (default: random 14-character value)
   --password PASSWORD     Login password (default: random 16-character value)
   --listen-ip IP          Panel listen IP (default: 0.0.0.0)
-  --version TAG           Install a Sniffer release tag, for example v0.3.3-sniffer.1
+  --version TAG           Install a Sniffer release tag, for example v0.3.3-sniffer.2
   --update                Update m-ui and preserve all existing data/settings
   --mihomo-version TAG    Install a specific Mihomo release
   --update-mihomo         Replace an existing Mihomo core
