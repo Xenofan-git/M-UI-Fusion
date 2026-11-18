@@ -36,13 +36,13 @@ Then **on the Linux server** download, syntax-check, and run the M-UI Fusion ins
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.10 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.11 --no-ssl
 ```
 
 For an existing installation, first back up the binary and state, then use:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.10
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.11
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
@@ -58,7 +58,7 @@ git clone https://github.com/Xenofan-git/M-UI-Fusion.git
 cd M-UI-Fusion
 # Go selects the target CPU architecture from the current machine.
 # For cross-compilation, set GOARCH=arm64, GOARCH=amd64, etc.
-GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-fusion.10" -o m-ui-linux-fusion .
+GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-fusion.11" -o m-ui-linux-fusion .
 ```
 
 GitHub Actions also runs tests and builds the ARM64 binary after each change to `main`. Production upgrade should only be performed after backing up `state.json`, `config.yaml`, and the currently installed binary and testing the new binary.
@@ -136,13 +136,13 @@ Run as `root` on a Linux system using systemd or OpenRC:
 ```bash
 curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.10 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.11 --no-ssl
 ```
 
 The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a fixed port; optionally add `--listen-ip SERVER_LOCAL_IP` after replacing the placeholder with an address assigned to your server:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.10 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.11 --no-ssl \
   --port 34567
 ```
 

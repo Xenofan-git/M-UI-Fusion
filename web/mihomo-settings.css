@@ -615,3 +615,49 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-candidate{display:inline-flex;align-items:center;gap:7px;max-width:100%;vertical-align:middle}
 .fbs-candidate img{display:block;width:24px;height:18px;object-fit:cover;border-radius:2px;flex:none}
 .fbs-candidate span{min-width:0;white-space:normal;overflow-wrap:anywhere}
+
+/* Manual balancers reuse the HydraRoute-style subscribed-server table, with
+   an isolated picker to add any Outbound without cluttering the member list. */
+.fbs-options[hidden],.fbs-refresh-source[hidden],.fbs-manual-picker[hidden],
+.fbs-add-menu[hidden]{display:none!important}
+.fbs-manual-picker{display:flex;flex-direction:column;gap:8px}
+.fbs-manual-picker .fbs-add-toggle{
+  align-self:flex-start;min-height:36px;padding:7px 14px;
+  color:var(--text-strong);background:var(--surface-strong);border:1px solid var(--stroke);
+  border-radius:9px;cursor:pointer
+}
+.fbs-manual-picker .fbs-add-toggle:hover{
+  background:var(--surface-hover);border-color:var(--teal)
+}
+.fbs-add-menu{
+  display:flex;flex-direction:column;gap:8px;
+  max-width:100%;padding:12px;
+  border:1px solid var(--stroke);border-radius:10px;
+  background:var(--surface-subtle)
+}
+.fbs-add-menu input{
+  width:100%;height:37px;padding:8px 12px;
+  border:1px solid var(--stroke);border-radius:8px;
+  background:var(--surface-strong);color:var(--text-strong);
+  font:inherit;font-size:13px
+}
+.fbs-add-results{
+  max-height:230px;overflow:auto;
+  display:flex;flex-direction:column;gap:2px
+}
+.fbs-add-result{
+  display:flex;align-items:center;gap:10px;
+  width:100%;min-height:33px;padding:6px 9px;text-align:left;
+  background:transparent;color:var(--text-strong);
+  border:0;border-radius:7px;cursor:pointer
+}
+.fbs-add-result:hover,.fbs-add-result:focus{
+  background:var(--surface-hover);outline-color:var(--teal)
+}
+.fbs-add-result .fbs-flag{display:inline-flex;align-items:center;justify-content:center;width:28px;flex:none}
+.fbs-add-result .fbs-add-name{
+  flex:1;min-width:0;font-size:12px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.fbs-add-result small{font-size:10px;flex:none;color:var(--muted)}
+.fbs-add-counter{color:var(--muted);font-size:11px}

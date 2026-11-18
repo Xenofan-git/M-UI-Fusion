@@ -1,5 +1,6 @@
-/* HydraRoute-style subscribed balancer server management with live Mihomo data.
-   This enhances the group editor only for groups linked to URL subscriptions. */
+/* HydraRoute-style server manager for manual and subscription balancers.
+   Subscribed groups only contain their providers' nodes; manual groups list
+   only selected members and have a separate any-Outbound add picker. */
 (() => {
  'use strict';
  let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
@@ -20,8 +21,47 @@
  }
  function contextNodes(){
    if(!context)return[];
+   if(!context.subscribed)return context.available;
    const ids=new Set(selectedSources(context.group,context.subs));
    return context.outbounds.filter(n=>n.kind==='proxy'&&ids.has(n.sourceSubscriptionId));
+ }
+ function basicNode(outbound){
+   const name=outbound.name;
+   return {name,protocol:outbound.type||outbound.kind||'proxy',
+     countryCode:window.MUICountryFlags?.read(name)?.code||'',
+     sourceId:outbound.sourceSubscriptionId||'',member:(context.group.proxies||[]).includes(name),
+     alive:null,delay:0,ping:0};
+ }
+ function renderManualPicker(){
+   if(!panel||context?.subscribed)return;
+   const results=q('.fbs-add-results',panel);
+   if(!results)return;
+   const input=q('.fbs-add-search',panel);
+   const query=String(input?.value||'').trim().toLocaleLowerCase('ru');
+   results.replaceChildren();
+   let count=0;
+   for(const item of context.available){
+     if(selected.has(item.name))continue;
+     const country=window.MUICountryFlags?.read(item.name);
+     const lookup=[item.name,item.type,item.kind,country?.ru,country?.english,country?.code].filter(Boolean).join(' ').toLocaleLowerCase('ru');
+     if(query&&!lookup.includes(query))continue;
+     if(++count>120)break;
+     const button=elt('button','fbs-add-result');
+     button.type='button';
+     const flag=elt('span','fbs-flag');addFlag(flag,basicNode(item));button.append(flag);
+     button.append(elt('span','fbs-add-name',rowName(item)));
+     button.append(elt('small','fbs-protocol',item.type||item.kind||'proxy'));
+     button.title=item.name;
+     button.onclick=()=>{
+       if(!items.some(row=>row.name===item.name))items.push(basicNode(item));
+       selected.add(item.name);
+       updateSelection();renderRows();renderManualPicker();
+       setStatus('Сервер добавлен. Нажмите «Применить к конфигурации», затем «Сохранить».');
+     };
+     results.append(button);
+   }
+   if(!count)results.append(elt('p','fbs-empty',query?'Совпадений нет':'Все доступные Outbounds уже выбраны'));
+   q('.fbs-add-counter',panel).textContent='Доступно для добавления: '+Math.min(count,120)+(count>120?' (показаны первые 120)':'');
  }
  function renderStatusText(){
    if(!panel)return;
@@ -59,9 +99,12 @@
      const known=contextNodes().some(n=>n.name===option.value);
      if(known)option.selected=selected.has(option.value);
    }
-   excluded=new Set(contextNodes().filter(n=>!selected.has(n.name)).map(n=>n.name));
+   excluded=context.subscribed
+     ?new Set(contextNodes().filter(n=>!selected.has(n.name)).map(n=>n.name))
+     :new Set();
    context.updateDefaults?.();
    renderStatusText();
+   if(!context.subscribed)renderManualPicker();
  }
  function renderRows(){
    if(!panel)return;
@@ -126,13 +169,27 @@
  async function refreshStatus(){
    if(!panel||!context)return;
    const ctx=context;
+   if(!ctx.persistedName||ctx.persistedName!==ctx.group.name){
+     setStatus('Измерения будут доступны после сохранения балансировщика.');
+     return;
+   }
    try{
-     const data=await request('/api/mihomo/balancers/status?group='+encodeURIComponent(ctx.group.name));
+     const data=await request('/api/mihomo/balancers/status?group='+encodeURIComponent(ctx.persistedName));
      if(!panel||context!==ctx)return;
      liveCandidate=data.candidate||'';
      const existingByName=new Map(items.map(n=>[n.name,n]));
-     // The editable source list, not all panel Outbounds, is authoritative.
-     items=data.nodes.map(n=>({...n,ping:existingByName.get(n.name)?.ping||0}));
+     // The chosen group scope, never all Outbounds, controls the table.
+     // Manual edits may contain unsaved additions; a remote refresh must not
+     // silently remove those locally selected members.
+     if(ctx.subscribed){
+       items=data.nodes.map(n=>({...n,ping:existingByName.get(n.name)?.ping||0}));
+     }else{
+       const remote=new Map((data.nodes||[]).map(node=>[node.name,node]));
+       items=items.map(node=>({
+         ...node,...(remote.get(node.name)||{}),
+         ping:existingByName.get(node.name)?.ping||0
+       }));
+     }
      // Keep unsaved checkbox choices across background health refresh.
      if(!ctx.selectionInitialized){
        const formerlyExcluded=new Set(ctx.group.excludedSubscriptionMembers||[]);
@@ -149,7 +206,7 @@
  function renderMarkup(){
    const wrapper=elt('div','fbs-editor');
    wrapper.innerHTML=
-   '<div class="fbs-heading"><div><strong>Серверы подписки</strong><p class="fbs-count"></p></div></div>'+
+   '<div class="fbs-heading"><div><strong>'+(context.subscribed?'Серверы подписки':'Серверы балансировщика')+'</strong><p class="fbs-count"></p></div></div>'+
    '<div class="fbs-candidate-line">Кандидат балансировщика: <strong class="fbs-candidate">Определяется…</strong></div>'+
    '<div class="fbs-toolbar"><input type="search" class="fbs-search" placeholder="⌕ Поиск серверов, стран и флагов…"><button type="button" class="outline-btn fbs-refresh-source">⇩ Обновить подписку</button><button type="button" class="outline-btn fbs-probe">↻ Опросить серверы</button><button type="button" class="outline-btn fbs-stop" hidden>Остановить</button></div>'+
    '<div class="fbs-table-wrap"><table class="fbs-table"><thead><tr><th><label><input type="checkbox" class="fbs-toggle-all"> Все</label></th><th>Протокол</th><th><button type="button" data-sort="name">Имя ↕</button></th><th><button type="button" data-sort="ping">Пинг ↕</button></th><th><button type="button" data-sort="latency">Задержка ↕</button></th></tr></thead><tbody class="fbs-table-body"></tbody></table></div>'+
@@ -160,6 +217,16 @@
    '<div class="fbs-panel" data-sub-panel="update"><label class="fbs-check"><input type="checkbox" class="fbs-auto"> Обновлять подписку автоматически</label><div class="fbs-interval"><label>Интервал: <input type="number" min="0" max="168" class="fbs-hours"> ч</label><label><input type="number" min="0" max="59" class="fbs-minutes"> м</label></div></div>'+
    '<div class="fbs-panel" data-sub-panel="filters" hidden><div class="fbs-filter-fields"><label>Оставить только<textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">🏳️ Добавить страну</button></label><label>Исключить<textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">🏳️ Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
    '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить настройки подписки</button><span class="fbs-save-hint">Ручной выбор серверов сохраняется кнопкой «Применить к конфигурации».</span></div></div>';
+   if(!context.subscribed){
+     const toolbar=q('.fbs-toolbar',wrapper);
+     q('.fbs-refresh-source',wrapper).hidden=true;
+     q('.fbs-options',wrapper).hidden=true;
+     const picker=elt('div','fbs-manual-picker');
+     picker.innerHTML='<button type="button" class="outline-btn fbs-add-toggle">＋ Добавить Outbound</button>'+
+       '<div class="fbs-add-menu" hidden><input class="fbs-add-search" type="search" placeholder="Поиск Outbounds по имени, флагу и протоколу…">'+
+       '<div class="fbs-add-results"></div><small class="fbs-add-counter"></small></div>';
+     toolbar.after(picker);
+   }
    return wrapper;
  }
  function bindHandlers(){
@@ -201,6 +268,12 @@
    };
    q('.fbs-probe',el).onclick=probeServers;
    q('.fbs-stop',el).onclick=()=>{controller?.abort();setStatus('Опрос остановлен');};
+   if(!context.subscribed){
+     const toggle=q('.fbs-add-toggle',el),menu=q('.fbs-add-menu',el);
+     toggle.onclick=()=>{menu.hidden=!menu.hidden;if(!menu.hidden){renderManualPicker();q('.fbs-add-search',el).focus();}};
+     q('.fbs-add-search',el).oninput=renderManualPicker;
+     return;
+   }
    const sourceChoice=q('.fbs-source',el);
    const sourceList=context.subs.filter(src=>selectedSources(context.group,context.subs).includes(src.id));
    sourceChoice.replaceChildren();
@@ -271,6 +344,10 @@
  }
  async function probeServers(){
    if(!panel||probing)return;
+   if(!context.persistedName||context.persistedName!==context.group.name){
+     setStatus('Сначала сохраните балансировщик — затем станет доступен опрос.',true);
+     return;
+   }
    const names=items.filter(n=>selected.has(n.name)&&n.member).map(n=>n.name);
    if(!names.length){setStatus('Выберите хотя бы один действующий сервер',true);return;}
    const ctx=context;probing=true;
@@ -317,26 +394,38 @@
      if(panel){q('.fbs-probe',panel).disabled=false;q('.fbs-stop',panel).hidden=true;}
    }
  }
- function attach({form,group,subs,outbounds,updateDefaults,afterRefresh,isDirty}){
+ function attach({form,group,subs,outbounds,updateDefaults,afterRefresh,isDirty,persistedName}){
    teardown();
    if(!form||group.kind!=='group')return false;
-   const ids=selectedSources(group,subs);
-   if(!ids.length)return false;
    const label=form.elements.proxies?.closest('.mihomo-field');
    if(!label)return false;
+   const ids=selectedSources(group,subs);
+   const subscribed=ids.length>0;
    const nativeSelect=form.elements.proxies;
-   // Keep native control for validated form serialization, but prevent the
-   // full Outbounds dropdown leaking into subscription group editing.
    nativeSelect.classList.add('fbs-native-members');
    const title=label.querySelector('span');
-   if(title)title.textContent='Серверы подписки';
-   context={form,group,subs,outbounds,updateDefaults,afterRefresh,isDirty,selectionInitialized:false};
-   items=contextNodes().map(node=>({
-     name:node.name,protocol:node.type,sourceId:node.sourceSubscriptionId,
-     countryCode:window.MUICountryFlags?.read(node.name)?.code||'',member:(group.proxies||[]).includes(node.name),alive:null,delay:0
-   }));
-   const blocked=new Set(group.excludedSubscriptionMembers||[]);
-   selected=new Set(items.filter(n=>n.member&&!blocked.has(n.name)).map(n=>n.name));
+   if(title)title.textContent=subscribed?'Серверы подписки':'Серверы балансировщика';
+   const byName=new Map(outbounds.map(node=>[node.name,node]));
+   const available=Array.from(nativeSelect.options)
+     .filter(option=>option.value&&option.value!==group.name)
+     .map(option=>byName.get(option.value)||{
+       kind:'builtin',name:option.value,type:'builtin'
+     });
+   context={form,group,subs,outbounds,available,subscribed,updateDefaults,afterRefresh,
+     isDirty,persistedName:persistedName||'',selectionInitialized:false};
+   const initial=contextNodes();
+   if(subscribed){
+     items=initial.map(basicNode);
+     const blocked=new Set(group.excludedSubscriptionMembers||[]);
+     selected=new Set(items.filter(n=>n.member&&!blocked.has(n.name)).map(n=>n.name));
+   }else{
+     // Only current members appear in this table. Available unselected
+     // Outbounds are offered separately through "Добавить Outbound".
+     const selectedNames=Array.from(nativeSelect.selectedOptions,option=>option.value);
+     const map=new Map(available.map(node=>[node.name,node]));
+     items=selectedNames.map(name=>basicNode(map.get(name)||{name,kind:'builtin',type:'builtin'}));
+     selected=new Set(selectedNames);
+   }
    context.selectionInitialized=true;
    panel=renderMarkup();
    label.hidden=true;
@@ -347,7 +436,7 @@
    refreshTimer=setInterval(()=>{if(!probing&&panel)refreshStatus();},7500);
    return true;
  }
- const getExcluded=()=>context&&panel?Array.from(excluded):null;
+ const getExcluded=()=>context?.subscribed&&panel?Array.from(excluded):null;
  const active=()=>!!panel;
  window.MUIBalancerServers={attach,teardown,getExcluded,active};
 })();

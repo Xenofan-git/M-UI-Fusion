@@ -262,3 +262,60 @@ func TestSaveSubscribedBalancerExclusionsThroughMihomoSettings(t *testing.T) {
 		t.Fatalf("saved subscribed group changed on restart: proxies=%q exclusions=%q", got.Proxies, got.ExcludedSubscriptionMembers)
 	}
 }
+
+// Manual editor status and SSE probes must only expose/probe currently saved
+// group members, not every Outbound in the system.
+func TestManualBalancerEditorSnapshotStatusAndProbeIsolation(t *testing.T) {
+	state := testBalancerState()
+	state.Outbounds[5].Proxies = []string{"RU - Moscow", "Manual", "DIRECT"}
+	group, sources, nodes, subscribed, ok := balancerEditorSnapshot(state, "Russia")
+	if !ok || subscribed || len(sources) != 0 {
+		t.Fatalf("manual snapshot rejected: ok=%v subscribed=%v sources=%v", ok, subscribed, sources)
+	}
+	if len(nodes) != 3 || nodes[0].Name != "RU - Moscow" || nodes[1].Name != "Manual" || nodes[2].Name != "DIRECT" {
+		t.Fatalf("manual group must expose selected members only, got %v", nodes)
+	}
+	for _, node := range nodes {
+		if node.Name == "INT - Germany" || node.Name == "INT - France" {
+			t.Fatal("unrelated outbound leaked")
+		}
+	}
+	alive := true
+	rt := map[string]balancerRuntimeProxy{"Russia": {Now: "RU - Moscow"}, "RU - Moscow": {Alive: &alive}}
+	status := buildBalancerStatus(group, sources, nodes, rt, true)
+	if status.Candidate != "RU - Moscow" || len(status.Nodes) != 3 || status.Nodes[0].Alive == nil || !*status.Nodes[0].Alive {
+		t.Fatalf("manual status invalid: %+v", status)
+	}
+	if _, _, _, _, ok = balancerEditorSnapshot(state, "MissingGroup"); ok {
+		t.Fatal("unknown group allowed")
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-mihomo-secret" {
+			t.Fatal("missing controller auth")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"delay":116}`))
+	}))
+	defer server.Close()
+	state.Settings.APIAddress = strings.TrimPrefix(server.URL, "http://")
+	state.Settings.APISecret = "test-mihomo-secret"
+	a := &App{manager: &CoreManager{state: state, cmd: &exec.Cmd{}}}
+	for _, item := range []struct {
+		payload string
+		want    int
+	}{
+		{`{"group":"Russia","names":["RU - Moscow"]}`, 200},
+		{`{"group":"Russia","names":["INT - Germany"]}`, 400},
+		{`{"group":"Russia","names":["RU - Moscow","RU - Moscow"]}`, 400},
+		{`{"group":"MissingGroup","names":["RU - Moscow"]}`, 404},
+	} {
+		rec := httptest.NewRecorder()
+		a.handleMihomoBalancerProbe(rec, httptest.NewRequest("POST", "/api/mihomo/balancers/probe", strings.NewReader(item.payload)))
+		if rec.Code != item.want {
+			t.Fatalf("payload %s status %d want %d body %s", item.payload, rec.Code, item.want, rec.Body.String())
+		}
+		if item.want == 200 && (!strings.Contains(rec.Body.String(), `"delay":116`) || !strings.Contains(rec.Body.String(), `"done":true`)) {
+			t.Fatalf("manual SSE missing measured proxy delay: %s", rec.Body.String())
+		}
+	}
+}

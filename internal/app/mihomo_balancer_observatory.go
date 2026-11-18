@@ -37,12 +37,13 @@ type balancerStatusNode struct {
 	CheckedAt   string `json:"checkedAt,omitempty"`
 }
 type balancerStatusResponse struct {
-	Group     string               `json:"group"`
-	Candidate string               `json:"candidate,omitempty"`
-	Available bool                 `json:"available"`
-	Nodes     []balancerStatusNode `json:"nodes"`
-	Sources   []string             `json:"sources"`
-	Message   string               `json:"message,omitempty"`
+	Group      string               `json:"group"`
+	Candidate  string               `json:"candidate,omitempty"`
+	Available  bool                 `json:"available"`
+	Nodes      []balancerStatusNode `json:"nodes"`
+	Sources    []string             `json:"sources"`
+	Message    string               `json:"message,omitempty"`
+	Subscribed bool                 `json:"subscribed"`
 }
 
 func balancerSubscriptionSnapshot(state State, name string) (MihomoOutbound, []OutboundSubscription, []MihomoOutbound, bool) {
@@ -76,6 +77,50 @@ func balancerSubscriptionSnapshot(state State, name string) (MihomoOutbound, []O
 		}
 	}
 	return group, subs, nodes, true
+}
+
+// Manual groups expose only persisted members; subscription groups expose
+// only provider-owned nodes. No unrelated Outbounds leak into status or probes.
+func balancerEditorSnapshot(state State, name string) (MihomoOutbound, []OutboundSubscription, []MihomoOutbound, bool, bool) {
+	if group, sources, nodes, ok := balancerSubscriptionSnapshot(state, name); ok {
+		return group, sources, nodes, true, true
+	}
+	var group MihomoOutbound
+	found := false
+	for _, x := range state.Outbounds {
+		if x.Kind == "group" && x.Name == name {
+			group = x
+			found = true
+			break
+		}
+	}
+	if !found {
+		return group, nil, nil, false, false
+	}
+	// Fail closed: stale linkage must not turn a subscribed group into a
+	// universal manual group if its provider becomes unavailable.
+	for _, sub := range state.OutboundSubscriptions {
+		if sub.Group == name || containsString(group.SubscriptionIDs, sub.ID) {
+			return group, nil, nil, true, false
+		}
+	}
+	if len(group.SubscriptionIDs) > 0 {
+		return group, nil, nil, true, false
+	}
+	byName := make(map[string]MihomoOutbound, len(state.Outbounds))
+	for _, out := range state.Outbounds {
+		byName[out.Name] = out
+	}
+	nodes := make([]MihomoOutbound, 0, len(group.Proxies))
+	for _, memberName := range group.Proxies {
+		if member, ok := byName[memberName]; ok {
+			nodes = append(nodes, member)
+		} else {
+			// Native Mihomo targets, e.g. DIRECT, may be absent in state.
+			nodes = append(nodes, MihomoOutbound{Name: memberName, Kind: "builtin", Type: "builtin"})
+		}
+	}
+	return group, nil, nodes, false, true
 }
 func fetchBalancerRuntime(ctx context.Context, endpoint, secret string) (map[string]balancerRuntimeProxy, error) {
 	if endpoint == "" {
@@ -142,14 +187,15 @@ func (a *App) handleMihomoBalancerStatus(w http.ResponseWriter, r *http.Request)
 	}
 	a.manager.mu.Lock()
 	state := a.manager.state
-	group, sources, nodes, ok := balancerSubscriptionSnapshot(state, name)
+	group, sources, nodes, subscribed, ok := balancerEditorSnapshot(state, name)
 	running := a.manager.runningLocked()
 	a.manager.mu.Unlock()
 	if !ok {
-		writeJSON(w, 404, apiResponse{Message: "подписочный балансировщик не найден"})
+		writeJSON(w, 404, apiResponse{Message: "балансировщик не найден или его подписка недоступна"})
 		return
 	}
 	result := buildBalancerStatus(group, sources, nodes, nil, false)
+	result.Subscribed = subscribed
 	if !running {
 		result.Message = "Mihomo остановлен — данные сохранённой подписки доступны"
 	}
@@ -159,6 +205,7 @@ func (a *App) handleMihomoBalancerStatus(w http.ResponseWriter, r *http.Request)
 		runtime, err := fetchBalancerRuntime(ctx, state.Settings.APIAddress, state.Settings.APISecret)
 		if err == nil {
 			result = buildBalancerStatus(group, sources, nodes, runtime, true)
+			result.Subscribed = subscribed
 		} else {
 			result.Message = "Состояние Mihomo временно недоступно"
 		}
@@ -262,11 +309,11 @@ func (a *App) handleMihomoBalancerProbe(w http.ResponseWriter, r *http.Request) 
 	}
 	a.manager.mu.Lock()
 	state := a.manager.state
-	group, _, nodes, ok := balancerSubscriptionSnapshot(state, input.Group)
+	group, _, nodes, _, ok := balancerEditorSnapshot(state, input.Group)
 	running := a.manager.runningLocked()
 	a.manager.mu.Unlock()
 	if !ok {
-		writeJSON(w, 404, apiResponse{Message: "подписочный балансировщик не найден"})
+		writeJSON(w, 404, apiResponse{Message: "балансировщик не найден или его подписка недоступна"})
 		return
 	}
 	if !running {

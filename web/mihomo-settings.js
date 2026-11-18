@@ -295,6 +295,8 @@
       subscriptionIds:selectedIDs};
     const active=handler.attach({
       form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,
+      // Existing groups can be probed; new or renamed unsaved groups cannot.
+      persistedName:editingOriginal?.id?editingOriginal.name:'',
       updateDefaults:()=>syncGroupDefaultOptions(),
       isDirty:()=>dirty,
       afterRefresh:async()=>{
@@ -304,7 +306,7 @@
     });
     if(!active){
       const label=form.elements.proxies.closest('.mihomo-field');
-      label.querySelector('span').textContent='Members';
+      label.querySelector('span').textContent='Серверы балансировщика';
       form.elements.proxies.classList.remove('fbs-native-members');
     }
   }
