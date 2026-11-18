@@ -102,12 +102,16 @@
   }
   const matchWords=text=>String(text||'').replace(/\r\n/g,'\n').split('\n').map(x=>x.trim().toLowerCase()).filter(x=>x&&!x.startsWith('#'));
   function passesFilter(name,keep,drop){
-    const text=name.toLowerCase();
+    const node=typeof name==='string'?{name}:name;
+    const location=window.MUICountryFlags?.byCode.get(node.countryCode||window.MUICountryFlags?.read(node.name)?.code);
+    const parts=[node.name,node.flag,location?.flag,location?.english,location?.ru,location?.code,
+      window.MUICountryFlags?.aliases?.[location?.code]];
+    const text=parts.filter(Boolean).join(' ').toLocaleLowerCase('ru');
     return (!keep.length||keep.some(word=>text.includes(word)))&&!drop.some(word=>text.includes(word));
   }
   function currentSelection(form){
     const keep=matchWords(form.elements.filterKeep.value),drop=matchWords(form.elements.filterExclude.value);
-    const eligible=previewNodes.filter(n=>passesFilter(n.name,keep,drop));
+    const eligible=previewNodes.filter(n=>passesFilter(n,keep,drop));
     const selected=eligible.filter(n=>!excluded.has(n.key));
     return {keep,drop,eligible,selected};
   }
@@ -124,20 +128,28 @@
       ' · скрыто фильтрами '+(previewNodes.length-selection.eligible.length)+
       ' · исключено вручную '+selection.eligible.filter(n=>excluded.has(n.key)).length;
     const search=form.elements.search.value.trim().toLowerCase();
-    const candidates=previewNodes.filter(n=>!search||n.name.toLowerCase().includes(search));
+    const candidates=previewNodes.filter(n=>!search||passesFilter(n,search? [search]:[],[]));
     candidates.sort((a,b)=>(ascending?1:-1)*a.name.localeCompare(b.name,'ru'));
     box.replaceChildren();
     for(const node of candidates.slice(0,250)){
-      const eligible=passesFilter(node.name,selection.keep,selection.drop);
+      const eligible=passesFilter(node,selection.keep,selection.drop);
       const row=make('label','outsub-node'+(eligible?'':' filtered'));
+      row.title=node.name;
       const check=make('input');check.type='checkbox';check.disabled=!eligible;
       check.checked=eligible&&!excluded.has(node.key);
       check.onchange=()=>{if(check.checked)excluded.delete(node.key);else excluded.add(node.key);renderPreview();};
       row.appendChild(check);
-      const desc=make('span');
-      desc.appendChild(make('strong','',node.name));
-      desc.appendChild(make('small','',node.protocol+(eligible?'':' · скрыт фильтром')));
-      row.appendChild(desc);
+      const country=window.MUICountryFlags?.byCode.get(node.countryCode) || window.MUICountryFlags?.read(node.name);
+      const flag=make('span','outsub-node-flag',node.flag||country?.flag||'🌐');
+      flag.title=country?.ru||country?.english||'Страна не определена по названию';
+      row.appendChild(flag);
+      const title=make('strong','outsub-node-name',node.name.replace(/[\r\n]+/g,' '));
+      title.title=node.name;
+      title.setAttribute('dir','auto');
+      row.appendChild(title);
+      const protocol=make('small','outsub-node-protocol',node.protocol||'proxy');
+      protocol.title=eligible?'Протокол':'Скрыт фильтрами';
+      row.appendChild(protocol);
       box.appendChild(row);
     }
     if(candidates.length>250){
@@ -181,6 +193,50 @@
     wrapper.appendChild(control);form.appendChild(wrapper);
     return control;
   }
+  // HydraRoute-style flag insertion, backed by ISO 3166 (249 regions).
+  // A flag inserted here is a real filter expression; server-side matching
+  // resolves it against a server name (even if the provider omitted emoji).
+  function attachFlagPicker(wrapper,area){
+    const choose=make('button','outline-btn outsub-flag-trigger','🏳️ Добавить флаг');
+    choose.type='button';
+    choose.setAttribute('aria-label','Добавить флаг в '+(area.name==='filterKeep'?'Оставить только':'Исключить'));
+    const menu=make('div','outsub-flag-picker');
+    menu.hidden=true;
+    const search=make('input');search.type='search';search.placeholder='Поиск страны или флага…';
+    search.setAttribute('aria-label','Поиск страны');
+    const list=make('div','outsub-flag-list');
+    function populate(){
+      list.replaceChildren();
+      const countries=window.MUICountryFlags?.countries||[];
+      const term=search.value.trim().toLocaleLowerCase('ru');
+      const matching=countries.filter(item=>(item.ru+' '+item.english+' '+item.code+' '+item.flag).toLocaleLowerCase('ru').includes(term))
+        .sort((a,b)=>a.ru.localeCompare(b.ru,'ru'));
+      for(const country of matching.slice(0,100)){
+        const button=make('button','outsub-country-option',country.flag+'  '+country.ru+' ('+country.code+')');
+        button.type='button';
+        button.title=country.english+' — '+country.code;
+        button.onclick=()=>{
+          const existing=area.value.trimEnd();
+          const lines=existing.split(String.fromCharCode(10));
+          if(!lines.includes(country.flag))area.value=existing+(existing?String.fromCharCode(10):'')+country.flag;
+          area.dispatchEvent(new Event('input',{bubbles:true}));
+          menu.hidden=true;
+          choose.focus();
+        };
+        list.appendChild(button);
+      }
+      if(!matching.length)list.appendChild(make('p','outsub-muted','Страна не найдена'));
+      else if(matching.length>100)list.appendChild(make('p','outsub-muted','Уточните поиск для остальных стран'));
+    }
+    search.oninput=populate;
+    choose.onclick=()=>{
+      menu.hidden=!menu.hidden;
+      if(!menu.hidden){populate();search.focus();}
+    };
+    menu.append(search,list);
+    const toolbar=make('div','outsub-flag-toolbar');toolbar.appendChild(choose);
+    wrapper.appendChild(toolbar);wrapper.appendChild(menu);
+  }
   function modal(){
     let overlay=q('#outsub-modal');
     if(overlay)return overlay;
@@ -212,7 +268,10 @@
       const wrapper=make('label','',label),area=make('textarea');
       area.name=name;area.rows=3;area.maxLength=4096;area.placeholder=placeholder;
       area.oninput=()=>renderPreview();
-      wrapper.appendChild(area);filters.appendChild(wrapper);
+      wrapper.classList.add('outsub-filter-field');
+      wrapper.appendChild(area);
+      attachFlagPicker(wrapper,area);
+      filters.appendChild(wrapper);
     }
     form.appendChild(filters);
     const toolbar=make('div','outsub-preview-toolbar');
@@ -235,7 +294,7 @@
     form.appendChild(make('p','outsub-warning','Фильтры как в HydraRoute: по одной фразе на строку, без учёта регистра. «Оставить только» — совпадение с любой строкой; «Исключить» — исключает совпадения. Выбор узлов и фильтры сохраняются при автообновлении.'));
     const buttons=make('div','outsub-actions');
     const cancel=make('button','outline-btn','Отмена');cancel.type='button';cancel.onclick=()=>overlay.classList.remove('open');
-    const save=make('button','primary-btn','Создать балансировщик и подписку');save.id='outsub-submit';save.type='submit';
+    const save=make('button','primary-btn outsub-submit-primary','Создать балансировщик из подписки');save.id='outsub-submit';save.type='submit';
     buttons.append(cancel,save);form.appendChild(buttons);
     dialog.appendChild(form);overlay.appendChild(dialog);document.body.appendChild(overlay);
     overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.classList.remove('open');});
@@ -284,7 +343,7 @@
     form.dataset.id=sub?.id||'';
     const isNew=!sub;
     q('#outsub-title',overlay).textContent=isNew?'Добавить балансировщик из подписки':'Настройки подписки '+sub.name;
-    q('#outsub-submit',overlay).textContent=isNew?'Создать балансировщик и подписку':'Сохранить фильтры и настройки';
+    q('#outsub-submit',overlay).textContent=isNew?'Создать балансировщик из подписки':'Сохранить фильтры и настройки';
     q('#outsub-preview-count',overlay).textContent='Нажмите «Загрузить серверы» для проверки подписки';
     q('#outsub-preview-list',overlay).replaceChildren();
     form.elements.groupName.closest('label').hidden=!isNew;
@@ -300,7 +359,7 @@
     select.value=sub?.group||'';
     form.elements.name.value=sub?.name||'';
     form.elements.url.value=sub?.url||'';
-    form.elements.intervalMinutes.value=sub?.intervalMinutes||60;
+    form.elements.intervalMinutes.value=sub?.intervalMinutes||1440;
     form.elements.enabled.checked=sub?!!sub.enabled:true;
     form.elements.filterKeep.value=sub?.filterKeep||'';
     form.elements.filterExclude.value=sub?.filterExclude||'';

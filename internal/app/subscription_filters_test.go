@@ -153,7 +153,7 @@ func TestUnifiedBalancerSubscriptionUIWiring(t *testing.T) {
 	}
 	for _, wanted := range []string{
 		"filterKeep", "filterExclude", "excludedNodeKeys", "/api/mihomo/subscriptions/preview",
-		"Создать балансировщик и подписку", "Загрузить серверы",
+		"Создать балансировщик из подписки", "Загрузить серверы",
 	} {
 		if !strings.Contains(string(js), wanted) {
 			t.Errorf("wizard missing %s", wanted)
@@ -193,6 +193,89 @@ func TestSubscriptionImportMoreThan206MixedUnicodeNames(t *testing.T) {
 				t.Fatalf("bad imported name at %d: %q", i, item.Name)
 			}
 			named[item.Name] = true
+		}
+	}
+}
+
+func TestSubscriptionCountryFlagRecognition(t *testing.T) {
+	for _, c := range []struct{ name, code string }{
+		{"сн⚡★0.1x - LTE №136 - Швейцария", "CH"},
+		{"LTE №137 - Germany", "DE"},
+		{"🇩🇪 ⭐ Special LTE", "DE"},
+		{"RU - Russia 🇷🇺", "RU"},
+		{"США - LTE", "US"},
+		{"NL - Amsterdam", "NL"},
+		{"Франция - Paris", "FR"},
+		{"JP Tokyo LTE", "JP"},
+	} {
+		got := subscriptionCountryCode(c.name)
+		if got != c.code {
+			t.Errorf("country for %q=%q, want %q", c.name, got, c.code)
+		}
+		if got == c.code && subscriptionCountryFlag(got) == "" {
+			t.Errorf("missing flag for %s", got)
+		}
+	}
+	if got := subscriptionCountryCode("No country identifiable"); got != "" {
+		t.Errorf("unknown should not get a flag: %s", got)
+	}
+}
+func TestSubscriptionCountryFlagFiltersMatchNamesWithoutEmoji(t *testing.T) {
+	nodes := []MihomoOutbound{
+		subscriptionSS("LTE №136 - Швейцария", "ch.example"),
+		subscriptionSS("LTE №137 - Germany", "de.example"),
+		subscriptionSS("LTE №138 - Россия", "ru.example"),
+	}
+	sub := OutboundSubscription{FilterKeep: "🇨🇭\n🇩🇪", FilterExclude: "🇷🇺"}
+	selected, preview, err := filterSubscriptionNodes(sub, nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 2 || preview.Selected != 2 {
+		t.Fatalf("flag filters selected %d: %+v", len(selected), preview)
+	}
+	if preview.Nodes[0].Flag != "🇨🇭" || preview.Nodes[0].CountryCode != "CH" {
+		t.Fatalf("Swiss flag missing: %+v", preview.Nodes[0])
+	}
+	if preview.Nodes[1].Flag != "🇩🇪" || preview.Nodes[1].CountryCode != "DE" {
+		t.Fatalf("German flag missing: %+v", preview.Nodes[1])
+	}
+	sub.FilterKeep = "🇷🇺"
+	sub.FilterExclude = ""
+	selected, _, err = filterSubscriptionNodes(sub, nodes)
+	if err != nil || len(selected) != 1 || selected[0].Name != "LTE №138 - Россия" {
+		t.Fatalf("Russia filter failed: %+v %v", selected, err)
+	}
+	sub.FilterKeep = "🇨🇭"
+	selected, _, err = filterSubscriptionNodes(sub, nodes)
+	if err != nil || len(selected) != 1 || selected[0].Name != "LTE №136 - Швейцария" {
+		t.Fatalf("Swiss filter failed: %+v %v", selected, err)
+	}
+}
+func TestFlagPickerAndButtonWiring(t *testing.T) {
+	html, err := os.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), "static/country-flags.js") {
+		t.Fatal("country flag script missing")
+	}
+	js, err := os.ReadFile("web/outbound-subscriptions.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, term := range []string{"Создать балансировщик из подписки", "1440", "outsub-node-name", "outsub-node-flag", "attachFlagPicker", "Добавить флаг"} {
+		if !strings.Contains(string(js), term) {
+			t.Errorf("subscription UI missing %s", term)
+		}
+	}
+	css, err := os.ReadFile("web/outbound-subscriptions.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, term := range []string{"grid-template-columns:20px 32px minmax(0,1fr) 86px", "white-space:nowrap", "#outsub-submit:is(:hover,:focus-visible):not(:disabled)"} {
+		if !strings.Contains(string(css), term) {
+			t.Errorf("subscription UI CSS missing %s", term)
 		}
 	}
 }

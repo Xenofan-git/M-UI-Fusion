@@ -47,3 +47,147 @@
 .outsub-node small{font-size:11px;color:var(--text-muted);}
 .outsub-node input{flex:none;}
 @media(max-width:670px){.outsub-filters{grid-template-columns:1fr;}.outsub-preview-toolbar input[type=search]{min-width:100%;}}
+
+/* HydraRoute-style server picker: one complete name per row. The former
+   .outsub-dialog label flex-column declaration was stacking the checkbox,
+   name and protocol vertically, making a 130-node preview unusable. */
+.outsub-dialog.outsub-dialog-wide{
+  width:min(1080px,calc(100vw - 32px));
+  max-width:100%;
+}
+.outsub-dialog .outsub-preview-list{
+  max-height:min(49vh,480px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  border:1px solid var(--line,#50566c);
+  background:var(--surface,transparent);
+}
+.outsub-dialog label.outsub-node{
+  display:grid !important;
+  grid-template-columns:20px 32px minmax(0,1fr) 86px;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:10px !important;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  min-height:45px;
+  margin:0 !important;
+  padding:9px 12px;
+  border-bottom:1px solid var(--line,#50566c);
+  cursor:pointer;
+}
+.outsub-dialog label.outsub-node:hover{background:var(--surface-hover,rgba(160,170,195,.08));}
+.outsub-dialog .outsub-node input[type=checkbox]{margin:0;justify-self:center;}
+.outsub-dialog .outsub-node-flag{
+  display:block;
+  width:30px;
+  font-size:22px;
+  line-height:1;
+  text-align:center;
+  flex:none;
+}
+.outsub-dialog .outsub-node-name{
+  display:block;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  font-size:13px;
+  line-height:1.7;
+  font-weight:550;
+  color:var(--text-strong,#f5f5f5);
+  scrollbar-width:thin;
+  cursor:text;
+}
+.outsub-dialog .outsub-node-protocol{
+  display:block;
+  min-width:0;
+  justify-self:end;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--muted,#a1a1aa);
+  white-space:nowrap;
+  text-align:right;
+}
+.outsub-filter-field{position:relative;}
+.outsub-filter-field .outsub-flag-toolbar{
+  display:flex;
+  gap:6px;
+  justify-content:flex-start;
+  margin:1px 0 0;
+}
+.outsub-filter-field .outsub-flag-trigger{
+  width:auto;
+  min-height:34px;
+  padding:5px 12px;
+  font-size:12px;
+}
+.outsub-filter-field .outsub-flag-picker{
+  position:relative;
+  display:grid;
+  gap:7px;
+  width:100%;
+  border:1px solid var(--line,#4a5265);
+  border-radius:10px;
+  background:var(--surface,#242936);
+  padding:9px;
+  box-shadow:0 8px 22px #0002;
+  z-index:2;
+}
+.outsub-filter-field .outsub-flag-picker[hidden]{display:none !important;}
+.outsub-filter-field .outsub-flag-picker input[type=search]{
+  width:100%;font-size:12px;
+}
+.outsub-flag-list{max-height:155px;overflow:auto;display:grid;gap:2px;}
+.outsub-country-option{
+  display:block;
+  width:100%;
+  text-align:left;
+  padding:7px 8px;
+  border:0;
+  border-radius:6px;
+  color:var(--text-strong,#fff);
+  background:transparent;
+  font-size:12px;
+}
+.outsub-country-option:hover,.outsub-country-option:focus-visible{
+  color:var(--text-strong,#fff);
+  background:var(--surface-hover,rgba(160,170,195,.2));
+}
+.outsub-dialog #outsub-submit:not(:disabled){
+  opacity:1 !important;
+  -webkit-text-fill-color:currentColor !important;
+}
+html[data-ui-theme="shadcn"] body .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled){
+  background:color-mix(in srgb,var(--sc-primary,#18181b) 92%,var(--sc-bg,#fff)) !important;
+  color:var(--sc-primary-fg,#fff) !important;
+  -webkit-text-fill-color:var(--sc-primary-fg,#fff) !important;
+}
+html[data-ui-theme="shadcn"] body.dark .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled){
+  background:#e8e8eb !important;
+  border-color:#fafafa !important;
+  color:#18181b !important;
+  -webkit-text-fill-color:#18181b !important;
+  filter:none !important;
+}
+html[data-ui-theme="md3"] body .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled){
+  background:color-mix(in srgb,var(--m3-primary,#6750a4) 92%,var(--m3-on-primary,#fff)) !important;
+  color:var(--m3-on-primary,#fff) !important;
+  -webkit-text-fill-color:var(--m3-on-primary,#fff) !important;
+}
+html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled){
+  --lb-fill:#138dff;
+  --lb-text:#fff;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+}
+@media(max-width:620px){
+  .outsub-dialog label.outsub-node{
+    grid-template-columns:20px 29px minmax(0,1fr) 55px;
+    gap:6px !important;padding:7px 6px;
+  }
+  .outsub-dialog .outsub-node-name{font-size:12px;}
+  .outsub-dialog .outsub-node-protocol{font-size:10px;}
+}

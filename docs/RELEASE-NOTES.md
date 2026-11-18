@@ -1,5 +1,7 @@
 ## M-UI Fusion — native Mihomo Sniffer fork
 
+**Update v0.3.3-fusion.5:** improves the subscribed Balancer modal. Defaults new subscription refreshes to **1440 minutes**, displays full one-line server names with inferred flags and protocol badges, offers a searchable ISO 3166 flag picker for HydraRoute-style include/exclude filters, and fixes the create button's dark-theme hover contrast. Renames the submit action to «Создать балансировщик из подписки». Flag filtering is enforced by the server during import and automatic refresh, including country-name-only nodes.
+
 **Update v0.3.3-fusion.4:** fix hover/focus contrast for the **«Добавить балансировщик из подписки»** action, including dark shadcn theme; button label and icon remain readable.
 
 **Update v0.3.3-fusion.3:** merged managed VPN subscriptions with the Balancers tab in Mihomo Settings. The existing **Add Balancer** button creates manual groups, while **Add Balancer from Subscription** creates a subscribed group in one operation, with a HydraRoute-style node picker, search, include/exclude text filters and scheduled refresh. Fixes provider node names that contain commas, line breaks, duplicate labels or Unicode longer than the Mihomo 128-byte limit. The sidebar has no separate subscription or balancer entry.

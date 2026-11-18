@@ -67,7 +67,7 @@ func normalizeOutboundSubscription(s OutboundSubscription) (OutboundSubscription
 		}
 	}
 	if s.IntervalMinutes == 0 {
-		s.IntervalMinutes = 60
+		s.IntervalMinutes = 1440
 	}
 	if s.IntervalMinutes < 5 || s.IntervalMinutes > 10080 {
 		return s, fmt.Errorf("интервал обновления: 5–10080 минут")

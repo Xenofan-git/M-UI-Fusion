@@ -9,10 +9,12 @@ import (
 )
 
 type subscriptionPreviewNode struct {
-	Key      string `json:"key"`
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Included bool   `json:"included"`
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Protocol    string `json:"protocol"`
+	CountryCode string `json:"countryCode,omitempty"`
+	Flag        string `json:"flag,omitempty"`
+	Included    bool   `json:"included"`
 }
 type subscriptionPreviewResponse struct {
 	Nodes    []subscriptionPreviewNode `json:"nodes"`
@@ -34,7 +36,7 @@ func subscriptionFilterWords(value string) []string {
 	return result
 }
 func subscriptionFilterMatch(name string, keep, exclude []string) bool {
-	lower := strings.ToLower(name)
+	lower := subscriptionCountryFilterText(name)
 	if len(keep) > 0 {
 		found := false
 		for _, word := range keep {
@@ -94,7 +96,7 @@ func filterSubscriptionNodes(sub OutboundSubscription, nodes []MihomoOutbound) (
 		if label == "" {
 			label = fmt.Sprintf("Узел %d", i+1)
 		}
-		preview.Nodes = append(preview.Nodes, subscriptionPreviewNode{Key: keys[i], Name: label, Protocol: node.Type, Included: include})
+		preview.Nodes = append(preview.Nodes, subscriptionPreviewNode{Key: keys[i], Name: label, Protocol: node.Type, Included: include, CountryCode: subscriptionCountryCode(node.Name), Flag: subscriptionCountryFlag(subscriptionCountryCode(node.Name))})
 	}
 	preview.Selected = len(selected)
 	if len(selected) == 0 {

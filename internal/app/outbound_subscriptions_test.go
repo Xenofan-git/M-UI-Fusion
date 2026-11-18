@@ -158,7 +158,7 @@ func TestOutboundSubscriptionRejectsUnsafeURLs(t *testing.T) {
 		}
 	}
 	normalized, err := normalizeOutboundSubscription(OutboundSubscription{Name: "A", URL: "https://example.com/s", Enabled: true})
-	if err != nil || normalized.IntervalMinutes != 60 {
+	if err != nil || normalized.IntervalMinutes != 1440 {
 		t.Fatal("default interval invalid", err)
 	}
 }
