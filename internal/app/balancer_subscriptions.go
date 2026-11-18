@@ -88,8 +88,15 @@ func materializeGroupSubscriptions(state State, outbounds []MihomoOutbound) ([]M
 			}
 		}
 		members := make([]string, 0, len(group.Proxies))
+		excluded := make(map[string]bool, len(group.ExcludedSubscriptionMembers))
+		for _, name := range group.ExcludedSubscriptionMembers {
+			excluded[name] = true
+		}
 		memberSet := map[string]bool{}
 		for _, member := range group.Proxies {
+			if excluded[member] && managedNodeSource[member] != "" {
+				continue
+			}
 			if sourceID := managedNodeSource[member]; sourceID != "" && !known[sourceID] && previouslyLinked[sourceID] {
 				continue
 			}
@@ -100,6 +107,9 @@ func materializeGroupSubscriptions(state State, outbounds []MihomoOutbound) ([]M
 		}
 		for _, sourceID := range selected {
 			for _, member := range sourceNodes[sourceID] {
+				if excluded[member] {
+					continue
+				}
 				if !memberSet[member] {
 					members = append(members, member)
 					memberSet[member] = true

@@ -175,8 +175,8 @@
 
     const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid"><input name="id" type="hidden"><label class="mihomo-field"><span>Rule Type</span><select name="type">${ruleTypes.map(type=>`<option value="${type}">${type}</option>`).join('')}</select></label><label class="mihomo-field"><span>Outbound</span><select name="target"></select></label><label class="mihomo-field full" id="mihomo-rule-payload-field"><span>Payload</span><input name="payload" required><small id="mihomo-rule-hint"></small></label><div class="mihomo-field full" id="mihomo-no-resolve-field"><label class="mihomo-check" data-i18n-multi="mh.noResolveLabel"><input name="noResolve" type="checkbox">no-resolve（匹配目标 IP 时不触发 DNS 解析）</label></div></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
     document.body.appendChild(ruleModal);
-    $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>closeModal(button.closest('.modal-backdrop')));
-    for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal)closeModal(modal);};
+    $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>{window.MUIBalancerServers?.teardown();closeModal(button.closest('.modal-backdrop'));});
+    for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal){window.MUIBalancerServers?.teardown();closeModal(modal);}};
     $('#mihomo-outbound-form').onsubmit=saveOutboundDraft;
     $('#mihomo-outbound-form').elements.kind.onchange=syncOutboundForm;
     $('#mihomo-outbound-form').elements.type.onchange=syncOutboundForm;
@@ -184,7 +184,7 @@
     $('#mihomo-outbound-form').elements.snellVersion.onchange=syncSnellOutboundForm;
     $('#mihomo-outbound-form').elements.snellObfsMode.onchange=syncSnellOutboundForm;
     $('#mihomo-outbound-form').elements.proxies.onchange=()=>syncGroupDefaultOptions();
-    $('#mihomo-outbound-form').elements.subscriptionIds.onchange=()=>syncBalancerSubscriptionMembers();
+    $('#mihomo-outbound-form').elements.subscriptionIds.onchange=()=>{syncBalancerSubscriptionMembers();attachSubscriptionServerEditor();};
     $$('[data-outbound-mode]').forEach(button=>button.onclick=()=>switchOutboundMode(button.dataset.outboundMode));
     $('#outbound-parse-link').onclick=parseOutboundLink;
     $('#outbound-share-link').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();parseOutboundLink();}};
@@ -217,6 +217,7 @@
     syncBalancerSubscriptionOptions(item);
     syncBalancerSubscriptionMembers();
     syncOutboundForm();syncGroupDefaultOptions(item.defaultSelected||'');
+    attachSubscriptionServerEditor();
     $('#outbound-yaml').value=yamlDraft;$('#outbound-share-link').value=linkDraft;syncYAMLLines();
   }
   async function openOutboundModal(id='',requestedKind='proxy'){
@@ -226,6 +227,7 @@
       catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
     }
     if(draft.outbounds.find(item=>item.id===id)?.vpngate){await openVPNGateModal(id);return;}
+    window.MUIBalancerServers?.teardown();
     ensureModals();editingOutbound=id;
     editingOriginal=clone(draft.outbounds.find(candidate=>candidate.id===id)||{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'});
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
@@ -236,7 +238,7 @@
       :muiT(id?'mh.editOutbound':'mihomo.addOutbound');
     openModal('mihomo-outbound-modal');
     requestAnimationFrame(()=>{if(typeof syncInkBars==='function')syncInkBars();});
-    if(editingOriginal.native){await switchOutboundMode('yaml',editingOriginal);}else $('#mihomo-outbound-form').elements.name.focus();
+    if(editingOriginal.native&&!window.MUIBalancerServers?.active()){await switchOutboundMode('yaml',editingOriginal);}else $('#mihomo-outbound-form').elements.name.focus();
   }
   function populateOutboundTypes(form,selected=''){
     const options=form.elements.kind.value==='group'?groupTypes:proxyTypes;
@@ -249,6 +251,30 @@
     form.elements.proxies.innerHTML=targetOptions('',true,name);
     for(const member of item.proxies||[])if(!Array.from(form.elements.proxies.options).some(option=>option.value===member))form.elements.proxies.add(new Option(member,member));
     if(selectedDialer&&!Array.from(form.elements.dialerProxy.options).some(option=>option.value===selectedDialer))form.elements.dialerProxy.add(new Option(selectedDialer,selectedDialer,true,true));
+  }
+  function attachSubscriptionServerEditor(){
+    const handler=window.MUIBalancerServers;
+    if(!handler)return;
+    const form=$('#mihomo-outbound-form');
+    if(!form||form.elements.kind.value!=='group'){handler.teardown();return;}
+    const selectedIDs=Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value);
+    const group={...clone(editingOriginal||{}),
+      name:form.elements.name.value.trim()||editingOriginal?.name||'',
+      subscriptionIds:selectedIDs};
+    const active=handler.attach({
+      form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,
+      updateDefaults:()=>syncGroupDefaultOptions(),
+      isDirty:()=>dirty,
+      afterRefresh:async()=>{
+        await refresh();
+        if(!dirty)syncFromState();
+      }
+    });
+    if(!active){
+      const label=form.elements.proxies.closest('.mihomo-field');
+      label.querySelector('span').textContent='Members';
+      form.elements.proxies.classList.remove('fbs-native-members');
+    }
   }
   function syncBalancerSubscriptionOptions(item={}){
     const select=$('#mihomo-outbound-form').elements.subscriptionIds;
@@ -269,7 +295,7 @@
     for(const option of form.elements.proxies.options){
       const node=draft.outbounds.find(candidate=>candidate.name===option.value);
       if(!node?.sourceSubscriptionId)continue;
-      if(ids.has(node.sourceSubscriptionId))option.selected=true;
+      if(ids.has(node.sourceSubscriptionId))option.selected=!(editingOriginal?.excludedSubscriptionMembers||[]).includes(option.value);
       else if(previouslyAttached.has(node.sourceSubscriptionId))option.selected=false;
     }
     syncGroupDefaultOptions();
@@ -310,6 +336,32 @@
     const csv=value=>String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
     const csvInts=value=>csv(value).map(part=>Number(part)).filter(Number.isFinite);
     const item={...clone(editingOriginal||{}),id:form.elements.id.value||freshID('outbound'),kind,subscriptionIds:kind==='group'?Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value):[],name:form.elements.name.value.trim(),type,server:type==='direct'?'':form.elements.server.value.trim(),port:type==='direct'?0:Number(form.elements.port.value)||0,username:form.elements.username.value.trim(),password:form.elements.password.value,snellPsk:form.elements.snellPsk.value,snellVersion:Number(form.elements.snellVersion.value)||1,snellReuse:form.elements.snellReuse.checked,snellObfsMode:form.elements.snellObfsMode.value,snellObfsHost:form.elements.snellObfsHost.value.trim(),uuid:form.elements.uuid.value.trim(),alterId:Number(form.elements.alterId.value)||0,cipher:type==='vmess'?form.elements.vmessCipher.value:form.elements.cipher.value,udp:form.elements.udp.checked,tls:form.elements.tls.value==='true',skipCertVerify:form.elements.skipCertVerify.checked,sni:form.elements.sni.value.trim(),alpn:form.elements.alpn.value.trim(),network:form.elements.network.value,wsPath:form.elements.wsPath.value.trim(),wsHost:form.elements.wsHost.value.trim(),grpcServiceName:form.elements.grpcServiceName.value.trim(),flow:form.elements.flow.value.trim(),encryption:form.elements.encryption.value.trim(),clientFingerprint:form.elements.clientFingerprint.value.trim(),ipVersion:form.elements.ipVersion.value,dialerProxy:form.elements.dialerProxy.value,interfaceName:form.elements.interfaceName.value.trim(),routingMark:Number(form.elements.routingMark.value)||0,tfo:form.elements.tfo.checked,mptcp:form.elements.mptcp.checked,wireGuardIp:form.elements.wireGuardIp.value.trim(),wireGuardIpv6:form.elements.wireGuardIpv6.value.trim(),wireGuardPrivateKey:form.elements.wireGuardPrivateKey.value.trim(),wireGuardPublicKey:form.elements.wireGuardPublicKey.value.trim(),wireGuardPreSharedKey:form.elements.wireGuardPreSharedKey.value.trim(),wireGuardReserved:csvInts(form.elements.wireGuardReserved.value),wireGuardPersistentKeepalive:Number(form.elements.wireGuardPersistentKeepalive.value)||0,wireGuardMtu:Number(form.elements.wireGuardMtu.value)||0,wireGuardWorkers:Number(form.elements.wireGuardWorkers.value)||0,wireGuardDns:csv(form.elements.wireGuardDns.value),wireGuardRemoteDnsResolve:form.elements.wireGuardRemoteDnsResolve.checked,wireGuardRefreshServerIpInterval:Number(form.elements.wireGuardRefreshServerIpInterval.value)||0,openVpnProto:form.elements.openVpnProto.value,openVpnDev:form.elements.openVpnDev.value,openVpnCipher:form.elements.openVpnCipher.value,openVpnDataCiphers:csv(form.elements.openVpnDataCiphers.value),openVpnDataCipherFallback:form.elements.openVpnDataCipherFallback.value.trim(),openVpnAuth:form.elements.openVpnAuth.value,openVpnCompLzo:form.elements.openVpnCompLzo.value,openVpnCa:form.elements.openVpnCa.value.trim(),openVpnCert:form.elements.openVpnCert.value.trim(),openVpnKey:form.elements.openVpnKey.value.trim(),openVpnTlsAuth:form.elements.openVpnTlsAuth.value.trim(),openVpnKeyDirection:form.elements.openVpnKeyDirection.value,openVpnTlsCrypt:form.elements.openVpnTlsCrypt.value.trim(),openVpnTlsCryptV2:form.elements.openVpnTlsCryptV2.value.trim(),openVpnPing:Number(form.elements.openVpnPing.value)||0,openVpnPingRestart:Number(form.elements.openVpnPingRestart.value)||0,openVpnHandshakeTimeout:Number(form.elements.openVpnHandshakeTimeout.value)||0,openVpnMtu:Number(form.elements.openVpnMtu.value)||0,openVpnDns:csv(form.elements.openVpnDns.value),openVpnRemoteDnsResolve:form.elements.openVpnRemoteDnsResolve.checked,up:form.elements.up.value.trim(),down:form.elements.down.value.trim(),obfs:form.elements.obfs.value,obfsPassword:form.elements.obfsPassword.value,token:form.elements.token.value.trim(),congestionController:form.elements.congestionController.value,udpRelayMode:form.elements.udpRelayMode.value,proxies:orderedMembers(form),testUrl:form.elements.testUrl.value.trim(),interval:Number(form.elements.interval.value)||0,timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,strategy:form.elements.strategy.value,defaultSelected:form.elements.defaultSelected.value,disableUdp:form.elements.disableUdp.checked};
+    if(kind==='group'){
+      const exclusions=window.MUIBalancerServers?.getExcluded();
+      if(exclusions!==null&&exclusions!==undefined)item.excludedSubscriptionMembers=exclusions;
+      // Preserve advanced native YAML knobs while keeping form-edited group
+      // members, strategy and health settings in sync with that native YAML.
+      if(item.native){
+        const native={...item.native,name:item.name,type:item.type,proxies:[...item.proxies]};
+        if(item.type==='select'){
+          delete native.url;delete native.interval;delete native.timeout;
+          delete native.tolerance;delete native.strategy;
+          if(item.defaultSelected)native['default-selected']=item.defaultSelected;
+          else delete native['default-selected'];
+        }else{
+          native.url=item.testUrl||defaultTestURL;
+          native.interval=item.interval||300;
+          if(item.timeout>0)native.timeout=item.timeout;else delete native.timeout;
+          if(item.type==='url-test'&&item.tolerance>0)native.tolerance=item.tolerance;
+          else delete native.tolerance;
+          if(item.type==='load-balance')native.strategy=item.strategy||'consistent-hashing';
+          else delete native.strategy;
+          delete native['default-selected'];
+        }
+        if(item.disableUdp)native['disable-udp']=true;else delete native['disable-udp'];
+        item.native=native;
+      }
+    }
     return item;
   }
   function importRequest(extra){return {context:draft.outbounds,editingId:editingOutbound,...extra};}
@@ -376,15 +428,18 @@
       const response=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify(importRequest({yaml}))});
       const groupSubscriptionIDs=editingOriginal?.kind==='group'||$('#mihomo-outbound-form').elements.kind.value==='group'
         ?Array.from($('#mihomo-outbound-form').elements.subscriptionIds.selectedOptions,option=>option.value):[];
-      if(response.outbounds.length===1 && response.outbounds[0].kind==='group')
+      if(response.outbounds.length===1 && response.outbounds[0].kind==='group'){
         response.outbounds[0].subscriptionIds=groupSubscriptionIDs;
+        const exclusions=window.MUIBalancerServers?.getExcluded();
+        response.outbounds[0].excludedSubscriptionMembers=exclusions??editingOriginal?.excludedSubscriptionMembers??[];
+      }
       const next=clone(draft),index=next.outbounds.findIndex(item=>item.id===editingOutbound);
       if(index>=0){
         const previous=next.outbounds[index],item=response.outbounds[0];item.id=editingOutbound;
         next.outbounds[index]=item;
         if(previous.name!==item.name)renameReferences(next.outbounds,next.routingRules,previous.name,item.name);
       }else next.outbounds.push(...response.outbounds);
-      draft=next;closeModal($('#mihomo-outbound-modal'));markDirty();
+      draft=next;window.MUIBalancerServers?.teardown();closeModal($('#mihomo-outbound-modal'));markDirty();
     }catch(error){showImportError(error.message);}finally{setImportBusy(false);}
   }
 

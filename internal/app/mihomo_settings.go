@@ -41,9 +41,10 @@ type MihomoOutbound struct {
 
 	// VPNGate turns the outbound into a managed direct proxy bound to a
 	// SoftEther VPN Client adapter; the metadata travels with the outbound.
-	VPNGate              *VPNGateConfig `json:"vpngate,omitempty"`
-	SourceSubscriptionID string         `json:"sourceSubscriptionId,omitempty"` // managed inbound URL subscription
-	SubscriptionIDs      []string       `json:"subscriptionIds,omitempty"`      // subscribed sources for a policy group
+	VPNGate                     *VPNGateConfig `json:"vpngate,omitempty"`
+	SourceSubscriptionID        string         `json:"sourceSubscriptionId,omitempty"` // managed inbound URL subscription
+	SubscriptionIDs             []string       `json:"subscriptionIds,omitempty"`
+	ExcludedSubscriptionMembers []string       `json:"excludedSubscriptionMembers,omitempty"` // subscribed sources for a policy group
 
 	// Proxy node common fields.
 	Server            string `json:"server,omitempty"`
@@ -278,6 +279,7 @@ func normalizeMihomoOutbounds(input []MihomoOutbound) ([]MihomoOutbound, error) 
 			parsed.VPNGate = item.VPNGate
 			parsed.SourceSubscriptionID = item.SourceSubscriptionID
 			parsed.SubscriptionIDs = append([]string(nil), item.SubscriptionIDs...)
+			parsed.ExcludedSubscriptionMembers = append([]string(nil), item.ExcludedSubscriptionMembers...)
 			*item = parsed
 		}
 		item.Kind = strings.ToLower(strings.TrimSpace(item.Kind))

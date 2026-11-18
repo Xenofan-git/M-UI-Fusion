@@ -391,8 +391,18 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 			}
 		}
 		members := make([]string, 0, len(was)+len(imported))
+		excluded := make(map[string]bool, len(group.ExcludedSubscriptionMembers))
+		for _, name := range group.ExcludedSubscriptionMembers {
+			excluded[name] = true
+		}
 		changed := false
 		for _, member := range was {
+			if excluded[member] {
+				if _, managed := previous[member]; managed {
+					changed = true
+					continue
+				}
+			}
 			if _, owned := previous[member]; owned {
 				changed = true
 				// When the source moves to a different group, do not keep its
@@ -407,6 +417,9 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 		if group.Name == sub.Group || containsString(group.SubscriptionIDs, sub.ID) {
 			changed = true
 			for _, name := range orderedNames {
+				if excluded[name] {
+					continue
+				}
 				if !containsString(members, name) {
 					members = append(members, name)
 				}
@@ -428,6 +441,7 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 					memberValues = append(memberValues, value)
 				}
 				native["proxies"] = memberValues
+				group.Native = native
 				if group.DefaultSelected != "" && !containsString(members, group.DefaultSelected) {
 					delete(native, "default-selected")
 				}
