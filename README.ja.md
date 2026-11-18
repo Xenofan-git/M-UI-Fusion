@@ -71,17 +71,14 @@
 systemd または OpenRC を使う Linux で、`root` として実行します：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
 ```
 
 インストーラーは未使用の 5 桁のパネルポートを選び、16 文字のパネルパス、14 文字のユーザー名、16 文字のパスワードを生成します。アクセス URL と認証情報は最後に一度だけ表示されます。明示的に指定することもできます：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh) \
-  --port 34567 \
-  --path MyPanelA1b2C3d4 \
-  --username AdminUserA1234 \
-  --password 'ChangeThisA12345'
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+  --port 34567 --listen-ip 192.168.4.26
 ```
 
 m-ui は `/usr/local/m-ui` にインストールされ、データは `/usr/local/m-ui/data` に保存されます。インストーラーは現在のアーキテクチャ用の Mihomo コアもダウンロードします。既存のコアは `--update-mihomo` を指定しない限り保持されます。
@@ -95,8 +92,8 @@ m-ui は `/usr/local/m-ui` にインストールされ、データは `/usr/loca
 Docker イメージは Linux amd64 向けで、m-ui と、バージョン固定かつ検証済みの Mihomo コアを含みます。Compose はホストネットワークを使うため、パネルで追加したインバウンドのポートは追加のポートマッピングなしで使えます。
 
 ```bash
-git clone https://github.com/RomanovCaesar/m-ui.git
-cd m-ui
+git clone https://github.com/Xenofan-git/M-UI-sniffer.git
+cd M-UI-sniffer
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui

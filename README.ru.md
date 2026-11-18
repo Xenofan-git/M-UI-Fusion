@@ -9,15 +9,49 @@
 > **Это форк [Xenofan-git/M-UI-sniffer](https://github.com/Xenofan-git/M-UI-sniffer) оригинальной панели [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui) на основе v0.3.3.**
 > Добавлены штатные настройки **Sniffer** в разделе **Mihomo Settings → Basics → Sniffer**: HTTP, TLS, QUIC, Force DNS Mapping, Parse Pure IP, Override Destination. Настройки сохраняются в `state.json` и встраиваются непосредственно в `config.yaml` — без дополнительного сервиса.
 >
-> **Внимание:** команды установки оригинальной m-ui ниже на этой странице устанавливают **не наш форк**. Для нашего варианта используйте сборку из [GitHub Actions](https://github.com/Xenofan-git/M-UI-sniffer/actions) или соберите исходники с Go 1.26.10. Перед обновлением сохраните бинарник, `state.json` и `config.yaml`. Документация: [docs/sniffer.md](docs/sniffer.md).
+> **Установка форка:** выполняйте команды из [подробной SSH-инструкции](docs/INSTALL.ru.md); они скачивают **нашу** версию и проверяют SHA-256. Перед обновлением обязательно сохраните бинарник, `state.json` и `config.yaml`. [Релизы](https://github.com/Xenofan-git/M-UI-sniffer/releases) · [Sniffer](docs/sniffer.md).
+
+## Быстрая установка по SSH на NanoPi (ARM64)
+
+На компьютере или в Termux телефона подключитесь к NanoPi:
+
+```bash
+ssh pi@192.168.4.26
+```
+
+Через Tailscale, если устройство доступно:
+
+```bash
+ssh pi@100.70.73.57
+```
+
+Уже **на NanoPi** загрузите и проверьте установщик нашего форка:
+
+```bash
+curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
+bash -n /tmp/m-ui-sniffer-install.sh
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
+```
+
+Если m-ui уже установлена, сначала сделайте резервную копию и используйте **обновление с сохранением настроек**:
+
+```bash
+sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.1
+sudo systemctl is-active m-ui
+sudo /usr/local/m-ui/m-ui version
+```
+
+Для нашей NanoPi версия v0.3.3-sniffer.1 уже установлена. Переустанавливать её без необходимости не нужно. Полная инструкция с командой резервного копирования и отката: **[docs/INSTALL.ru.md](docs/INSTALL.ru.md)**. Не публикуйте порт панели в интернет без HTTPS и защиты доступа.
+
+---
 
 # m-ui
 
-[![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/blob/main/go.mod)
-[![Downloads](https://img.shields.io/github/downloads/RomanovCaesar/m-ui/total.svg)](https://github.com/RomanovCaesar/m-ui/releases/latest)
-[![License](https://img.shields.io/github/license/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/Xenofan-git/M-UI-sniffer/release.yml.svg)](https://github.com/Xenofan-git/M-UI-sniffer/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/go.mod)
+[![Downloads](https://img.shields.io/github/downloads/Xenofan-git/M-UI-sniffer/total.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases/latest)
+[![License](https://img.shields.io/github/license/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/LICENSE)
 
 Панель управления сервером на базе [Mihomo](https://github.com/MetaCubeX/mihomo). Логика работы повторяет 3x-ui, интерфейс доступен в трёх темах (shadcn по умолчанию, Material Design 3 и Apple Liquid Glass), а конфигурация строится в родном YAML-формате Mihomo. Панель доступна на 11 языках.
 
@@ -78,17 +112,16 @@
 Выполните от имени `root` в Linux с systemd или OpenRC:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh)
+curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
+bash -n /tmp/m-ui-sniffer-install.sh
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
 ```
 
-Установщик выбирает свободный пятизначный порт панели и генерирует путь панели из 16 символов, имя пользователя из 14 символов и пароль из 16 символов. Адрес и учётные данные выводятся один раз в конце установки. Их можно задать явно:
+Установщик выбирает свободный пятизначный порт панели и генерирует путь панели из 16 символов, имя пользователя из 14 символов и пароль из 16 символов. Адрес и учётные данные выводятся один раз в конце установки. Можно явно указать порт и локальный адрес панели (на другом сервере замените 192.168.4.26):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh) \
-  --port 34567 \
-  --path MyPanelA1b2C3d4 \
-  --username AdminUserA1234 \
-  --password 'ChangeThisA12345'
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+  --port 34567 --listen-ip 192.168.4.26
 ```
 
 m-ui устанавливается в `/usr/local/m-ui`, данные хранятся в `/usr/local/m-ui/data`. Установщик также скачивает ядро Mihomo для текущей архитектуры; уже установленное ядро сохраняется, если не указан `--update-mihomo`.
@@ -102,8 +135,8 @@ m-ui устанавливается в `/usr/local/m-ui`, данные хран�
 Образ Docker собран для Linux amd64 и содержит m-ui и проверенное ядро Mihomo фиксированной версии. Compose использует сеть хоста, поэтому порты входов, добавленных в панели, работают без отдельного проброса портов.
 
 ```bash
-git clone https://github.com/RomanovCaesar/m-ui.git
-cd m-ui
+git clone https://github.com/Xenofan-git/M-UI-sniffer.git
+cd M-UI-sniffer
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui

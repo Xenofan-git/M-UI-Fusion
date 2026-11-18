@@ -11,7 +11,39 @@
 > It adds **native Mihomo Sniffer** controls under **Mihomo Settings → Basics → Sniffer**, including HTTP, TLS, QUIC, DNS mapping, pure-IP parsing, and destination-override settings.
 > These settings are saved in `state.json` and written directly to generated `config.yaml`; an external watchdog/patching service is **not** required. See [Sniffer documentation](docs/sniffer.md).
 >
-> **Installation warning:** The upstream installation commands below install the **original** m-ui, not this Sniffer fork. Use the [build instructions](#build-this-fork) or a verified artifact from this repository's own [Actions](https://github.com/Xenofan-git/M-UI-sniffer/actions). Back up your current m-ui executable and state before upgrading; do not run an upstream installer over a Sniffer installation.
+> **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-sniffer/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
+
+## Quick SSH installation (Linux ARM64 / NanoPi)
+
+Connect from your computer, phone (Termux), or another SSH client on the authorized LAN:
+
+```bash
+ssh pi@192.168.4.26
+```
+
+Alternatively, if the NanoPi is connected and reachable via Tailscale:
+
+```bash
+ssh pi@100.70.73.57
+```
+
+Then **on the Linux server** download, syntax-check, and run the Sniffer installer:
+
+```bash
+curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
+bash -n /tmp/m-ui-sniffer-install.sh
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
+```
+
+For an existing installation, first back up the binary and state, then use:
+
+```bash
+sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.1
+sudo systemctl is-active m-ui
+sudo /usr/local/m-ui/m-ui version
+```
+
+The first install chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, and upgrade steps:** [SSH guide in Russian](docs/INSTALL.ru.md).
 
 ## Build this fork
 
@@ -27,15 +59,15 @@ GitHub Actions also runs tests and builds the ARM64 binary after each change to 
 
 ---
 
-## Original m-ui documentation
+## m-ui features and documentation (adapted for M-UI-sniffer)
 
 # m-ui
 
-[![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/blob/main/go.mod)
-[![Downloads](https://img.shields.io/github/downloads/RomanovCaesar/m-ui/total.svg)](https://github.com/RomanovCaesar/m-ui/releases/latest)
-[![License](https://img.shields.io/github/license/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/Xenofan-git/M-UI-sniffer/release.yml.svg)](https://github.com/Xenofan-git/M-UI-sniffer/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/go.mod)
+[![Downloads](https://img.shields.io/github/downloads/Xenofan-git/M-UI-sniffer/total.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases/latest)
+[![License](https://img.shields.io/github/license/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/LICENSE)
 
 A server management panel powered by [Mihomo](https://github.com/MetaCubeX/mihomo). Its workflow follows 3x-ui, its interface comes in three themes (shadcn by default, Material Design 3 and Apple's Liquid Glass), and its configuration model is Mihomo's native YAML. The panel is available in 11 languages.
 
@@ -96,17 +128,16 @@ For complete documentation, visit the [m-ui Wiki](https://github.com/RomanovCaes
 Run as `root` on a Linux system using systemd or OpenRC:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh)
+curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
+bash -n /tmp/m-ui-sniffer-install.sh
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
 ```
 
-The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can also set them explicitly:
+The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a local-only address and a fixed port (replace 192.168.4.26 on other servers):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh) \
-  --port 34567 \
-  --path MyPanelA1b2C3d4 \
-  --username AdminUserA1234 \
-  --password 'ChangeThisA12345'
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+  --port 34567 --listen-ip 192.168.4.26
 ```
 
 m-ui is installed under `/usr/local/m-ui`, with its data in `/usr/local/m-ui/data`. The installer also downloads a Mihomo core for the current architecture; an existing core is kept unless you pass `--update-mihomo`.
@@ -120,8 +151,8 @@ Releases contain `m-ui-linux-<architecture>.tar.gz` for `386`, `amd64`, `arm64`,
 The Docker image targets Linux amd64 and contains m-ui plus a pinned, checksum-verified Mihomo core. The Compose file uses host networking, so inbound ports added in the panel work without extra port mappings.
 
 ```bash
-git clone https://github.com/RomanovCaesar/m-ui.git
-cd m-ui
+git clone https://github.com/Xenofan-git/M-UI-sniffer.git
+cd M-UI-sniffer
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui

@@ -1,4 +1,4 @@
-name: Build and publish release
+name: Build and publish M-UI-sniffer release
 
 on:
   push:
@@ -45,6 +45,9 @@ jobs:
 
       - name: Download Go modules
         run: go mod download
+
+      - name: Validate web JavaScript
+        run: node --check web/mihomo-settings.js
 
       - name: Run tests
         run: go test ./...
@@ -181,7 +184,8 @@ jobs:
 
           echo "Embedded version: $reported_version"
           echo
-          sha256sum dist/*.tar.gz dist/*.zip
+          (cd dist && sha256sum m-ui-linux-*.tar.gz m-ui-windows-amd64.zip > SHA256SUMS)
+          (cd dist && sha256sum --check SHA256SUMS)
 
       - name: Create or update GitHub Release
         shell: bash
@@ -193,6 +197,7 @@ jobs:
           release_files=(
             dist/m-ui-linux-*.tar.gz
             dist/m-ui-windows-amd64.zip
+            dist/SHA256SUMS
           )
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
@@ -205,13 +210,10 @@ jobs:
           else
             release_options=(
               --verify-tag
-              --generate-notes
-              --title "m-ui ${GITHUB_REF_NAME}"
+              --notes-file "docs/RELEASE-NOTES.md"
+              --title "M-UI-sniffer ${GITHUB_REF_NAME}"
+              --latest
             )
-
-            if [[ "$GITHUB_REF_NAME" == *-* ]]; then
-              release_options+=(--prerelease)
-            fi
 
             gh release create \
               "$GITHUB_REF_NAME" \
@@ -246,7 +248,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/romanovcaesar/m-ui
+          images: ghcr.io/xenofan-git/m-ui-sniffer
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}

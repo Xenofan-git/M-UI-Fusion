@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 077
 
-REPO="RomanovCaesar/m-ui"
+REPO="Xenofan-git/M-UI-sniffer"
 MIHOMO_REPO="MetaCubeX/mihomo"
 INSTALL_DIR="/usr/local/m-ui"
 DATA_DIR="${INSTALL_DIR}/data"
@@ -30,7 +30,7 @@ die() { echo -e "${red}[m-ui] ERROR:${plain} $*" >&2; exit 1; }
 
 usage() {
     cat <<'EOF'
-Install or update m-ui on Linux.
+Install or update Xenofan-git/M-UI-sniffer on Linux.
 
 Usage:
   bash install.sh [options]
@@ -41,7 +41,7 @@ Options:
   --username USERNAME     Login username (default: random 14-character value)
   --password PASSWORD     Login password (default: random 16-character value)
   --listen-ip IP          Panel listen IP (default: 0.0.0.0)
-  --version TAG           Install a release tag, for example v0.1.0
+  --version TAG           Install a Sniffer release tag, for example v0.3.3-sniffer.1
   --update                Update m-ui and preserve all existing data/settings
   --mihomo-version TAG    Install a specific Mihomo release
   --update-mihomo         Replace an existing Mihomo core
@@ -450,6 +450,17 @@ download_mui() {
     info "Downloading m-ui ${tag} for ${ARCH}..."
     local archive="${TEMP_DIR}/${asset}" unpack="${TEMP_DIR}/m-ui-unpack" source=""
     curl -fL --retry 3 --connect-timeout 10 "$(github_url "$url")" -o "$archive" || die "m-ui download failed"
+    # A release checksum is required; never install an unverifiable download.
+    local checksum_url="https://github.com/${REPO}/releases/download/${tag}/SHA256SUMS"
+    local checksum_file="${TEMP_DIR}/SHA256SUMS" expected actual
+    curl -fsSL --retry 3 --connect-timeout 10 "$(github_url "$checksum_url")" -o "$checksum_file" || die "release ${tag} has no downloadable SHA256SUMS; refusing installation"
+    command -v sha256sum >/dev/null 2>&1 || die "sha256sum is required to verify release binaries"
+    expected="$(awk -v name="$asset" '$2 == name {print $1}' "$checksum_file")"
+    [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || die "release ${tag} has no valid checksum for ${asset}"
+    actual="$(sha256sum "$archive" | awk '{print $1}')"
+    [[ "$actual" == "$expected" ]] || die "SHA-256 mismatch for ${asset}; refusing installation"
+    info "Verified SHA-256 for ${asset}"
+
     mkdir -p "$unpack"
     tar -xzf "$archive" -C "$unpack" || die "could not extract ${asset}"
     source="$(find "$unpack" -type f \( -name m-ui -o -name "m-ui-linux-${ARCH}" \) -print -quit)"

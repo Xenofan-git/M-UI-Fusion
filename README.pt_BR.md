@@ -71,17 +71,14 @@ A documentação completa está na [Wiki do m-ui](https://github.com/RomanovCaes
 Execute como `root` em um Linux com systemd ou OpenRC:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
 ```
 
 O instalador escolhe uma porta livre de cinco dígitos e gera um caminho de painel de 16 caracteres, um usuário de 14 caracteres e uma senha de 16 caracteres. No final, mostra uma única vez a URL de acesso e as credenciais. Você também pode defini-los:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/RomanovCaesar/m-ui/main/install.sh) \
-  --port 34567 \
-  --path MyPanelA1b2C3d4 \
-  --username AdminUserA1234 \
-  --password 'ChangeThisA12345'
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
+  --port 34567 --listen-ip 192.168.4.26
 ```
 
 O m-ui é instalado em `/usr/local/m-ui` e guarda os dados em `/usr/local/m-ui/data`. O instalador também baixa um núcleo do Mihomo para a arquitetura atual; um núcleo já instalado é mantido, a menos que você use `--update-mihomo`.
@@ -95,8 +92,8 @@ Cada versão inclui `m-ui-linux-<architecture>.tar.gz` para `386`, `amd64`, `arm
 A imagem Docker é para Linux amd64 e inclui o m-ui e um núcleo do Mihomo de versão fixa e verificado. O Compose usa a rede do host, então as portas das entradas adicionadas no painel funcionam sem mapeamentos extras.
 
 ```bash
-git clone https://github.com/RomanovCaesar/m-ui.git
-cd m-ui
+git clone https://github.com/Xenofan-git/M-UI-sniffer.git
+cd M-UI-sniffer
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
