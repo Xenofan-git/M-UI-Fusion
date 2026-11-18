@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
@@ -276,6 +278,70 @@ func TestFlagPickerAndButtonWiring(t *testing.T) {
 	for _, term := range []string{"grid-template-columns:20px 32px minmax(0,1fr) 86px", "white-space:nowrap", "#outsub-submit:is(:hover,:focus-visible):not(:disabled)"} {
 		if !strings.Contains(string(css), term) {
 			t.Errorf("subscription UI CSS missing %s", term)
+		}
+	}
+}
+
+// Bundled SVGs must be served from the executable itself: Windows 8.1 and
+// other platforms without flag-emoji fonts render regional Unicode symbols
+// as pairs of letters instead of flag pictures.
+func TestBundledSVGCountryFlagsAndStaticRoute(t *testing.T) {
+	codes := []string{"de", "ch", "ru", "us", "gb", "jp", "fr", "nl"}
+	for _, code := range codes {
+		filename := "web/flags/" + code + ".svg"
+		data, err := webFS.ReadFile(filename)
+		if err != nil {
+			t.Fatalf("bundled flag %s missing: %v", filename, err)
+		}
+		if !strings.Contains(string(data), "<svg") {
+			t.Fatalf("invalid bundled SVG %s", filename)
+		}
+	}
+	entries, err := webFS.ReadDir("web/flags")
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".svg") {
+			actual++
+		}
+	}
+	if actual != len(subscriptionCountryNames) {
+		t.Fatalf("expected %d SVG flags, found %d", len(subscriptionCountryNames), actual)
+	}
+	p := &App{}
+	request := httptest.NewRequest(http.MethodGet, "/static/flags/ch.svg", nil)
+	recorder := httptest.NewRecorder()
+	p.handleStatic(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("CH asset HTTP=%d", recorder.Code)
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "image/svg+xml" {
+		t.Fatalf("wrong SVG content type: %q", got)
+	}
+	if !strings.Contains(recorder.Body.String(), "<svg") {
+		t.Fatal("empty or corrupt Swiss flag")
+	}
+}
+func TestCountryFlagUIUsesSVGNotEmojiFont(t *testing.T) {
+	js, err := os.ReadFile("web/country-flags.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, part := range []string{"createIcon", "flagAssetRoot", "flags/", "fromFilterLine"} {
+		if !strings.Contains(string(js), part) {
+			t.Errorf("country flag JS missing %s", part)
+		}
+	}
+	ui, err := os.ReadFile("web/outbound-subscriptions.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, part := range []string{"outsub-selected-country-flags", "createIcon", "showSelectedCountries",
+		"country.english", "outsub-node-flag"} {
+		if !strings.Contains(string(ui), part) {
+			t.Errorf("flag chooser UI missing %s", part)
 		}
 	}
 }

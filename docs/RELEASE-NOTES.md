@@ -1,5 +1,7 @@
 ## M-UI Fusion — native Mihomo Sniffer fork
 
+**Update v0.3.3-fusion.6:** country flags in the subscribed-balancer wizard now use 249 **locally bundled SVG assets** rather than Unicode regional-indicator emoji, which appeared as two letters on some Windows versions. The same SVG flags appear in the server list, country search and selected filter chips. Plain text filter values use provider-compatible country names; legacy emoji filters remain supported. No third-party CDN, routing or subscription model changes. SVG icons from [flag-icons v7.5.0](https://github.com/lipis/flag-icons), MIT license; attribution in web/flags/LICENSE.txt.
+
 **Update v0.3.3-fusion.5:** improves the subscribed Balancer modal. Defaults new subscription refreshes to **1440 minutes**, displays full one-line server names with inferred flags and protocol badges, offers a searchable ISO 3166 flag picker for HydraRoute-style include/exclude filters, and fixes the create button's dark-theme hover contrast. Renames the submit action to «Создать балансировщик из подписки». Flag filtering is enforced by the server during import and automatic refresh, including country-name-only nodes.
 
 **Update v0.3.3-fusion.4:** fix hover/focus contrast for the **«Добавить балансировщик из подписки»** action, including dark shadcn theme; button label and icon remain readable.

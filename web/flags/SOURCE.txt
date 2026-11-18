@@ -1,0 +1,3 @@
+flag-icons v7.5.0, commit 7aa5b2bdddd570ece62c812c0cb588ccdc099e2e
+https://github.com/lipis/flag-icons
+Locally embedded 4x3 SVGs. MIT license: LICENSE.txt.

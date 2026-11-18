@@ -8,6 +8,36 @@
   const flag = code => Array.from(code.toUpperCase()).map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join('');
   const countries = iso.map(([code,english])=>({code,english,ru:ru.of(code)||english,flag:flag(code)}));
   const byCode = new Map(countries.map(c=>[c.code,c]));
+  // Bitmap-independent flag assets: rendered as local SVG images so old
+  // Windows/Chrome installations never fall back to country-code letters.
+  // Assets are served by the same panel, including installations behind
+  // a secret URL prefix or without public Internet.
+  const flagAssetRoot = new URL('flags/',document.currentScript?.src||location.href);
+  const createIcon = code => {
+    const isoCode=String(code||'').toUpperCase();
+    if(!byCode.has(isoCode))return null;
+    const icon=document.createElement('img');
+    icon.className='outsub-flag-svg';
+    icon.alt='';
+    icon.loading='lazy';
+    icon.decoding='async';
+    icon.width=26;
+    icon.height=19;
+    icon.src=new URL(isoCode.toLowerCase()+'.svg',flagAssetRoot).href;
+    icon.onerror=()=>{icon.hidden=true;};
+    return icon;
+  };
+  const fromFilterLine = line => {
+    const key=String(line||'').trim().toLocaleLowerCase('ru');
+    if(!key)return null;
+    return countries.find(country=>
+      key===country.flag.toLocaleLowerCase('ru') ||
+      key===country.code.toLocaleLowerCase('ru') ||
+      key===country.english.toLocaleLowerCase('ru') ||
+      key===country.ru.toLocaleLowerCase('ru') ||
+      (aliases[country.code]||'').split('|').some(alias=>alias.toLocaleLowerCase('ru')===key)
+    )||null;
+  };
   const normalize = text=>String(text||'').toLocaleLowerCase('ru').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
   const labels = countries.flatMap(c=>[c.english,c.ru,en.of(c.code),...(aliases[c.code]||'').split('|')].filter(Boolean).map(label=>({code:c.code,text:normalize(label)}))).filter(x=>x.text.length>=3).sort((a,b)=>b.text.length-a.text.length);
   const read = name=>{
@@ -20,5 +50,5 @@
     for(const item of labels)if(norm.includes(' '+item.text+' '))return byCode.get(item.code);
     return null;
   };
-  window.MUICountryFlags={countries,byCode,read,flag,aliases};
+  window.MUICountryFlags={countries,byCode,read,flag,aliases,createIcon,fromFilterLine};
 })();

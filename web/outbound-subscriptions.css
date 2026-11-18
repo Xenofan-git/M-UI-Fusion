@@ -191,3 +191,60 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
   .outsub-dialog .outsub-node-name{font-size:12px;}
   .outsub-dialog .outsub-node-protocol{font-size:10px;}
 }
+
+/* Locally bundled SVG flags (not Unicode regional indicators).
+   Needed on Windows versions without color flag-emoji font support. */
+.outsub-dialog .outsub-flag-svg {
+  display:block;
+  width:26px;
+  height:19px;
+  flex:none;
+  object-fit:cover;
+  border-radius:2px;
+  border:1px solid rgba(148,163,184,.23);
+  box-sizing:border-box;
+  box-shadow:0 1px 2px rgba(0,0,0,.18);
+}
+.outsub-dialog .outsub-node-flag {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:30px;
+  height:22px;
+}
+.outsub-dialog .outsub-flag-svg[hidden] {display:none !important;}
+.outsub-dialog .outsub-country-option {
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:10px;
+  min-height:32px;
+}
+.outsub-dialog .outsub-country-option span{
+  display:inline;
+  min-width:0;
+  font-size:12px;
+  text-align:left;
+}
+.outsub-dialog .outsub-selected-country-flags {
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin:7px 0 2px;
+}
+.outsub-dialog .outsub-country-chip {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  max-width:100%;
+  padding:3px 7px;
+  color:var(--text-strong);
+  font-size:12px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--surface-2,rgba(148,163,184,.12));
+}
+.outsub-dialog .outsub-country-chip .outsub-flag-svg{
+  width:22px;height:16px;
+}

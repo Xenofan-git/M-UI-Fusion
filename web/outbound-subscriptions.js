@@ -140,10 +140,16 @@
       check.onchange=()=>{if(check.checked)excluded.delete(node.key);else excluded.add(node.key);renderPreview();};
       row.appendChild(check);
       const country=window.MUICountryFlags?.byCode.get(node.countryCode) || window.MUICountryFlags?.read(node.name);
-      const flag=make('span','outsub-node-flag',node.flag||country?.flag||'🌐');
+      const flag=make('span','outsub-node-flag');
+      const icon=window.MUICountryFlags?.createIcon(country?.code||node.countryCode);
+      if(icon)flag.appendChild(icon);
+      else flag.textContent='🌐';
       flag.title=country?.ru||country?.english||'Страна не определена по названию';
       row.appendChild(flag);
-      const title=make('strong','outsub-node-name',node.name.replace(/[\r\n]+/g,' '));
+      // Hide duplicate Unicode flags in the *display label* only.
+      // Original Outbound names and filtering data remain untouched.
+      const displayName=icon?node.name.replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu,' ').replace(/\s+/g,' ').trim():node.name;
+      const title=make('strong','outsub-node-name',displayName||node.name.replace(/[\r\n]+/g,' '));
       title.title=node.name;
       title.setAttribute('dir','auto');
       row.appendChild(title);
@@ -205,6 +211,24 @@
     const search=make('input');search.type='search';search.placeholder='Поиск страны или флага…';
     search.setAttribute('aria-label','Поиск страны');
     const list=make('div','outsub-flag-list');
+    // Country selections remain visible as SVG chips below the editable
+    // text field. Plain textareas cannot display image glyphs on Windows.
+    const selected=make('div','outsub-selected-country-flags');
+    selected.setAttribute('aria-label','Выбранные страны');
+    function showSelectedCountries(){
+      selected.replaceChildren();
+      const directory=window.MUICountryFlags;
+      for(const line of area.value.split(/\r?\n/)){
+        const country=directory?.fromFilterLine(line);
+        if(!country)continue;
+        const chip=make('span','outsub-country-chip');
+        const icon=directory.createIcon(country.code);
+        if(icon)chip.appendChild(icon);
+        chip.appendChild(make('span','',country.ru));
+        selected.appendChild(chip);
+      }
+    }
+    area.addEventListener('input',showSelectedCountries);
     function populate(){
       list.replaceChildren();
       const countries=window.MUICountryFlags?.countries||[];
@@ -212,13 +236,19 @@
       const matching=countries.filter(item=>(item.ru+' '+item.english+' '+item.code+' '+item.flag).toLocaleLowerCase('ru').includes(term))
         .sort((a,b)=>a.ru.localeCompare(b.ru,'ru'));
       for(const country of matching.slice(0,100)){
-        const button=make('button','outsub-country-option',country.flag+'  '+country.ru+' ('+country.code+')');
+        const button=make('button','outsub-country-option');
+        const svg=window.MUICountryFlags?.createIcon(country.code);
+        if(svg)button.appendChild(svg);
+        button.appendChild(make('span','',country.ru+' ('+country.code+')'));
         button.type='button';
         button.title=country.english+' — '+country.code;
         button.onclick=()=>{
           const existing=area.value.trimEnd();
           const lines=existing.split(String.fromCharCode(10));
-          if(!lines.includes(country.flag))area.value=existing+(existing?String.fromCharCode(10):'')+country.flag;
+          // Store an ordinary country name as a filter term, avoiding
+          // regional-indicator letters in Windows textareas.
+          const term=country.english;
+          if(!lines.includes(term))area.value=existing+(existing?String.fromCharCode(10):'')+term;
           area.dispatchEvent(new Event('input',{bubbles:true}));
           menu.hidden=true;
           choose.focus();
@@ -235,7 +265,7 @@
     };
     menu.append(search,list);
     const toolbar=make('div','outsub-flag-toolbar');toolbar.appendChild(choose);
-    wrapper.appendChild(toolbar);wrapper.appendChild(menu);
+    wrapper.appendChild(toolbar);wrapper.appendChild(selected);wrapper.appendChild(menu);
   }
   function modal(){
     let overlay=q('#outsub-modal');
@@ -363,6 +393,8 @@
     form.elements.enabled.checked=sub?!!sub.enabled:true;
     form.elements.filterKeep.value=sub?.filterKeep||'';
     form.elements.filterExclude.value=sub?.filterExclude||'';
+    form.elements.filterKeep.dispatchEvent(new Event('input',{bubbles:true}));
+    form.elements.filterExclude.dispatchEvent(new Event('input',{bubbles:true}));
     overlay.classList.add('open');
     (isNew?form.elements.groupName:form.elements.name).focus();
   }
