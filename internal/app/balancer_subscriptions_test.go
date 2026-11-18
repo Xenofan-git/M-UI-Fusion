@@ -150,8 +150,19 @@ func TestBalancerSubscriptionValidation(t *testing.T) {
 
 func TestBalancerStandaloneUIWiring(t *testing.T) {
 	files := map[string][]string{
-		"web/index.html":         {"data-view=\"mihomo-balancers\"", "data-mihomo-tab=\"balancers\"", "id=\"mihomo-balancer-table\""},
+		"web/index.html":         {"data-mihomo-tab=\"balancers\"", "id=\"mihomo-balancer-table\""},
 		"web/mihomo-settings.js": {"openTab:setTab", "subscriptionIds", "syncBalancerSubscriptionMembers", "onlyGroups=currentTab==='balancers'"},
+	}
+	// Balancers live inside Mihomo Settings, not the sidebar.
+	indexHTML, err := os.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(indexHTML), "data-view=\"mihomo-balancers\"") {
+		t.Fatal("duplicate Balancers sidebar item still present")
+	}
+	if !strings.Contains(string(indexHTML), "data-view=\"mihomo\"") {
+		t.Fatal("Mihomo Settings sidebar entry missing")
 	}
 	for file, parts := range files {
 		b, err := os.ReadFile(file)

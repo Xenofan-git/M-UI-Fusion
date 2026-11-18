@@ -1,5 +1,7 @@
 ## M-UI Fusion — native Mihomo Sniffer fork
 
+**Update v0.3.3-fusion.2:** the duplicate Balancers entry has been removed from the sidebar. The **Mihomo Settings → Балансировщики** tab remains fully functional with its existing groups, subscription selection, and automated membership synchronization. This update changes navigation only; runtime routing and state format are unchanged.
+
 **First release under the M-UI Fusion name — v0.3.3-fusion.1.**
 The GitHub repository is now [Xenofan-git/M-UI-Fusion](https://github.com/Xenofan-git/M-UI-Fusion).
 The Linux service, CLI command, installation data directory and binary archive names remain m-ui for backward compatibility.

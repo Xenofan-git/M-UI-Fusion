@@ -13,7 +13,7 @@
 >
 > **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-Fusion/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
 
-**Separate Balancers tab:** Outbounds now shows proxy nodes only. **Balancers** has its own sidebar entry and Mihomo tab, with multiple URL subscriptions attachable to one group and automatic node reconciliation. [Balancer guide (Russian)](docs/BALANCERS.ru.md).
+**Separate Balancers tab:** Outbounds shows proxy nodes only. **Balancers** is available only within **Mihomo Settings → Balancers**, with multiple URL subscriptions attachable to one group and automatic node reconciliation. [Balancer guide (Russian)](docs/BALANCERS.ru.md).
 
 **Inbound VPN node URL subscriptions:** New sidebar **Subscriptions** section imports provider nodes into Outbounds, supports Base64/share-links and Mihomo YAML, manual sync, optional group linking and scheduled updates. [Documentation (Russian)](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).
 
@@ -36,13 +36,13 @@ Then **on the Linux server** download, syntax-check, and run the M-UI Fusion ins
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.2 --no-ssl
 ```
 
 For an existing installation, first back up the binary and state, then use:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.1
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.2
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
@@ -58,7 +58,7 @@ git clone https://github.com/Xenofan-git/M-UI-Fusion.git
 cd M-UI-Fusion
 # Go selects the target CPU architecture from the current machine.
 # For cross-compilation, set GOARCH=arm64, GOARCH=amd64, etc.
-GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-fusion.1" -o m-ui-linux-fusion .
+GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-fusion.2" -o m-ui-linux-fusion .
 ```
 
 GitHub Actions also runs tests and builds the ARM64 binary after each change to `main`. Production upgrade should only be performed after backing up `state.json`, `config.yaml`, and the currently installed binary and testing the new binary.
@@ -136,13 +136,13 @@ Run as `root` on a Linux system using systemd or OpenRC:
 ```bash
 curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.2 --no-ssl
 ```
 
 The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a fixed port; optionally add `--listen-ip SERVER_LOCAL_IP` after replacing the placeholder with an address assigned to your server:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.2 --no-ssl \
   --port 34567
 ```
 
