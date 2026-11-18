@@ -18,29 +18,49 @@ import (
 const basicsDirectName = "MUI-DIRECT"
 const basicsIPv4Name = "MUI-IPV4"
 
+// MihomoSnifferSettings controls Mihomo's native protocol sniffing.
+type MihomoSnifferSettings struct {
+	Enabled             bool `json:"enabled"`
+	HTTP                bool `json:"http"`
+	TLS                 bool `json:"tls"`
+	QUIC                bool `json:"quic"`
+	ForceDNSMapping     bool `json:"forceDnsMapping"`
+	ParsePureIP         bool `json:"parsePureIp"`
+	OverrideDestination bool `json:"overrideDestination"`
+}
+
+func defaultMihomoSnifferSettings() *MihomoSnifferSettings {
+	return &MihomoSnifferSettings{
+		Enabled: false, HTTP: true, TLS: true, QUIC: true,
+		ForceDNSMapping: true, ParsePureIP: true, OverrideDestination: false,
+	}
+}
+
 type MihomoBasics struct {
-	Mode                       string   `json:"mode"`
-	DirectIPVersion            string   `json:"directIpVersion"`
-	IPv6                       bool     `json:"ipv6"`
-	TCPConcurrent              bool     `json:"tcpConcurrent"`
-	UnifiedDelay               bool     `json:"unifiedDelay"`
-	OutboundTestURL            string   `json:"outboundTestUrl"`
-	TrafficSampleSeconds       int      `json:"trafficSampleSeconds"`
-	TrafficSaveSeconds         int      `json:"trafficSaveSeconds"`
-	OutboundUploadStatistics   bool     `json:"outboundUploadStatistics"`
-	OutboundDownloadStatistics bool     `json:"outboundDownloadStatistics"`
-	LogLevel                   string   `json:"logLevel"`
-	LogBufferSize              int      `json:"logBufferSize"`
-	MaskLogAddress             bool     `json:"maskLogAddress"`
-	BlockIPs                   []string `json:"blockIps"`
-	BlockDomains               []string `json:"blockDomains"`
-	IPv4Domains                []string `json:"ipv4Domains"`
-	WarpDomains                []string `json:"warpDomains"`
+	Mode                       string                 `json:"mode"`
+	Sniffer                    *MihomoSnifferSettings `json:"sniffer,omitempty"`
+	DirectIPVersion            string                 `json:"directIpVersion"`
+	IPv6                       bool                   `json:"ipv6"`
+	TCPConcurrent              bool                   `json:"tcpConcurrent"`
+	UnifiedDelay               bool                   `json:"unifiedDelay"`
+	OutboundTestURL            string                 `json:"outboundTestUrl"`
+	TrafficSampleSeconds       int                    `json:"trafficSampleSeconds"`
+	TrafficSaveSeconds         int                    `json:"trafficSaveSeconds"`
+	OutboundUploadStatistics   bool                   `json:"outboundUploadStatistics"`
+	OutboundDownloadStatistics bool                   `json:"outboundDownloadStatistics"`
+	LogLevel                   string                 `json:"logLevel"`
+	LogBufferSize              int                    `json:"logBufferSize"`
+	MaskLogAddress             bool                   `json:"maskLogAddress"`
+	BlockIPs                   []string               `json:"blockIps"`
+	BlockDomains               []string               `json:"blockDomains"`
+	IPv4Domains                []string               `json:"ipv4Domains"`
+	WarpDomains                []string               `json:"warpDomains"`
 }
 
 func defaultMihomoBasics() MihomoBasics {
 	return MihomoBasics{Mode: "rule", DirectIPVersion: "dual", IPv6: true, OutboundTestURL: defaultMihomoTestURL,
 		TrafficSampleSeconds: 1, TrafficSaveSeconds: 5, LogLevel: "info", LogBufferSize: 300,
+		Sniffer:  defaultMihomoSnifferSettings(),
 		BlockIPs: []string{}, BlockDomains: []string{}, IPv4Domains: []string{}, WarpDomains: []string{}}
 }
 
@@ -48,6 +68,9 @@ func effectiveMihomoBasics(state State) MihomoBasics {
 	basics := defaultMihomoBasics()
 	if state.MihomoBasics != nil {
 		basics = *state.MihomoBasics
+	}
+	if basics.Sniffer == nil {
+		basics.Sniffer = defaultMihomoSnifferSettings()
 	}
 	basics.DirectIPVersion = valueOr(basics.DirectIPVersion, "dual")
 	basics.OutboundTestURL = valueOr(basics.OutboundTestURL, defaultMihomoTestURL)
@@ -68,6 +91,12 @@ func effectiveMihomoBasics(state State) MihomoBasics {
 }
 
 func normalizeMihomoBasics(input MihomoBasics) (MihomoBasics, error) {
+	if input.Sniffer == nil {
+		input.Sniffer = defaultMihomoSnifferSettings()
+	}
+	if input.Sniffer.Enabled && !input.Sniffer.HTTP && !input.Sniffer.TLS && !input.Sniffer.QUIC {
+		return input, fmt.Errorf("Sniffer: выберите HTTP, TLS или QUIC")
+	}
 	input.Mode = strings.ToLower(strings.TrimSpace(input.Mode))
 	if !containsString([]string{"rule", "global", "direct"}, input.Mode) {
 		return input, fmt.Errorf("Routing Mode 无效")

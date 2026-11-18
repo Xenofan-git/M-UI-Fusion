@@ -5,7 +5,7 @@
   const builtins=['DIRECT','REJECT','REJECT-DROP','PASS','PASS-RULE','COMPATIBLE','GLOBAL'];
   const groupBuiltins=['DIRECT','REJECT','REJECT-DROP','COMPATIBLE'];
   const defaultTestURL='https://www.gstatic.com/generate_204';
-  const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[]});
+  const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
   let warpData=null,warpBusy=false;
   const clone=value=>JSON.parse(JSON.stringify(value??null));
@@ -375,7 +375,7 @@
   function fillBasicsForm(){
     const form=$('#mihomo-basics-form');
     for(const field of form.querySelectorAll('[name]')){
-      const value=draft.basics[field.name];
+      const value=field.dataset.snifferField ? (draft.basics.sniffer||defaultBasics().sniffer)[field.dataset.snifferField] : draft.basics[field.name];
       if(field.type==='checkbox')field.checked=!!value;else field.value=value??'';
     }
     for(const field of $$('[data-basics-list]'))renderBasicsTags(field.dataset.basicsList);
@@ -402,7 +402,11 @@
     form.onsubmit=event=>{event.preventDefault();saveSettings();};
     for(const eventName of ['input','change'])form.addEventListener(eventName,event=>{
       const field=event.target;
-      if(field.name in draft.basics){
+      if(field.dataset.snifferField){
+        draft.basics.sniffer ||= clone(defaultBasics().sniffer);
+        draft.basics.sniffer[field.dataset.snifferField]=field.type==='checkbox'?field.checked:field.value;
+        markDirty();
+      }else if(field.name in draft.basics){
         draft.basics[field.name]=field.type==='checkbox'?field.checked:field.type==='number'?Number(field.value):field.value;
         markDirty();
       }else if(field.dataset.basicsList)markDirty();

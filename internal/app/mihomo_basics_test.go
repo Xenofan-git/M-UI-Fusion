@@ -241,3 +241,54 @@ func TestMihomoBasicsNativeCoreConfig(t *testing.T) {
 		t.Fatalf("Mihomo rejected Basics: %v\n%s", err, output)
 	}
 }
+
+func TestNativeSnifferRendersAndSurvivesStateSave(t *testing.T) {
+	state := defaultState()
+	state.Inbounds = []Inbound{{ID: "sniff-in", Name: "sniff-mixed", Type: "mixed", Listen: "127.0.0.1", Port: 19191, Enabled: true, UDP: true}}
+	b := effectiveMihomoBasics(state)
+	if b.Sniffer == nil || b.Sniffer.Enabled || !b.Sniffer.TLS || !b.Sniffer.QUIC {
+		t.Fatalf("unexpected legacy Sniffer defaults: %+v", b.Sniffer)
+	}
+	b.Sniffer.Enabled = true
+	b.Sniffer.OverrideDestination = false
+	state.MihomoBasics = &b
+	rendered, err := renderStateConfig(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := yaml.Unmarshal(rendered, &doc); err != nil {
+		t.Fatal(err)
+	}
+	sn, ok := doc["sniffer"].(map[string]any)
+	if !ok || sn["enable"] != true || sn["parse-pure-ip"] != true || sn["override-destination"] != false {
+		t.Fatalf("invalid Sniffer config: %#v", sn)
+	}
+	protocols, ok := sn["sniff"].(map[string]any)
+	if !ok || protocols["TLS"] == nil || protocols["HTTP"] == nil || protocols["QUIC"] == nil {
+		t.Fatalf("invalid sniff protocols: %#v", protocols)
+	}
+	m := &CoreManager{dataDir: t.TempDir(), state: state}
+	if err := m.updateMihomoSettings(mihomoSettingsPayload{Basics: &b, RoutingRules: state.RoutingRules, Outbounds: state.Outbounds}); err != nil {
+		t.Fatal(err)
+	}
+	loaded := &CoreManager{dataDir: m.dataDir}
+	if err := loaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	got := effectiveMihomoBasics(loaded.state)
+	if got.Sniffer == nil || !got.Sniffer.Enabled || !got.Sniffer.TLS {
+		t.Fatalf("Sniffer not saved: %+v", got.Sniffer)
+	}
+}
+
+func TestNativeSnifferRequiresProtocol(t *testing.T) {
+	b := defaultMihomoBasics()
+	b.Sniffer.Enabled = true
+	b.Sniffer.HTTP = false
+	b.Sniffer.TLS = false
+	b.Sniffer.QUIC = false
+	if _, err := normalizeMihomoBasics(b); err == nil {
+		t.Fatal("expected error for enabled Sniffer without protocols")
+	}
+}

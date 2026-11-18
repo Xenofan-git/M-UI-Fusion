@@ -2723,6 +2723,25 @@ func renderStateConfig(state State) ([]byte, error) {
 		"proxy-groups":             proxyGroups,
 		"rules":                    compiledRules,
 	}
+	if basics.Sniffer != nil && basics.Sniffer.Enabled {
+		sniff := map[string]any{}
+		if basics.Sniffer.HTTP {
+			sniff["HTTP"] = map[string]any{"ports": []string{"80", "8080-8880"}, "override-destination": basics.Sniffer.OverrideDestination}
+		}
+		if basics.Sniffer.TLS {
+			sniff["TLS"] = map[string]any{"ports": []string{"443", "8443"}, "override-destination": basics.Sniffer.OverrideDestination}
+		}
+		if basics.Sniffer.QUIC {
+			sniff["QUIC"] = map[string]any{"ports": []string{"443", "8443"}, "override-destination": basics.Sniffer.OverrideDestination}
+		}
+		config["sniffer"] = map[string]any{
+			"enable":               true,
+			"force-dns-mapping":    basics.Sniffer.ForceDNSMapping,
+			"parse-pure-ip":        basics.Sniffer.ParsePureIP,
+			"override-destination": basics.Sniffer.OverrideDestination,
+			"sniff":                sniff,
+		}
+	}
 	listeners := make([]map[string]any, 0, len(state.Inbounds))
 	rendered := make(map[string]bool, len(state.Inbounds))
 	now := time.Now().UnixMilli()
