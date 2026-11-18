@@ -1,4 +1,4 @@
-name: Build and publish M-UI-sniffer release
+name: Build and publish M-UI Fusion release
 
 on:
   push:
@@ -211,7 +211,7 @@ jobs:
             release_options=(
               --verify-tag
               --notes-file "docs/RELEASE-NOTES.md"
-              --title "M-UI-sniffer ${GITHUB_REF_NAME}"
+              --title "M-UI Fusion ${GITHUB_REF_NAME}"
               --latest
             )
 
@@ -248,12 +248,14 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/xenofan-git/m-ui-sniffer
+          images: |
+            ghcr.io/xenofan-git/m-ui-fusion
+            ghcr.io/xenofan-git/m-ui-sniffer
           tags: |
             type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=true
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

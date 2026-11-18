@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 077
 
-REPO="Xenofan-git/M-UI-sniffer"
+REPO="Xenofan-git/M-UI-Fusion"
 MIHOMO_REPO="MetaCubeX/mihomo"
 INSTALL_DIR="/usr/local/m-ui"
 DATA_DIR="${INSTALL_DIR}/data"
@@ -30,7 +30,7 @@ die() { echo -e "${red}[m-ui] ERROR:${plain} $*" >&2; exit 1; }
 
 usage() {
     cat <<'EOF'
-Install or update Xenofan-git/M-UI-sniffer on Linux.
+Install or update M-UI Fusion (Xenofan-git/M-UI-Fusion) on Linux.
 
 Usage:
   bash install.sh [options]
@@ -41,7 +41,7 @@ Options:
   --username USERNAME     Login username (default: random 14-character value)
   --password PASSWORD     Login password (default: random 16-character value)
   --listen-ip IP          Panel listen IP (default: 0.0.0.0)
-  --version TAG           Install a Sniffer release tag, for example v0.3.3-sniffer.2
+  --version TAG           Install a Fusion release tag, for example v0.3.3-fusion.1
   --update                Update m-ui and preserve all existing data/settings
   --mihomo-version TAG    Install a specific Mihomo release
   --update-mihomo         Replace an existing Mihomo core

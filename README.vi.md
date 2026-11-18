@@ -1,10 +1,12 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -71,13 +73,13 @@ Tài liệu đầy đủ có tại [m-ui Wiki](https://github.com/RomanovCaesar/
 Chạy với quyền `root` trên Linux dùng systemd hoặc OpenRC:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 Trình cài đặt chọn một cổng trống có năm chữ số, tạo đường dẫn bảng điều khiển 16 ký tự, tên người dùng 14 ký tự và mật khẩu 16 ký tự. Địa chỉ truy cập và thông tin đăng nhập chỉ được in một lần khi kết thúc. Bạn cũng có thể tự chỉ định:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -92,14 +94,14 @@ Mỗi bản phát hành có `m-ui-linux-<architecture>.tar.gz` cho `386`, `amd64
 Image Docker dành cho Linux amd64, chứa m-ui và một lõi Mihomo có phiên bản cố định, đã được kiểm tra. Compose dùng mạng của máy chủ, nên cổng của các inbound thêm trong bảng điều khiển hoạt động ngay mà không cần ánh xạ cổng.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-Nếu `MUI_PASSWORD` và `MUI_PATH` để trống, lần khởi động đầu tiên sẽ tự tạo và in một lần địa chỉ cùng thông tin đăng nhập vào nhật ký. Mỗi bản phát hành cũng xuất bản `ghcr.io/romanovcaesar/m-ui:<tag>` và `latest`; nếu bạn dùng được image này, có thể chạy `docker compose pull` thay vì tự build. Dữ liệu nằm trong các volume `m-ui-data` và `m-ui-core`; đừng chạy `docker compose down -v` nếu không muốn xóa chúng.
+Nếu `MUI_PASSWORD` và `MUI_PATH` để trống, lần khởi động đầu tiên sẽ tự tạo và in một lần địa chỉ cùng thông tin đăng nhập vào nhật ký. Mỗi bản phát hành cũng xuất bản `ghcr.io/xenofan-git/m-ui-fusion:<tag>` và `latest`; nếu bạn dùng được image này, có thể chạy `docker compose pull` thay vì tự build. Dữ liệu nằm trong các volume `m-ui-data` và `m-ui-core`; đừng chạy `docker compose down -v` nếu không muốn xóa chúng.
 
 ## Chứng chỉ TLS
 

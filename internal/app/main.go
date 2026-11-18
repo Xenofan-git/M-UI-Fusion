@@ -30,7 +30,7 @@ import (
 	"syscall"
 	"time"
 
-	webassets "github.com/RomanovCaesar/m-ui/web"
+	webassets "github.com/Xenofan-git/M-UI-Fusion/web"
 	// 时区数据库随二进制打包，这样 -trimpath 出来的 exe 在没装 Go / 没有 zoneinfo 的机器上
 	// 也能 time.LoadLocation("Asia/Shanghai")。
 	_ "time/tzdata"

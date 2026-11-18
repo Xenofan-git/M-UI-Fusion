@@ -1,8 +1,8 @@
-# Установка и обновление M-UI-sniffer по SSH
+# Установка и обновление M-UI Fusion по SSH
 
-Проект: [Xenofan-git/M-UI-sniffer](https://github.com/Xenofan-git/M-UI-sniffer) — форк оригинальной [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui) со штатной поддержкой Sniffer (HTTP, TLS и QUIC). **Команды этой страницы устанавливают именно наш форк, а не оригинальную m-ui.**
+Проект: [Xenofan-git/M-UI-Fusion](https://github.com/Xenofan-git/M-UI-Fusion) — форк оригинальной [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui) со штатной поддержкой Sniffer (HTTP, TLS и QUIC). **Команды этой страницы устанавливают именно наш форк, а не оригинальную m-ui.**
 
-Поддерживаются Linux-серверы с `systemd` или OpenRC, включая Debian/Ubuntu и другие поддерживаемые дистрибутивы. **M-UI-sniffer не привязан к конкретному устройству:** установщик автоматически определяет архитектуру процессора (AMD64, ARM64 и другие поддерживаемые). Все команды `sudo` выполняются **на Linux-сервере после SSH-подключения**, а `ssh` — на вашем компьютере или телефоне с SSH-клиентом.
+Поддерживаются Linux-серверы с `systemd` или OpenRC, включая Debian/Ubuntu и другие поддерживаемые дистрибутивы. **M-UI Fusion не привязан к конкретному устройству:** установщик автоматически определяет архитектуру процессора (AMD64, ARM64 и другие поддерживаемые). Все команды `sudo` выполняются **на Linux-сервере после SSH-подключения**, а `ssh` — на вашем компьютере или телефоне с SSH-клиентом.
 
 ## 1. Подключение по SSH
 
@@ -34,11 +34,11 @@ sudo /usr/local/m-ui/m-ui version       # если бинарник уже ус�
 
 ```bash
 curl -fL --retry 3 \
-  https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh \
-  -o /tmp/m-ui-sniffer-install.sh
-bash -n /tmp/m-ui-sniffer-install.sh
-less /tmp/m-ui-sniffer-install.sh  # просмотр по желанию; выход клавишей q
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
+  https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh \
+  -o /tmp/m-ui-fusion-install.sh
+bash -n /tmp/m-ui-fusion-install.sh
+less /tmp/m-ui-fusion-install.sh  # просмотр по желанию; выход клавишей q
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
 ```
 
 Установщик определяет архитектуру Linux-сервера, скачивает подходящий релиз и проверяет `SHA256SUMS`, затем устанавливает ядро Mihomo, службу `m-ui` (systemd/OpenRC) и генерирует **уникальные** имя пользователя, пароль, адрес и путь панели. Сохраните их в безопасном месте. По умолчанию панель слушает все интерфейсы: **не открывайте её порт в интернет без TLS, авторизации и ограничений доступа**. При необходимости можно ограничить привязку интерфейсом сервера через `--listen-ip SERVER_LOCAL_IP` (замените `SERVER_LOCAL_IP` фактическим локальным IP сервера).
@@ -47,14 +47,14 @@ sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
 
 ## 3. Обновление существующей панели с сохранением конфигурации
 
-Если M-UI-sniffer уже установлена на вашем сервере, используйте обновление с сохранением конфигурации. Не выполняйте повторную установку без необходимости.
+Если M-UI Fusion уже установлена на вашем сервере, используйте обновление с сохранением конфигурации. Не выполняйте повторную установку без необходимости.
 
 Рекомендуется перед обновлением отдельно сохранить бинарник и настройки:
 
 ```bash
 sudo bash -c '
 set -e
-backup="/root/m-ui-sniffer-backup-$(date +%Y%m%d-%H%M%S)"
+backup="/root/m-ui-fusion-backup-$(date +%Y%m%d-%H%M%S)"
 install -d -m 700 "$backup"
 cp -p /usr/local/m-ui/m-ui /usr/local/m-ui/data/state.json /usr/local/m-ui/data/config.yaml "$backup/"
 chmod 600 "$backup"/state.json "$backup"/config.yaml
@@ -66,13 +66,13 @@ printf "Резервная копия: %s\n" "$backup"
 
 ```bash
 curl -fL --retry 3 \
-  https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh \
-  -o /tmp/m-ui-sniffer-install.sh
-bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.3
+  https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh \
+  -o /tmp/m-ui-fusion-install.sh
+bash -n /tmp/m-ui-fusion-install.sh
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.1
 ```
 
-Установщик сохраняет существующие `state.json`, `config.yaml`, входящие подключения, правила, подписки и балансировщики, делает собственный снимок данных и оставляет установленное ядро Mihomo, если не указан `--update-mihomo`. В дальнейшем после установки нашего менеджера можно использовать `sudo m-ui update --version ТЕГ`; менеджер этого форка получает установщик из `Xenofan-git/M-UI-sniffer`.
+Установщик сохраняет существующие `state.json`, `config.yaml`, входящие подключения, правила, подписки и балансировщики, делает собственный снимок данных и оставляет установленное ядро Mihomo, если не указан `--update-mihomo`. В дальнейшем после установки нашего менеджера можно использовать `sudo m-ui update --version ТЕГ`; менеджер этого форка получает установщик из `Xenofan-git/M-UI-Fusion`.
 
 ## 4. Проверка после установки и обновления
 
@@ -100,9 +100,9 @@ curl --noproxy '' -x http://127.0.0.1:PROXY_PORT \
 
 ```bash
 sudo systemctl stop m-ui
-sudo cp -p /root/m-ui-sniffer-backup-YYYYMMDD-HHMMSS/m-ui /usr/local/m-ui/m-ui
-sudo cp -p /root/m-ui-sniffer-backup-YYYYMMDD-HHMMSS/state.json /usr/local/m-ui/data/state.json
-sudo cp -p /root/m-ui-sniffer-backup-YYYYMMDD-HHMMSS/config.yaml /usr/local/m-ui/data/config.yaml
+sudo cp -p /root/m-ui-fusion-backup-YYYYMMDD-HHMMSS/m-ui /usr/local/m-ui/m-ui
+sudo cp -p /root/m-ui-fusion-backup-YYYYMMDD-HHMMSS/state.json /usr/local/m-ui/data/state.json
+sudo cp -p /root/m-ui-fusion-backup-YYYYMMDD-HHMMSS/config.yaml /usr/local/m-ui/data/config.yaml
 sudo systemctl start m-ui
 sudo systemctl status m-ui --no-pager
 ```
@@ -111,8 +111,8 @@ sudo systemctl status m-ui --no-pager
 
 ## 6. Релизы и автоматические сборки
 
-- [Releases](https://github.com/Xenofan-git/M-UI-sniffer/releases) — готовые архивы для ARM64 и других архитектур; файлы `SHA256SUMS` для проверки целостности.
-- [GitHub Actions](https://github.com/Xenofan-git/M-UI-sniffer/actions) — тесты и сборка каждого изменения.
+- [Releases](https://github.com/Xenofan-git/M-UI-Fusion/releases) — готовые архивы для ARM64 и других архитектур; файлы `SHA256SUMS` для проверки целостности.
+- [GitHub Actions](https://github.com/Xenofan-git/M-UI-Fusion/actions) — тесты и сборка каждого изменения.
 - [Исходный проект](https://github.com/RomanovCaesar/m-ui) — обновления оригинала можно выборочно объединять после проверки совместимости; это **не** должно автоматически менять настройки рабочего сервера.
 
 Для ручной проверки архива вместо установщика поместите архив и `SHA256SUMS` в один каталог и выполните `sha256sum -c SHA256SUMS --ignore-missing` (если каталог содержит только нужный архив).

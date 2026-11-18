@@ -1,4 +1,4 @@
-name: Verify Sniffer and build ARM64
+name: Verify M-UI Fusion and build ARM64
 
 on:
   push:
@@ -35,13 +35,13 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags='-s -w -X main.version=v0.3.3-sniffer.ci' -o dist/m-ui-linux-arm64-sniffer .
-          sha256sum dist/m-ui-linux-arm64-sniffer > dist/SHA256SUMS
+          go build -trimpath -ldflags='-s -w -X main.version=v0.3.3-fusion.ci' -o dist/m-ui-linux-arm64-fusion .
+          sha256sum dist/m-ui-linux-arm64-fusion > dist/SHA256SUMS
       - name: Upload ARM64 test build
         uses: actions/upload-artifact@v4
         with:
-          name: m-ui-linux-arm64-sniffer
+          name: m-ui-linux-arm64-fusion
           path: |
-            dist/m-ui-linux-arm64-sniffer
+            dist/m-ui-linux-arm64-fusion
             dist/SHA256SUMS
           retention-days: 14

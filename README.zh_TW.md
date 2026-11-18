@@ -1,10 +1,12 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -71,13 +73,13 @@
 在使用 systemd 或 OpenRC 的 Linux 上以 `root` 執行：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 安裝程式會選擇一個未被占用的五位數面板連接埠，並產生 16 位面板路徑、14 位使用者名稱和 16 位密碼，安裝結束時只顯示一次存取網址和憑證。也可以明確指定：
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -92,14 +94,14 @@ Release 提供 `386`、`amd64`、`arm64`、`armv5`、`armv6`、`armv7` 和 `s390
 Docker 映像檔適用於 Linux amd64，內含 m-ui 和一個固定版本、經過校驗的 Mihomo 核心。Compose 使用 host 網路，面板裡新增的 Inbound 連接埠不需要額外的連接埠對應即可使用。
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-如果 `MUI_PASSWORD` 和 `MUI_PATH` 為空，首次啟動會自動產生，並在日誌裡顯示一次存取網址和憑證。每個版本也會發布 `ghcr.io/romanovcaesar/m-ui:<tag>` 和 `latest`；映像檔可用時，可以用 `docker compose pull` 取代本機建置。資料儲存在 `m-ui-data` 和 `m-ui-core` 兩個磁碟區；除非確定要刪除，否則不要執行 `docker compose down -v`。
+如果 `MUI_PASSWORD` 和 `MUI_PATH` 為空，首次啟動會自動產生，並在日誌裡顯示一次存取網址和憑證。每個版本也會發布 `ghcr.io/xenofan-git/m-ui-fusion:<tag>` 和 `latest`；映像檔可用時，可以用 `docker compose pull` 取代本機建置。資料儲存在 `m-ui-data` 和 `m-ui-core` 兩個磁碟區；除非確定要刪除，否則不要執行 `docker compose down -v`。
 
 ## TLS 憑證
 

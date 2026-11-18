@@ -1,10 +1,12 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -71,13 +73,13 @@ Tüm belgeler [m-ui Wiki](https://github.com/RomanovCaesar/m-ui/wiki) sayfasınd
 systemd veya OpenRC kullanan bir Linux sisteminde `root` olarak çalıştırın:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 Yükleyici boş bir beş haneli panel portu seçer; 16 karakterlik bir panel yolu, 14 karakterlik bir kullanıcı adı ve 16 karakterlik bir parola oluşturur. Erişim adresi ve kimlik bilgileri sonunda yalnızca bir kez gösterilir. Bunları kendiniz de belirleyebilirsiniz:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -92,14 +94,14 @@ Her sürümde `386`, `amd64`, `arm64`, `armv5`, `armv6`, `armv7` ve `s390x` içi
 Docker imajı Linux amd64 içindir ve m-ui ile sabit sürümlü, doğrulanmış bir Mihomo çekirdeği içerir. Compose ana makine ağını kullanır; panelde eklediğiniz girişlerin portları ek port eşlemesi gerekmeden çalışır.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-`MUI_PASSWORD` ve `MUI_PATH` boşsa ilk başlatmada oluşturulur; adres ve kimlik bilgileri günlüğe bir kez yazılır. Her sürüm ayrıca `ghcr.io/romanovcaesar/m-ui:<tag>` ve `latest` yayınlar; imaj sizin için erişilebilirse derlemek yerine `docker compose pull` kullanabilirsiniz. Veriler `m-ui-data` ve `m-ui-core` birimlerinde tutulur; silmek istemiyorsanız `docker compose down -v` çalıştırmayın.
+`MUI_PASSWORD` ve `MUI_PATH` boşsa ilk başlatmada oluşturulur; adres ve kimlik bilgileri günlüğe bir kez yazılır. Her sürüm ayrıca `ghcr.io/xenofan-git/m-ui-fusion:<tag>` ve `latest` yayınlar; imaj sizin için erişilebilirse derlemek yerine `docker compose pull` kullanabilirsiniz. Veriler `m-ui-data` ve `m-ui-core` birimlerinde tutulur; silmek istemiyorsanız `docker compose down -v` çalıştırmayın.
 
 ## TLS sertifikaları
 

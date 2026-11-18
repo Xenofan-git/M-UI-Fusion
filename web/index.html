@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>m-ui | Mihomo Control Panel</title>
+  <title>M-UI Fusion | Mihomo Control Panel</title>
   <link rel="stylesheet" href="static/liquid-glass.css">
   <link rel="stylesheet" href="static/liquid-tabbar.css" data-ui-only="liquid">
   <link rel="stylesheet" href="static/mihomo-settings.css">
@@ -1000,10 +1000,10 @@
           <span class="mac-dot green"></span>
         </div>
         <div class="sidebar-logo">
-          <img class="sidebar-logo-img" src="media/m-ui_logo.png" alt="m-ui" width="38" height="38">
+          <img class="sidebar-logo-img" src="media/m-ui_logo.png" alt="M-UI Fusion" width="38" height="38">
         </div>
         <div class="sidebar-title">
-          <span class="sidebar-app-name">m-ui</span>
+          <span class="sidebar-app-name">M-UI Fusion</span>
           <span class="sidebar-app-badge">Mihomo</span>
         </div>
       </div>
@@ -1023,7 +1023,7 @@
     </aside>
     <div class="drawer-mask" id="drawer-mask"></div>
     <section class="content">
-      <header class="topbar"><div class="crumb">m-ui <span>/</span> <strong id="crumb">仪表盘</strong></div><div class="top-actions"><button class="outline-btn theme-toggle" id="theme-toggle"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span>主题</span></button><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
+      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">仪表盘</strong></div><div class="top-actions"><button class="outline-btn theme-toggle" id="theme-toggle"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span>主题</span></button><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
       <div class="security-banner" id="panel-security-banner" hidden><strong>安全提醒</strong><span>面板当前未配置 HTTPS TLS 证书，建议在面板设置中配置证书和私钥并重启 m-ui。</span><button id="dismiss-security-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <div class="security-banner" id="panel-path-banner" hidden><strong>安全提醒</strong><span data-i18n-html="banner.pathText">面板当前直接挂在根路径 <code>/</code> 上，任何扫到这个端口的脚本都能立刻拿到登录页并开始撞库爆破。请在面板设置中把「面板 URI 路径」改成一个不易猜到的值（例如 <code>/a-users-path/</code>），改完只有带这个路径的地址才能访问面板。</span><button id="dismiss-path-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <main class="main">
@@ -1040,7 +1040,7 @@
               <article class="overview-card"><header class="overview-card-header"><span>Mihomo</span><span class="status-inline" id="overview-core-status"><i></i><span>Stopped</span></span></header><div class="overview-card-body overview-actions"><button class="overview-action" id="overview-core-toggle"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-poweroff"></use></svg><span>Start</span></button><button class="overview-action" id="overview-core-restart"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-reload"></use></svg><span>Restart</span></button><button class="overview-action" id="overview-version"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-tool"></use></svg><span id="overview-core-version">Unknown</span></button></div></article>
               <article class="overview-card"><header class="overview-card-header"><span>Manage</span></header><div class="overview-card-body overview-actions overview-actions-4"><button class="overview-action" id="overview-logs"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-file-text"></use></svg><span>Logs</span></button><button class="overview-action" id="overview-config"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-code"></use></svg><span>Config</span></button><button class="overview-action" id="overview-backup"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-hdd"></use></svg><span>Backup</span></button><button class="overview-action" id="overview-import"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-import"></use></svg><span data-i18n="ximport.button">Import</span></button></div></article>
 
-              <article class="overview-card"><header class="overview-card-header"><span>m-ui</span></header><div class="overview-card-body"><div class="overview-tags"><a class="tiny-tag" id="overview-panel-version" rel="noopener" target="_blank" href="https://github.com/RomanovCaesar/m-ui/releases">v0.1.0</a><a class="tiny-tag" rel="noopener" target="_blank" href="https://t.me/MihomoUI">@MihomoUI</a><a class="tiny-tag purple" rel="noopener" target="_blank" href="https://github.com/RomanovCaesar/m-ui/wiki" data-i18n="dash.documentation">Documentation</a></div></div></article>
+              <article class="overview-card"><header class="overview-card-header"><span>M-UI Fusion</span></header><div class="overview-card-body"><div class="overview-tags"><a class="tiny-tag" id="overview-panel-version" rel="noopener" target="_blank" href="https://github.com/Xenofan-git/M-UI-Fusion/releases">v0.1.0</a><a class="tiny-tag" rel="noopener" target="_blank" href="https://github.com/Xenofan-git/M-UI-Fusion">GitHub</a><a class="tiny-tag purple" rel="noopener" target="_blank" href="https://github.com/RomanovCaesar/m-ui/wiki" data-i18n="dash.documentation">Documentation</a></div></div></article>
               <article class="overview-card"><header class="overview-card-header"><span>Uptime</span></header><div class="overview-card-body"><div class="overview-tags"><span class="tiny-tag" id="core-uptime">Mihomo: 0s</span><span class="tiny-tag" id="os-uptime">OS: 0s</span></div></div></article>
 
               <article class="overview-card"><header class="overview-card-header"><span>System Load</span></header><div class="overview-card-body"><span class="tiny-tag" id="system-load">0 | 0 | 0</span></div></article>

@@ -1,10 +1,12 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -71,13 +73,13 @@
 systemd または OpenRC を使う Linux で、`root` として実行します：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 インストーラーは未使用の 5 桁のパネルポートを選び、16 文字のパネルパス、14 文字のユーザー名、16 文字のパスワードを生成します。アクセス URL と認証情報は最後に一度だけ表示されます。明示的に指定することもできます：
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -92,14 +94,14 @@ m-ui は `/usr/local/m-ui` にインストールされ、データは `/usr/loca
 Docker イメージは Linux amd64 向けで、m-ui と、バージョン固定かつ検証済みの Mihomo コアを含みます。Compose はホストネットワークを使うため、パネルで追加したインバウンドのポートは追加のポートマッピングなしで使えます。
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-`MUI_PASSWORD` と `MUI_PATH` が空の場合、初回起動時に自動生成され、URL と認証情報がログに一度だけ表示されます。各リリースは `ghcr.io/romanovcaesar/m-ui:<tag>` と `latest` も公開します。イメージを利用できる場合は、ビルドの代わりに `docker compose pull` を使えます。データは `m-ui-data` と `m-ui-core` のボリュームに保存されます。削除するつもりがない限り `docker compose down -v` は実行しないでください。
+`MUI_PASSWORD` と `MUI_PATH` が空の場合、初回起動時に自動生成され、URL と認証情報がログに一度だけ表示されます。各リリースは `ghcr.io/xenofan-git/m-ui-fusion:<tag>` と `latest` も公開します。イメージを利用できる場合は、ビルドの代わりに `docker compose pull` を使えます。データは `m-ui-data` と `m-ui-core` のボリュームに保存されます。削除するつもりがない限り `docker compose down -v` は実行しないでください。
 
 ## TLS 証明書
 

@@ -1,21 +1,23 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# M-UI-sniffer (downstream fork)
+# M-UI Fusion
 
 > [!IMPORTANT]
-> **This is the [Xenofan-git/M-UI-sniffer](https://github.com/Xenofan-git/M-UI-sniffer) variant of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), based on upstream v0.3.3.**
+> **This is the [Xenofan-git/M-UI-Fusion](https://github.com/Xenofan-git/M-UI-Fusion) variant of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), based on upstream v0.3.3.**
 > It adds **native Mihomo Sniffer** controls under **Mihomo Settings → Basics → Sniffer**, including HTTP, TLS, QUIC, DNS mapping, pure-IP parsing, and destination-override settings.
 > These settings are saved in `state.json` and written directly to generated `config.yaml`; an external watchdog/patching service is **not** required. See [Sniffer documentation](docs/sniffer.md).
 >
-> **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-sniffer/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
+> **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-Fusion/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
 
 **Separate Balancers tab:** Outbounds now shows proxy nodes only. **Balancers** has its own sidebar entry and Mihomo tab, with multiple URL subscriptions attachable to one group and automatic node reconciliation. [Balancer guide (Russian)](docs/BALANCERS.ru.md).
 
-**Inbound VPN node URL subscriptions:** New sidebar **Subscriptions** section imports provider nodes into Outbounds, supports Base64/share-links and Mihomo YAML, manual sync, optional group linking and scheduled updates. [Documentation (Russian)](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).\n\n## Quick SSH installation (Linux)
+**Inbound VPN node URL subscriptions:** New sidebar **Subscriptions** section imports provider nodes into Outbounds, supports Base64/share-links and Mihomo YAML, manual sync, optional group linking and scheduled updates. [Documentation (Russian)](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).
+
+## Quick SSH installation (Linux)
 
 Connect to your Linux server from an authorized SSH client (replace `USER` and `SERVER_IP` with your own values):
 
@@ -29,56 +31,56 @@ Alternatively, if your server is accessible via Tailscale (replace `TAILSCALE_IP
 ssh USER@TAILSCALE_IP
 ```
 
-Then **on the Linux server** download, syntax-check, and run the Sniffer installer:
+Then **on the Linux server** download, syntax-check, and run the M-UI Fusion installer:
 
 ```bash
-curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
-bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
+curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
+bash -n /tmp/m-ui-fusion-install.sh
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
 ```
 
 For an existing installation, first back up the binary and state, then use:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.3
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.1
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
 
-M-UI-sniffer is not tied to a specific device. The installer detects the Linux architecture (including AMD64 and ARM64) and chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, and upgrade steps:** [SSH guide in Russian](docs/INSTALL.ru.md).
+M-UI Fusion is not tied to a specific device. The installer detects the Linux architecture (including AMD64 and ARM64) and chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, and upgrade steps:** [SSH guide in Russian](docs/INSTALL.ru.md).
 
 ## Build this fork
 
 Use Go **1.26.10** or later with its required security fixes:
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 # Go selects the target CPU architecture from the current machine.
 # For cross-compilation, set GOARCH=arm64, GOARCH=amd64, etc.
-GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-sniffer" -o m-ui-linux-sniffer .
+GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-fusion.1" -o m-ui-linux-fusion .
 ```
 
 GitHub Actions also runs tests and builds the ARM64 binary after each change to `main`. Production upgrade should only be performed after backing up `state.json`, `config.yaml`, and the currently installed binary and testing the new binary.
 
 ---
 
-## m-ui features and documentation (adapted for M-UI-sniffer)
+## M-UI Fusion features and documentation (based on m-ui)
 
 # m-ui
 
-[![Release](https://img.shields.io/github/v/release/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/Xenofan-git/M-UI-sniffer/release.yml.svg)](https://github.com/Xenofan-git/M-UI-sniffer/actions)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/go.mod)
-[![Downloads](https://img.shields.io/github/downloads/Xenofan-git/M-UI-sniffer/total.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases/latest)
-[![License](https://img.shields.io/github/license/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/Xenofan-git/M-UI-Fusion.svg)](https://github.com/Xenofan-git/M-UI-Fusion/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/Xenofan-git/M-UI-Fusion/release.yml.svg)](https://github.com/Xenofan-git/M-UI-Fusion/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Xenofan-git/M-UI-Fusion.svg)](https://github.com/Xenofan-git/M-UI-Fusion/blob/main/go.mod)
+[![Downloads](https://img.shields.io/github/downloads/Xenofan-git/M-UI-Fusion/total.svg)](https://github.com/Xenofan-git/M-UI-Fusion/releases/latest)
+[![License](https://img.shields.io/github/license/Xenofan-git/M-UI-Fusion.svg)](https://github.com/Xenofan-git/M-UI-Fusion/blob/main/LICENSE)
 
 A server management panel powered by [Mihomo](https://github.com/MetaCubeX/mihomo). Its workflow follows 3x-ui, its interface comes in three themes (shadcn by default, Material Design 3 and Apple's Liquid Glass), and its configuration model is Mihomo's native YAML. The panel is available in 11 languages.
 
 > [!IMPORTANT]
 > Use this project only on servers and networks that you own or are authorized to administer. Follow local law, upstream provider terms, and the policies of the services you access.
 
-For complete documentation, visit the [m-ui Wiki](https://github.com/RomanovCaesar/m-ui/wiki). Subscribe to our [Telegram channel](https://t.me/MihomoUI) for development news.
+For complete documentation, visit the [m-ui Wiki](https://github.com/RomanovCaesar/m-ui/wiki). The [original m-ui Telegram channel](https://t.me/MihomoUI) belongs to the upstream project; M-UI Fusion updates are published in this repository.
 
 <p align="center">
   <img src="./media/screenshots/en/inbounds.png" alt="Inbounds and clients" width="900">
@@ -132,15 +134,15 @@ For complete documentation, visit the [m-ui Wiki](https://github.com/RomanovCaes
 Run as `root` on a Linux system using systemd or OpenRC:
 
 ```bash
-curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
-bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
+curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
+bash -n /tmp/m-ui-fusion-install.sh
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
 ```
 
 The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a fixed port; optionally add `--listen-ip SERVER_LOCAL_IP` after replacing the placeholder with an address assigned to your server:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl \
   --port 34567
 ```
 
@@ -155,14 +157,14 @@ Releases contain `m-ui-linux-<architecture>.tar.gz` for `386`, `amd64`, `arm64`,
 The Docker image targets Linux amd64 and contains m-ui plus a pinned, checksum-verified Mihomo core. The Compose file uses host networking, so inbound ports added in the panel work without extra port mappings.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-If `MUI_PASSWORD` and `MUI_PATH` are empty, the first start generates them and prints the URL and credentials once in the log. Releases also publish `ghcr.io/romanovcaesar/m-ui:<tag>` and `latest`; use `docker compose pull` instead of building when the image is available to you. Data lives in the `m-ui-data` and `m-ui-core` volumes; do not run `docker compose down -v` unless you want to delete it.
+If `MUI_PASSWORD` and `MUI_PATH` are empty, the first start generates them and prints the URL and credentials once in the log. Releases publish `ghcr.io/xenofan-git/m-ui-fusion:<tag>` and `latest`; use `docker compose pull` instead of building when the image is available to you. Data lives in the `m-ui-data` and `m-ui-core` volumes; do not run `docker compose down -v` unless you want to delete it.
 
 ## TLS certificates
 

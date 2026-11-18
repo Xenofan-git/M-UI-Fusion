@@ -1,4 +1,4 @@
-module github.com/RomanovCaesar/m-ui
+module github.com/Xenofan-git/M-UI-Fusion
 
 go 1.24
 

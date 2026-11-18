@@ -44,9 +44,9 @@ FROM debian:bookworm-slim
 
 ARG MUI_VERSION=dev
 
-LABEL org.opencontainers.image.title="M-UI-sniffer" \
-      org.opencontainers.image.description="A server management panel powered by Mihomo" \
-      org.opencontainers.image.source="https://github.com/Xenofan-git/M-UI-sniffer" \
+LABEL org.opencontainers.image.title="M-UI Fusion" \
+      org.opencontainers.image.description="Mihomo management panel with subscriptions, balancers, routing, and Sniffer" \
+      org.opencontainers.image.source="https://github.com/Xenofan-git/M-UI-Fusion" \
       org.opencontainers.image.licenses="GPL-3.0-only" \
       org.opencontainers.image.version="${MUI_VERSION}"
 

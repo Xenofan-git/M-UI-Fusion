@@ -138,7 +138,7 @@ func downloadOutboundSubscription(ctx context.Context, rawURL string) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "M-UI-sniffer/1.0")
+	req.Header.Set("User-Agent", "M-UI-Fusion/1.0")
 	req.Header.Set("Accept", "application/yaml, text/yaml, text/plain, */*")
 	resp, err := client.Do(req)
 	if err != nil {

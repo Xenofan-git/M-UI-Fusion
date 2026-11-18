@@ -1,10 +1,12 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -71,13 +73,13 @@
 Виконайте від імені `root` у Linux із systemd або OpenRC:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 Інсталятор обирає вільний п'ятизначний порт панелі та генерує шлях панелі з 16 символів, ім'я користувача з 14 символів і пароль із 16 символів. Адреса та облікові дані виводяться один раз наприкінці встановлення. Їх можна задати явно:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -92,14 +94,14 @@ m-ui встановлюється в `/usr/local/m-ui`, дані зберіга�
 Образ Docker зібрано для Linux amd64; він містить m-ui і перевірене ядро Mihomo фіксованої версії. Compose використовує мережу хоста, тому порти входів, доданих у панелі, працюють без окремого прокидання портів.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-Якщо `MUI_PASSWORD` і `MUI_PATH` порожні, під час першого запуску їх буде згенеровано, а адресу та облікові дані один раз виведено в журнал. Кожен реліз також публікує `ghcr.io/romanovcaesar/m-ui:<tag>` і `latest`; якщо образ вам доступний, замість збирання можна виконати `docker compose pull`. Дані зберігаються в томах `m-ui-data` і `m-ui-core`; не запускайте `docker compose down -v`, якщо не хочете їх видалити.
+Якщо `MUI_PASSWORD` і `MUI_PATH` порожні, під час першого запуску їх буде згенеровано, а адресу та облікові дані один раз виведено в журнал. Кожен реліз також публікує `ghcr.io/xenofan-git/m-ui-fusion:<tag>` і `latest`; якщо образ вам доступний, замість збирання можна виконати `docker compose pull`. Дані зберігаються в томах `m-ui-data` і `m-ui-core`; не запускайте `docker compose down -v`, якщо не хочете їх видалити.
 
 ## TLS-сертифікати
 

@@ -57,7 +57,7 @@ func TestDockerAssetsStayWiredForRelease(t *testing.T) {
 		t.Fatalf("docker-compose.yml is invalid YAML: %v", err)
 	}
 	service, ok := compose.Services["m-ui"]
-	if !ok || service.Image != "ghcr.io/xenofan-git/m-ui-sniffer:${MUI_IMAGE_TAG:-latest}" || service.Platform != "linux/amd64" || service.NetworkMode != "host" {
+	if !ok || service.Image != "ghcr.io/xenofan-git/m-ui-fusion:${MUI_IMAGE_TAG:-latest}" || service.Platform != "linux/amd64" || service.NetworkMode != "host" {
 		t.Fatalf("unexpected m-ui Compose service: %#v", service)
 	}
 	for _, volume := range []string{"m-ui-data:/opt/m-ui/data", "m-ui-core:/opt/m-ui/core"} {

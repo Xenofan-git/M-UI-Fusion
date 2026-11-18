@@ -1,10 +1,12 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -71,13 +73,13 @@ A documentação completa está na [Wiki do m-ui](https://github.com/RomanovCaes
 Execute como `root` em um Linux com systemd ou OpenRC:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 O instalador escolhe uma porta livre de cinco dígitos e gera um caminho de painel de 16 caracteres, um usuário de 14 caracteres e uma senha de 16 caracteres. No final, mostra uma única vez a URL de acesso e as credenciais. Você também pode defini-los:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -92,14 +94,14 @@ Cada versão inclui `m-ui-linux-<architecture>.tar.gz` para `386`, `amd64`, `arm
 A imagem Docker é para Linux amd64 e inclui o m-ui e um núcleo do Mihomo de versão fixa e verificado. O Compose usa a rede do host, então as portas das entradas adicionadas no painel funcionam sem mapeamentos extras.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-Se `MUI_PASSWORD` e `MUI_PATH` estiverem vazios, a primeira inicialização os gera e mostra uma vez a URL e as credenciais no log. Cada versão também publica `ghcr.io/romanovcaesar/m-ui:<tag>` e `latest`; se a imagem estiver disponível para você, use `docker compose pull` em vez de compilar. Os dados ficam nos volumes `m-ui-data` e `m-ui-core`; não execute `docker compose down -v` a menos que queira apagá-los.
+Se `MUI_PASSWORD` e `MUI_PATH` estiverem vazios, a primeira inicialização os gera e mostra uma vez a URL e as credenciais no log. Cada versão também publica `ghcr.io/xenofan-git/m-ui-fusion:<tag>` e `latest`; se a imagem estiver disponível para você, use `docker compose pull` em vez de compilar. Os dados ficam nos volumes `m-ui-data` e `m-ui-core`; não execute `docker compose down -v` a menos que queira apagá-los.
 
 ## Certificados TLS
 

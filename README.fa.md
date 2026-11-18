@@ -3,10 +3,12 @@
 <div dir="rtl">
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
-# m-ui
+# M-UI Fusion
+
+> **M-UI Fusion** is an independent enhanced fork of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), adding native Mihomo Sniffer, inbound VPN subscriptions, automatic refresh and separate Balancers. [Installation guide (Russian)](docs/INSTALL.ru.md).
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/RomanovCaesar/m-ui/release.yml.svg)](https://github.com/RomanovCaesar/m-ui/actions)
@@ -73,13 +75,13 @@
 روی لینوکسی که از systemd یا OpenRC استفاده می‌کند، با کاربر `root` اجرا کنید:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh)
 ```
 
 نصب‌کننده یک پورت پنج‌رقمی آزاد انتخاب می‌کند و یک مسیر پنل ۱۶ نویسه‌ای، یک نام کاربری ۱۴ نویسه‌ای و یک رمز عبور ۱۶ نویسه‌ای می‌سازد. نشانی دسترسی و اطلاعات ورود فقط یک بار در پایان نمایش داده می‌شود. می‌توانید آن‌ها را خودتان هم تعیین کنید:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
   --port 34567
 ```
 
@@ -94,14 +96,14 @@ m-ui در `/usr/local/m-ui` نصب می‌شود و داده‌هایش را د�
 ایمیج داکر برای Linux amd64 است و m-ui را همراه با یک هستهٔ Mihomo با نسخهٔ ثابت و بررسی‌شده در خود دارد. Compose از شبکهٔ میزبان استفاده می‌کند، بنابراین پورت ورودی‌هایی که در پنل اضافه می‌کنید بدون نگاشت پورت جداگانه کار می‌کنند.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-اگر `MUI_PASSWORD` و `MUI_PATH` خالی باشند، در نخستین اجرا ساخته می‌شوند و نشانی و اطلاعات ورود یک بار در لاگ نمایش داده می‌شود. هر انتشار همچنین `ghcr.io/romanovcaesar/m-ui:<tag>` و `latest` را منتشر می‌کند؛ اگر ایمیج برای شما در دسترس است، به جای ساخت محلی از `docker compose pull` استفاده کنید. داده‌ها در حجم‌های `m-ui-data` و `m-ui-core` نگه داشته می‌شوند؛ اگر نمی‌خواهید آن‌ها را پاک کنید، `docker compose down -v` را اجرا نکنید.
+اگر `MUI_PASSWORD` و `MUI_PATH` خالی باشند، در نخستین اجرا ساخته می‌شوند و نشانی و اطلاعات ورود یک بار در لاگ نمایش داده می‌شود. هر انتشار همچنین `ghcr.io/xenofan-git/m-ui-fusion:<tag>` و `latest` را منتشر می‌کند؛ اگر ایمیج برای شما در دسترس است، به جای ساخت محلی از `docker compose pull` استفاده کنید. داده‌ها در حجم‌های `m-ui-data` و `m-ui-core` نگه داشته می‌شوند؛ اگر نمی‌خواهید آن‌ها را پاک کنید، `docker compose down -v` را اجرا نکنید.
 
 ## گواهی‌های TLS
 

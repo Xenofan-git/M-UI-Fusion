@@ -1,19 +1,23 @@
 [English](/README.md) | [简体中文](/README.zh_CN.md) | [繁體中文](/README.zh_TW.md) | [日本語](/README.ja.md) | [Русский](/README.ru.md) | [فارسی](/README.fa.md) | [Tiếng Việt](/README.vi.md) | [Español](/README.es.md) | [Türkçe](/README.tr.md) | [Українська](/README.uk.md) | [Português (Brasil)](/README.pt_BR.md)
 
 <p align="center">
-  <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
+  <img src="./media/m-ui_logo.png" alt="M-UI Fusion (original m-ui logo)" width="420">
 </p>
 
 
+# M-UI Fusion
+
 > [!IMPORTANT]
-> **Это форк [Xenofan-git/M-UI-sniffer](https://github.com/Xenofan-git/M-UI-sniffer) оригинальной панели [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui) на основе v0.3.3.**
+> **M-UI Fusion — расширенная версия оригинальной [m-ui](https://github.com/RomanovCaesar/m-ui) на базе Mihomo. Наш репозиторий: [Xenofan-git/M-UI-Fusion](https://github.com/Xenofan-git/M-UI-Fusion). Основа форка — m-ui v0.3.3.**
 > Добавлены штатные настройки **Sniffer** в разделе **Mihomo Settings → Basics → Sniffer**: HTTP, TLS, QUIC, Force DNS Mapping, Parse Pure IP, Override Destination. Настройки сохраняются в `state.json` и встраиваются непосредственно в `config.yaml` — без дополнительного сервиса.
 >
-> **Установка форка:** выполняйте команды из [подробной SSH-инструкции](docs/INSTALL.ru.md); они скачивают **нашу** версию и проверяют SHA-256. Перед обновлением обязательно сохраните бинарник, `state.json` и `config.yaml`. [Релизы](https://github.com/Xenofan-git/M-UI-sniffer/releases) · [Sniffer](docs/sniffer.md).
+> **Установка форка:** выполняйте команды из [подробной SSH-инструкции](docs/INSTALL.ru.md); они скачивают **нашу** версию и проверяют SHA-256. Перед обновлением обязательно сохраните бинарник, `state.json` и `config.yaml`. [Релизы](https://github.com/Xenofan-git/M-UI-Fusion/releases) · [Sniffer](docs/sniffer.md).
 
 **Отдельная вкладка «Балансировщики»:** группы больше не смешиваются с узлами в Outbounds. Можно добавить в одну группу несколько подписок, и их узлы будут обновляться автоматически. [Инструкция](docs/BALANCERS.ru.md).
 
-**Подписки на VPN-серверы:** отдельный раздел **«Подписки»** импортирует узлы в Outbounds из ссылок и YAML, поддерживает ручное и автоматическое обновление, интервалы и подключение к балансировщикам. [Инструкция](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).\n\n## Быстрая установка по SSH на Linux (AMD64 / ARM64 и другие архитектуры)
+**Подписки на VPN-серверы:** отдельный раздел **«Подписки»** импортирует узлы в Outbounds из ссылок и YAML, поддерживает ручное и автоматическое обновление, интервалы и подключение к балансировщикам. [Инструкция](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).
+
+## Быстрая установка по SSH на Linux (AMD64 / ARM64 и другие архитектуры)
 
 Подключитесь к своему Linux-серверу с компьютера или из SSH-клиента на телефоне (замените `USER` и `SERVER_IP`):
 
@@ -30,37 +34,37 @@ ssh USER@TAILSCALE_IP
 Уже **на сервере Linux** загрузите и проверьте установщик нашего форка:
 
 ```bash
-curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
-bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
+curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
+bash -n /tmp/m-ui-fusion-install.sh
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
 ```
 
 Если m-ui уже установлена, сначала сделайте резервную копию и используйте **обновление с сохранением настроек**:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.3
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.1
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
 
-M-UI-sniffer не привязан к определённой модели устройства: установщик выбирает бинарник под архитектуру сервера автоматически. Полная инструкция с командой резервного копирования и отката: **[docs/INSTALL.ru.md](docs/INSTALL.ru.md)**. Не публикуйте порт панели в интернет без HTTPS и защиты доступа.
+M-UI Fusion не привязан к определённой модели устройства: установщик выбирает бинарник под архитектуру сервера автоматически. Полная инструкция с командой резервного копирования и отката: **[docs/INSTALL.ru.md](docs/INSTALL.ru.md)**. Не публикуйте порт панели в интернет без HTTPS и защиты доступа.
 
 ---
 
-# m-ui
+## Возможности M-UI Fusion и наследие m-ui
 
-[![Release](https://img.shields.io/github/v/release/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/Xenofan-git/M-UI-sniffer/release.yml.svg)](https://github.com/Xenofan-git/M-UI-sniffer/actions)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/go.mod)
-[![Downloads](https://img.shields.io/github/downloads/Xenofan-git/M-UI-sniffer/total.svg)](https://github.com/Xenofan-git/M-UI-sniffer/releases/latest)
-[![License](https://img.shields.io/github/license/Xenofan-git/M-UI-sniffer.svg)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/Xenofan-git/M-UI-Fusion.svg)](https://github.com/Xenofan-git/M-UI-Fusion/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/Xenofan-git/M-UI-Fusion/release.yml.svg)](https://github.com/Xenofan-git/M-UI-Fusion/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Xenofan-git/M-UI-Fusion.svg)](https://github.com/Xenofan-git/M-UI-Fusion/blob/main/go.mod)
+[![Downloads](https://img.shields.io/github/downloads/Xenofan-git/M-UI-Fusion/total.svg)](https://github.com/Xenofan-git/M-UI-Fusion/releases/latest)
+[![License](https://img.shields.io/github/license/Xenofan-git/M-UI-Fusion.svg)](https://github.com/Xenofan-git/M-UI-Fusion/blob/main/LICENSE)
 
 Панель управления сервером на базе [Mihomo](https://github.com/MetaCubeX/mihomo). Логика работы повторяет 3x-ui, интерфейс доступен в трёх темах (shadcn по умолчанию, Material Design 3 и Apple Liquid Glass), а конфигурация строится в родном YAML-формате Mihomo. Панель доступна на 11 языках.
 
 > [!IMPORTANT]
 > Используйте проект только на серверах и в сетях, которыми вы владеете или которыми вам разрешено управлять. Соблюдайте местное законодательство, условия провайдеров и правила сервисов, к которым вы обращаетесь.
 
-Полная документация находится в [m-ui Wiki](https://github.com/RomanovCaesar/m-ui/wiki) (на английском). Новости разработки публикуются в нашем [Telegram-канале](https://t.me/MihomoUI).
+Полная документация находится в [m-ui Wiki](https://github.com/RomanovCaesar/m-ui/wiki) (на английском). Канал [MihomoUI в Telegram](https://t.me/MihomoUI) относится к оригинальному проекту; новости M-UI Fusion публикуются в нашем GitHub.
 
 <p align="center">
   <img src="./media/screenshots/en/inbounds.png" alt="Inbound и клиенты" width="900">
@@ -114,15 +118,15 @@ M-UI-sniffer не привязан к определённой модели ус
 Выполните от имени `root` в Linux с systemd или OpenRC:
 
 ```bash
-curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
-bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
+curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
+bash -n /tmp/m-ui-fusion-install.sh
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl
 ```
 
 Установщик выбирает свободный пятизначный порт панели и генерирует путь панели из 16 символов, имя пользователя из 14 символов и пароль из 16 символов. Адрес и учётные данные выводятся один раз в конце установки. Можно явно указать порт. Для привязки только к локальному интерфейсу дополнительно задайте `--listen-ip SERVER_LOCAL_IP`, заменив переменную реальным адресом интерфейса:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.1 --no-ssl \
   --port 34567
 ```
 
@@ -137,14 +141,14 @@ m-ui устанавливается в `/usr/local/m-ui`, данные хран�
 Образ Docker собран для Linux amd64 и содержит m-ui и проверенное ядро Mihomo фиксированной версии. Compose использует сеть хоста, поэтому порты входов, добавленных в панели, работают без отдельного проброса портов.
 
 ```bash
-git clone https://github.com/Xenofan-git/M-UI-sniffer.git
-cd M-UI-sniffer
+git clone https://github.com/Xenofan-git/M-UI-Fusion.git
+cd M-UI-Fusion
 cp .env.example .env
 docker compose up -d --build
 docker compose logs m-ui
 ```
 
-Если `MUI_PASSWORD` и `MUI_PATH` пусты, при первом запуске они генерируются, а адрес и учётные данные один раз выводятся в журнал. Каждый релиз также публикует `ghcr.io/romanovcaesar/m-ui:<tag>` и `latest`; если образ вам доступен, вместо сборки можно выполнить `docker compose pull`. Данные хранятся в томах `m-ui-data` и `m-ui-core`; не запускайте `docker compose down -v`, если не хотите их удалить.
+Если `MUI_PASSWORD` и `MUI_PATH` пусты, при первом запуске они генерируются, а адрес и учётные данные один раз выводятся в журнал. Каждый релиз также публикует `ghcr.io/xenofan-git/m-ui-fusion:<tag>` и `latest`; если образ вам доступен, вместо сборки можно выполнить `docker compose pull`. Данные хранятся в томах `m-ui-data` и `m-ui-core`; не запускайте `docker compose down -v`, если не хотите их удалить.
 
 ## TLS-сертификаты
 
