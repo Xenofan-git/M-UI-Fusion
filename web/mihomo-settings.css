@@ -444,7 +444,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 
 /* Subscribed-balancer node manager — HydraRoute-style table.
    Only active on groups linked to a provider; manual group editor unchanged. */
-.mihomo-modal:has(.fbs-editor){width:min(1110px,calc(100vw - 28px))}
+.mihomo-modal:has(.fbs-editor){width:min(888px,calc(100vw - 28px))} /* 20% narrower than v0.3.3-fusion.7 */
 .mihomo-form-grid>.fbs-editor{grid-column:1/-1;min-width:0}
 .fbs-editor{
   display:flex;flex-direction:column;gap:10px;

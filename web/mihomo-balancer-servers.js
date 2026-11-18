@@ -149,7 +149,7 @@
  function renderMarkup(){
    const wrapper=elt('div','fbs-editor');
    wrapper.innerHTML=
-   '<div class="fbs-heading"><div><strong>Серверы подписки</strong><p class="fbs-count"></p></div><button type="button" class="outline-btn fbs-close" title="Закрыть список" aria-label="Закрыть список">×</button></div>'+
+   '<div class="fbs-heading"><div><strong>Серверы подписки</strong><p class="fbs-count"></p></div></div>'+
    '<div class="fbs-candidate-line">Кандидат балансировщика: <strong class="fbs-candidate">Определяется…</strong></div>'+
    '<div class="fbs-toolbar"><input type="search" class="fbs-search" placeholder="⌕ Поиск серверов, стран и флагов…"><button type="button" class="outline-btn fbs-refresh-source">⇩ Обновить подписку</button><button type="button" class="outline-btn fbs-probe">↻ Опросить серверы</button><button type="button" class="outline-btn fbs-stop" hidden>Остановить</button></div>'+
    '<div class="fbs-table-wrap"><table class="fbs-table"><thead><tr><th><label><input type="checkbox" class="fbs-toggle-all"> Все</label></th><th>Протокол</th><th><button type="button" data-sort="name">Имя ↕</button></th><th><button type="button" data-sort="ping">Пинг ↕</button></th><th><button type="button" data-sort="latency">Задержка ↕</button></th></tr></thead><tbody class="fbs-table-body"></tbody></table></div>'+
@@ -164,7 +164,6 @@
  }
  function bindHandlers(){
    const el=panel;
-   q('.fbs-close',el).onclick=()=>{el.querySelector('.fbs-table-wrap').hidden=true;};
    const search=q('.fbs-search',el);
    const applySearch=e=>{searchText=e.target.value;renderRows();};
    search.oninput=applySearch;
