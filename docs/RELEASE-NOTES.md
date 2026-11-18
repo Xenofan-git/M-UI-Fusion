@@ -1,5 +1,7 @@
 ## M-UI Fusion — native Mihomo Sniffer fork
 
+**Update v0.3.3-fusion.3:** merged managed VPN subscriptions with the Balancers tab in Mihomo Settings. The existing **Add Balancer** button creates manual groups, while **Add Balancer from Subscription** creates a subscribed group in one operation, with a HydraRoute-style node picker, search, include/exclude text filters and scheduled refresh. Fixes provider node names that contain commas, line breaks, duplicate labels or Unicode longer than the Mihomo 128-byte limit. The sidebar has no separate subscription or balancer entry.
+
 **Update v0.3.3-fusion.2:** the duplicate Balancers entry has been removed from the sidebar. The **Mihomo Settings → Балансировщики** tab remains fully functional with its existing groups, subscription selection, and automated membership synchronization. This update changes navigation only; runtime routing and state format are unchanged.
 
 **First release under the M-UI Fusion name — v0.3.3-fusion.1.**

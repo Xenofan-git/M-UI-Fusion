@@ -1,189 +1,312 @@
-// Remote VPN node subscriptions; independent of client-facing subscription exports.
+// Subscription-powered balancers. The UI never exposes provider credentials,
+// and node selection/filters are independently verified by the Go API.
 (() => {
   'use strict';
   const root=document.getElementById('outsub-root');
   if(!root)return;
-  const find=(selector,scope=document)=>scope.querySelector(selector);
-  const make=(tag,className,text)=>{
+  const q=(selector,parent=document)=>parent.querySelector(selector);
+  const make=(tag,className,value)=>{
     const element=document.createElement(tag);
     if(className)element.className=className;
-    if(text!==undefined)element.textContent=String(text);
+    if(value!==undefined)element.textContent=String(value);
     return element;
   };
   const base=()=>location.pathname.replace(/[^/]*$/,'');
-  const request=async(path,options={})=>{
-    const response=await fetch(base()+path.replace(/^\/+/,''),{headers:{'Content-Type':'application/json'},...options});
-    let data={};
-    try{data=await response.json();}catch{}
+  async function request(path,options={}){
+    const response=await fetch(base()+path.replace(/^\/+/,''),{
+      headers:{'Content-Type':'application/json'},credentials:'same-origin',...options
+    });
+    let json={};
+    try{json=await response.json();}catch{}
     if(response.status===401){location.href=base()+'login';throw Error('Требуется вход в панель');}
-    if(!response.ok)throw Error(data.message||'Не удалось выполнить запрос');
-    return data.data??data;
+    if(!response.ok)throw Error(json.message||'Ошибка обращения к панели');
+    return json.data??json;
+  }
+  let subs=[],previewNodes=[],excluded=new Set(),loadedURL='',ascending=true;
+  const status=(msg,error=false)=>{
+    const element=q('#outsub-status');
+    element.textContent=msg||'';
+    element.style.color=error?'var(--red,#d54343)':'';
   };
-  let subscriptions=[],loaded=false;
-  const status=(message,error=false)=>{
-    const node=find('#outsub-status');
-    node.textContent=message||'';
-    node.style.color=error?'var(--red,#d54343)':'';
-  };
-  const formatDate=value=>{
+  function date(value){
     if(!value)return 'Ещё не обновлялась';
-    const date=new Date(value);
-    return Number.isFinite(date.getTime())?date.toLocaleString():value;
-  };
-  const confirmDelete=async message=>{
+    const parsed=new Date(value);
+    return Number.isFinite(parsed.getTime())?parsed.toLocaleString():value;
+  }
+  async function confirmAction(message){
     return typeof muiConfirm==='function' ? muiConfirm(message,{danger:true}) : false;
-  };
-  function line(parent,text,important){
-    const span=make('span');
-    span.appendChild(document.createTextNode(text));
-    if(important)span.appendChild(make('strong','',important));
-    parent.appendChild(span);
   }
-  function groups(){
-    const state=typeof app!=='undefined'?app.state?.state:null;
-    return (state?.outbounds||[]).filter(item=>item.kind==='group').map(item=>item.name);
+  function safeGroups(){
+    const state=typeof app!=='undefined'?app.state?.state:{};
+    return (state?.outbounds||[]).filter(x=>x.kind==='group').map(x=>x.name);
   }
-  function button(label,action,sub){
-    const b=make('button','outline-btn',label);
-    b.type='button';
-    b.onclick=async()=>{
+  function newButton(text,action,sub){
+    const button=make('button','outline-btn',text);
+    button.type='button';
+    button.onclick=async()=>{
       if(action==='edit'){openForm(sub);return;}
-      if(action==='delete'){
-        const ok=await confirmDelete('Удалить подписку '+sub.name+'? Если её узлы используются в правилах/балансировщиках, понадобится сначала убрать ссылки или сохранить узлы.');
-        if(!ok)return;
-      }
-      b.disabled=true;
+      if(action==='delete' && !await confirmAction('Удалить подписку «'+sub.name+'»? Узлы, используемые правилами, будут защищены.'))return;
+      button.disabled=true;
       status('Выполняется: '+sub.name+'…');
+      const path='/api/mihomo/subscriptions/'+encodeURIComponent(sub.id);
       try{
-        const url='/api/mihomo/subscriptions/'+encodeURIComponent(sub.id);
-        await request(url+(action==='refresh'?'/refresh':''),{method:action==='refresh'?'POST':'DELETE'});
+        await request(path+(action==='refresh'?'/refresh':''),{method:action==='refresh'?'POST':'DELETE'});
+        await refreshPanel();
         await load();
-        status(action==='refresh'?'Подписка обновлена, Outbounds синхронизированы':'Подписка удалена');
-      }catch(err){
-        if(action==='delete'&&await confirmDelete('Удалить запись о подписке, но оставить все её узлы в Outbounds?')){
-          try{
-            await request('/api/mihomo/subscriptions/'+encodeURIComponent(sub.id)+'?keepNodes=true',{method:'DELETE'});
-            await load();status('Запись удалена, узлы сохранены');return;
-          }catch(e){status(e.message,true);}
-        }else status(err.message,true);
-      }finally{b.disabled=false;}
+        status(action==='refresh'?'Узлы и балансировщики обновлены':'Подписка удалена');
+      }catch(error){
+        if(action==='delete' && await confirmAction('Удалить запись подписки, оставив её узлы в Outbounds?')){
+          try {
+            await request(path+'?keepNodes=true',{method:'DELETE'});
+            await refreshPanel();await load();status('Подписка удалена; узлы сохранены');return;
+          }catch(next){status(next.message,true);}
+        }else{status(error.message,true);}
+      }finally{button.disabled=false;}
     };
-    return b;
+    return button;
   }
-  function render(){
-    const box=find('#outsub-list');
-    box.replaceChildren();
-    if(!subscriptions.length){
-      box.appendChild(make('div','outsub-empty','Подписок пока нет. Добавьте URL — все узлы автоматически появятся в Mihomo Settings → Outbounds.'));
+  function renderList(){
+    const container=q('#outsub-list');
+    container.replaceChildren();
+    if(!subs.length){
+      container.appendChild(make('div','outsub-empty','Пока нет подписок. Нажмите «Добавить балансировщик из подписки», чтобы создать группу и импортировать узлы.'));
       return;
     }
-    for(const sub of subscriptions){
+    for(const sub of subs){
       const card=make('article','outsub-card');
-      const head=make('div','outsub-card-head'),titles=make('div');
-      titles.appendChild(make('h3','',sub.name));
-      titles.appendChild(make('p','outsub-muted','Интервал: '+sub.intervalMinutes+' мин'+(sub.group?' · Балансировщик: '+sub.group:'')));
-      head.appendChild(titles);
-      head.appendChild(make('span','outsub-pill'+(sub.enabled?'':' off'),sub.enabled?'Автообновление':'Приостановлено'));
-      card.appendChild(head);
+      const title=make('div','outsub-card-head'),block=make('div');
+      block.appendChild(make('h3','',sub.name));
+      block.appendChild(make('p','outsub-muted','Балансировщик: '+(sub.group||'не выбран')+' · интервал '+sub.intervalMinutes+' мин'));
+      title.appendChild(block);
+      title.appendChild(make('span','outsub-pill'+(sub.enabled?'':' off'),sub.enabled?'Автообновление':'Приостановлено'));
+      card.appendChild(title);
       const stats=make('div','outsub-stat');
-      line(stats,'Импортировано узлов: ',String(sub.nodeCount||0));
-      line(stats,'Обновлено: ',formatDate(sub.lastUpdated));
+      stats.appendChild(make('span','',String(sub.nodeCount||0)+' узлов · последнее обновление '+date(sub.lastUpdated)));
       card.appendChild(stats);
-      if(sub.lastError){const warning=make('div','outsub-error','Ошибка обновления: '+sub.lastError);warning.setAttribute('role','alert');card.appendChild(warning);}
+      if(sub.lastError){
+        const problem=make('div','outsub-error','Ошибка: '+sub.lastError);
+        problem.setAttribute('role','alert');
+        card.appendChild(problem);
+      }
       const actions=make('div','outsub-actions');
-      actions.appendChild(button('Обновить', 'refresh',sub));
-      actions.appendChild(button('Изменить','edit',sub));
-      actions.appendChild(button('Удалить','delete',sub));
+      for(const [caption,action] of [['Обновить','refresh'],['Фильтры и настройки','edit'],['Удалить','delete']]){
+        actions.appendChild(newButton(caption,action,sub));
+      }
       card.appendChild(actions);
-      box.appendChild(card);
+      container.appendChild(card);
     }
   }
   async function load(){
-    try{
-      subscriptions=await request('/api/mihomo/subscriptions');
-      loaded=true;render();status('Подписок: '+subscriptions.length);
-    }catch(error){status(error.message,true);}
+    try{const data=await request('/api/mihomo/subscriptions');subs=Array.isArray(data)?data:[];renderList();status('Подписок: '+subs.length);}
+    catch(error){status(error.message,true);}
   }
-  function modal(){
-    let element=find('#outsub-modal');
-    if(element)return element;
-    element=make('div','outsub-modal');element.id='outsub-modal';
-    const dialog=make('div','outsub-dialog');
-    dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
-    const title=make('h2','', 'Добавить подписку');title.id='outsub-title';dialog.appendChild(title);
-    const form=make('form');form.id='outsub-form';
-    const field=(labelText,name,type,options)=>{
-      const label=make('label','',labelText),input=make('input');
-      input.name=name;input.type=type||'text';
-      input.required=true;input.autocomplete='off';
-      if(options){
-        if(options.maxLength)input.maxLength=options.maxLength;
-        if(options.min)input.min=options.min;
-        if(options.max)input.max=options.max;
-        if(options.placeholder)input.placeholder=options.placeholder;
-      }
-      label.appendChild(input);form.appendChild(label);return input;
-    };
-    field('Название','name','text',{maxLength:64,placeholder:'Например, Foreign'});
-    field('URL подписки','url','url',{maxLength:2048,placeholder:'https://provider.example/subscription/...'});
-    field('Интервал автообновления (минут)','intervalMinutes','number',{min:5,max:10080});
-    const groupLabel=make('label','', 'Добавлять узлы в балансировщик (необязательно)');
-    const group=make('select');group.name='group';groupLabel.appendChild(group);form.appendChild(groupLabel);
-    const autoLabel=make('label','inline');
-    const auto=make('input');auto.type='checkbox';auto.name='enabled';
-    autoLabel.appendChild(auto);autoLabel.appendChild(document.createTextNode('Автоматически обновлять подписку'));
-    form.appendChild(autoLabel);
-    form.appendChild(make('p','outsub-warning','Ссылка может содержать секретный токен. При ошибке загрузки прежние узлы сохраняются. Передача URL ограничена авторизованным администратором панели.'));
-    const actions=make('div','outsub-actions');
-    const cancel=make('button','outline-btn','Отмена');cancel.type='button';
-    cancel.onclick=()=>element.classList.remove('open');
-    const submit=make('button','primary-btn','Сохранить и импортировать');
-    submit.type='submit';submit.id='outsub-submit';
-    actions.append(cancel,submit);form.appendChild(actions);dialog.appendChild(form);element.appendChild(dialog);
-    document.body.appendChild(element);
-    element.addEventListener('click',e=>{if(e.target===element)element.classList.remove('open');});
-    form.onsubmit=async event=>{
-      event.preventDefault();
+  const matchWords=text=>String(text||'').replace(/\r\n/g,'\n').split('\n').map(x=>x.trim().toLowerCase()).filter(x=>x&&!x.startsWith('#'));
+  function passesFilter(name,keep,drop){
+    const text=name.toLowerCase();
+    return (!keep.length||keep.some(word=>text.includes(word)))&&!drop.some(word=>text.includes(word));
+  }
+  function currentSelection(form){
+    const keep=matchWords(form.elements.filterKeep.value),drop=matchWords(form.elements.filterExclude.value);
+    const eligible=previewNodes.filter(n=>passesFilter(n.name,keep,drop));
+    const selected=eligible.filter(n=>!excluded.has(n.key));
+    return {keep,drop,eligible,selected};
+  }
+  function renderPreview(){
+    const modal=q('#outsub-modal');
+    if(!modal)return;
+    const form=q('#outsub-form',modal),box=q('#outsub-preview-list',modal);
+    if(!previewNodes.length){
+      q('#outsub-preview-count',modal).textContent='Нажмите «Загрузить серверы» для проверки подписки';
+      box.replaceChildren();return;
+    }
+    const selection=currentSelection(form);
+    q('#outsub-preview-count',modal).textContent='Выбрано '+selection.selected.length+' из '+previewNodes.length+
+      ' · скрыто фильтрами '+(previewNodes.length-selection.eligible.length)+
+      ' · исключено вручную '+selection.eligible.filter(n=>excluded.has(n.key)).length;
+    const search=form.elements.search.value.trim().toLowerCase();
+    const candidates=previewNodes.filter(n=>!search||n.name.toLowerCase().includes(search));
+    candidates.sort((a,b)=>(ascending?1:-1)*a.name.localeCompare(b.name,'ru'));
+    box.replaceChildren();
+    for(const node of candidates.slice(0,250)){
+      const eligible=passesFilter(node.name,selection.keep,selection.drop);
+      const row=make('label','outsub-node'+(eligible?'':' filtered'));
+      const check=make('input');check.type='checkbox';check.disabled=!eligible;
+      check.checked=eligible&&!excluded.has(node.key);
+      check.onchange=()=>{if(check.checked)excluded.delete(node.key);else excluded.add(node.key);renderPreview();};
+      row.appendChild(check);
+      const desc=make('span');
+      desc.appendChild(make('strong','',node.name));
+      desc.appendChild(make('small','',node.protocol+(eligible?'':' · скрыт фильтром')));
+      row.appendChild(desc);
+      box.appendChild(row);
+    }
+    if(candidates.length>250){
+      box.appendChild(make('div','outsub-muted','Показаны первые 250 из '+candidates.length+' узлов. Используйте поиск для остальных.'));
+    }
+    if(!candidates.length){box.appendChild(make('div','outsub-muted','По запросу узлы не найдены'));}
+  }
+  async function preview(form){
+    const button=q('#outsub-preview-button');
+    button.disabled=true;
+    q('#outsub-preview-count').textContent='Получение списка серверов…';
+    try{
       const data={
-        name:form.elements.name.value.trim(),
+        name:form.elements.name.value.trim()||'Preview',
         url:form.elements.url.value.trim(),
         enabled:form.elements.enabled.checked,
         intervalMinutes:Number(form.elements.intervalMinutes.value),
-        group:form.elements.group.value
+        filterKeep:form.elements.filterKeep.value,
+        filterExclude:form.elements.filterExclude.value,
+        excludedNodeKeys:Array.from(excluded)
       };
-      const id=form.dataset.id;
-      submit.disabled=true;status('Загрузка, разбор и проверка узлов…');
+      const result=await request('/api/mihomo/subscriptions/preview',{method:'POST',body:JSON.stringify(data)});
+      previewNodes=result.nodes||[];
+      loadedURL=data.url;
+      renderPreview();
+      return result;
+    }catch(error){
+      q('#outsub-preview-count').textContent='Ошибка: '+error.message;
+      status(error.message,true);
+      throw error;
+    }finally{button.disabled=false;}
+  }
+  function field(form,label,name,type,options={}){
+    const wrapper=make('label','',label),control=make('input');
+    control.name=name;control.type=type||'text';control.autocomplete='off';
+    control.required=options.required!==false;
+    if(options.placeholder)control.placeholder=options.placeholder;
+    if(options.min)control.min=options.min;
+    if(options.max)control.max=options.max;
+    if(options.maxLength)control.maxLength=options.maxLength;
+    wrapper.appendChild(control);form.appendChild(wrapper);
+    return control;
+  }
+  function modal(){
+    let overlay=q('#outsub-modal');
+    if(overlay)return overlay;
+    overlay=make('div','outsub-modal');overlay.id='outsub-modal';
+    const dialog=make('div','outsub-dialog outsub-dialog-wide');
+    dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
+    const heading=make('h2','', 'Добавить балансировщик из подписки');
+    heading.id='outsub-title';dialog.appendChild(heading);
+    const form=make('form');form.id='outsub-form';
+    field(form,'Имя балансировщика','groupName','text',{maxLength:120,placeholder:'Например, Foreign'});
+    const typeLabel=make('label','', 'Режим балансировки'),type=make('select');
+    type.name='groupType';
+    for(const [id,label] of [['url-test','URL Test — наименьшая задержка'],['fallback','Fallback — по приоритету'],['load-balance','Load Balance'],['select','Select — вручную']]){
+      type.add(new Option(label,id));
+    }
+    typeLabel.appendChild(type);form.appendChild(typeLabel);
+    field(form,'Название подписки','name','text',{maxLength:64,placeholder:'Например, My VPN'});
+    field(form,'URL подписки','url','url',{maxLength:2048,placeholder:'https://provider.example/subscription/...'});
+    const existing=make('label','outsub-existing','Подключить к существующему балансировщику');
+    const group=make('select');group.name='group';existing.appendChild(group);form.appendChild(existing);
+    field(form,'Интервал автообновления (минут)','intervalMinutes','number',{min:5,max:10080});
+    const autoLabel=make('label','inline'),auto=make('input');auto.type='checkbox';auto.name='enabled';
+    autoLabel.appendChild(auto);autoLabel.appendChild(document.createTextNode('Автоматически обновлять подписку'));
+    form.appendChild(autoLabel);
+    const filters=make('div','outsub-filters');
+    for(const [name,label,placeholder] of [
+      ['filterKeep','Оставить только','Germany\n🇩🇪\nLTE'],
+      ['filterExclude','Исключить','Россия\nRussia\n🇺🇸']]){
+      const wrapper=make('label','',label),area=make('textarea');
+      area.name=name;area.rows=3;area.maxLength=4096;area.placeholder=placeholder;
+      area.oninput=()=>renderPreview();
+      wrapper.appendChild(area);filters.appendChild(wrapper);
+    }
+    form.appendChild(filters);
+    const toolbar=make('div','outsub-preview-toolbar');
+    const loadBtn=make('button','outline-btn','Загрузить серверы');loadBtn.id='outsub-preview-button';loadBtn.type='button';
+    loadBtn.onclick=()=>{preview(form).catch(()=>{});};
+    toolbar.appendChild(loadBtn);
+    const search=make('input');search.name='search';search.type='search';search.placeholder='Поиск серверов…';
+    search.oninput=renderPreview;toolbar.appendChild(search);
+    const sort=make('button','outline-btn','Имя ↕');sort.type='button';sort.onclick=()=>{ascending=!ascending;renderPreview();};toolbar.appendChild(sort);
+    form.appendChild(toolbar);
+    const actionRow=make('div','outsub-preview-controls');
+    const all=make('button','outline-btn','Выделить все');all.type='button';
+    all.onclick=()=>{const selected=currentSelection(form);for(const node of selected.eligible)excluded.delete(node.key);renderPreview();};
+    const none=make('button','outline-btn','Снять все');none.type='button';
+    none.onclick=()=>{const selected=currentSelection(form);for(const node of selected.eligible)excluded.add(node.key);renderPreview();};
+    actionRow.append(all,none);form.appendChild(actionRow);
+    const counter=make('p','outsub-preview-count','Нажмите «Загрузить серверы» для проверки подписки');
+    counter.id='outsub-preview-count';form.appendChild(counter);
+    const nodeList=make('div','outsub-preview-list');nodeList.id='outsub-preview-list';form.appendChild(nodeList);
+    form.appendChild(make('p','outsub-warning','Фильтры как в HydraRoute: по одной фразе на строку, без учёта регистра. «Оставить только» — совпадение с любой строкой; «Исключить» — исключает совпадения. Выбор узлов и фильтры сохраняются при автообновлении.'));
+    const buttons=make('div','outsub-actions');
+    const cancel=make('button','outline-btn','Отмена');cancel.type='button';cancel.onclick=()=>overlay.classList.remove('open');
+    const save=make('button','primary-btn','Создать балансировщик и подписку');save.id='outsub-submit';save.type='submit';
+    buttons.append(cancel,save);form.appendChild(buttons);
+    dialog.appendChild(form);overlay.appendChild(dialog);document.body.appendChild(overlay);
+    overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.classList.remove('open');});
+    form.onsubmit=async event=>{
+      event.preventDefault();
+      if(window.MUIMihomoSettings?.isDirty?.()){
+        status('Сначала сохраните изменения в Mihomo Settings',true);return;
+      }
+      save.disabled=true;status('Проверка подписки и создание балансировщика…');
       try{
-        await request('/api/mihomo/subscriptions'+(id?'/'+encodeURIComponent(id):''),{
-          method:id?'PUT':'POST',body:JSON.stringify(data)
+        if(!previewNodes.length||loadedURL!==form.elements.url.value.trim())await preview(form);
+        if(currentSelection(form).selected.length===0)throw Error('Не выбрано ни одного узла');
+        const isNew=!form.dataset.id,groupName=isNew?form.elements.groupName.value.trim():form.elements.group.value;
+        if(isNew&&!groupName)throw Error('Укажите имя балансировщика');
+        const body={
+          name:form.elements.name.value.trim(),
+          url:form.elements.url.value.trim(),
+          enabled:form.elements.enabled.checked,
+          intervalMinutes:Number(form.elements.intervalMinutes.value),
+          group:groupName,
+          groupType:form.elements.groupType.value,
+          createGroup:isNew,
+          filterKeep:form.elements.filterKeep.value,
+          filterExclude:form.elements.filterExclude.value,
+          excludedNodeKeys:Array.from(excluded)
+        };
+        await request('/api/mihomo/subscriptions'+(isNew?'':'/'+encodeURIComponent(form.dataset.id)),{
+          method:isNew?'POST':'PUT',body:JSON.stringify(body)
         });
-        element.classList.remove('open');
+        overlay.classList.remove('open');
+        await refreshPanel();
         await load();
-        status('Подписка сохранена и узлы импортированы в Outbounds');
-      }catch(error){status(error.message,true);}
-      finally{submit.disabled=false;}
+        status(isNew?'Балансировщик создан из подписки':'Фильтры подписки сохранены');
+      }catch(error){status(error.message,true);q('#outsub-preview-count').textContent='Ошибка сохранения: '+error.message;}
+      finally{save.disabled=false;}
     };
-    return element;
+    return overlay;
+  }
+  async function refreshPanel(){
+    if(typeof refresh==='function')await refresh();
+    window.MUIMihomoSettings?.refreshOutbounds?.();
   }
   function openForm(sub){
-    const element=modal(),form=find('#outsub-form',element);
-    form.reset();
+    const overlay=modal(),form=q('#outsub-form',overlay);
+    form.reset();previewNodes=[];excluded=new Set(sub?.excludedNodeKeys||[]);loadedURL='';
     form.dataset.id=sub?.id||'';
-    find('#outsub-title',element).textContent=sub?'Настройки подписки':'Добавить подписку';
-    find('#outsub-submit',element).textContent=sub?'Сохранить':'Сохранить и импортировать';
+    const isNew=!sub;
+    q('#outsub-title',overlay).textContent=isNew?'Добавить балансировщик из подписки':'Настройки подписки '+sub.name;
+    q('#outsub-submit',overlay).textContent=isNew?'Создать балансировщик и подписку':'Сохранить фильтры и настройки';
+    q('#outsub-preview-count',overlay).textContent='Нажмите «Загрузить серверы» для проверки подписки';
+    q('#outsub-preview-list',overlay).replaceChildren();
+    form.elements.groupName.closest('label').hidden=!isNew;
+    form.elements.groupName.required=isNew;
+    form.elements.groupType.closest('label').hidden=!isNew;
+    form.elements.group.closest('label').hidden=isNew;
+    form.elements.groupName.value=sub?.group||'';
+    form.elements.groupType.value='url-test';
+    const select=form.elements.group;
+    select.replaceChildren(new Option('Не связывать с группой',''));
+    for(const name of safeGroups())select.add(new Option(name,name));
+    if(sub?.group&&!safeGroups().includes(sub.group))select.add(new Option(sub.group,sub.group));
+    select.value=sub?.group||'';
     form.elements.name.value=sub?.name||'';
     form.elements.url.value=sub?.url||'';
     form.elements.intervalMinutes.value=sub?.intervalMinutes||60;
     form.elements.enabled.checked=sub?!!sub.enabled:true;
-    const group=form.elements.group;
-    group.replaceChildren(new Option('Только в Outbounds',''));
-    for(const name of groups())group.add(new Option(name,name));
-    group.value=sub?.group||'';
-    element.classList.add('open');
-    form.elements.name.focus();
+    form.elements.filterKeep.value=sub?.filterKeep||'';
+    form.elements.filterExclude.value=sub?.filterExclude||'';
+    overlay.classList.add('open');
+    (isNew?form.elements.groupName:form.elements.name).focus();
   }
-  find('#outsub-create').onclick=()=>openForm(null);
-  find('#outsub-reload').onclick=load;
-  window.MUIOutboundSubscriptions={load};
-  window.addEventListener('mui-langchange',()=>{if(loaded)render();});
+  q('#outsub-reload').onclick=load;
+  window.MUIOutboundSubscriptions={load,openCreate:()=>openForm(null)};
 })();

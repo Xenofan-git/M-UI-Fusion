@@ -298,8 +298,17 @@ func TestOutboundSubscriptionControllerHotReload(t *testing.T) {
 }
 
 func TestOutboundSubscriptionUIWiring(t *testing.T) {
+	html, err := os.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, disallowed := range []string{`data-view="outbound-subscriptions"`, `id="view-outbound-subscriptions"`, `data-mihomo-tab="subscriptions"`, `data-mihomo-pane="subscriptions"`} {
+		if strings.Contains(string(html), disallowed) {
+			t.Fatalf("redundant sidebar subscription entry: %s", disallowed)
+		}
+	}
 	files := map[string][]string{
-		"web/index.html":                {"data-view=\"outbound-subscriptions\"", "id=\"view-outbound-subscriptions\"", "outbound-subscriptions.js"},
+		"web/index.html":                {"data-view=\"mihomo\"", "data-mihomo-tab=\"balancers\"", "data-mihomo-pane=\"balancers\"", "outbound-subscriptions.js"},
 		"web/outbound-subscriptions.js": {"/api/mihomo/subscriptions", "intervalMinutes", "enabled", "refresh", "group", "nodeCount"},
 		"internal/app/main.go":          {"/api/mihomo/subscriptions", "monitorOutboundSubscriptions()"},
 	}

@@ -39,10 +39,13 @@
     $$('.mihomo-pane',root).forEach(pane=>pane.classList.toggle('active',pane.dataset.mihomoPane===tab));
     if(typeof syncInkBars==='function')syncInkBars();
     render();
+    if(tab==='balancers')window.MUIOutboundSubscriptions?.load();
   }
   function render(){
     renderWarpRouting();
-    if(currentTab==='basics')renderBasicsIndicators();else if(currentTab==='routing')renderRules();else renderOutbounds();
+    if(currentTab==='basics')renderBasicsIndicators();
+    else if(currentTab==='routing')renderRules();
+    else if(currentTab==='outbounds'||currentTab==='balancers')renderOutbounds();
     syncButtons();
   }
   function outboundAddress(item){
@@ -762,6 +765,7 @@
   $$('.mihomo-tab',root).forEach(button=>button.onclick=()=>setTab(button.dataset.mihomoTab));
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
   $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
+  $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openCreate();};
   $('#mihomo-add-rule').onclick=()=>openRuleModal();
   $('#mihomo-warp').onclick=openWarpModal;
   $('#mihomo-vpngate').onclick=()=>openVPNGateModal();
@@ -781,6 +785,6 @@
     if($('#warp-modal')?.classList.contains('open'))renderWarpModal();
     if($('#vpngate-modal')?.classList.contains('open'))renderVPNGateModal();
   });
-  window.MUIMihomoSettings={openTab:setTab};
+  window.MUIMihomoSettings={openTab:setTab,isDirty:()=>dirty,refreshOutbounds:syncFromState};
   setupBasics();syncFromState();setTab('basics');
 })();

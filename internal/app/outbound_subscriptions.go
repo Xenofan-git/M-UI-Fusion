@@ -16,9 +16,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -29,16 +31,19 @@ const (
 )
 
 type OutboundSubscription struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	URL             string `json:"url"`
-	Enabled         bool   `json:"enabled"`
-	IntervalMinutes int    `json:"intervalMinutes"`
-	Group           string `json:"group,omitempty"` // optional existing proxy-group
-	LastAttempt     string `json:"lastAttempt,omitempty"`
-	LastUpdated     string `json:"lastUpdated,omitempty"`
-	LastError       string `json:"lastError,omitempty"`
-	NodeCount       int    `json:"nodeCount"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	URL              string   `json:"url"`
+	Enabled          bool     `json:"enabled"`
+	IntervalMinutes  int      `json:"intervalMinutes"`
+	Group            string   `json:"group,omitempty"` // optional existing proxy-group
+	FilterKeep       string   `json:"filterKeep,omitempty"`
+	FilterExclude    string   `json:"filterExclude,omitempty"`
+	ExcludedNodeKeys []string `json:"excludedNodeKeys,omitempty"`
+	LastAttempt      string   `json:"lastAttempt,omitempty"`
+	LastUpdated      string   `json:"lastUpdated,omitempty"`
+	LastError        string   `json:"lastError,omitempty"`
+	NodeCount        int      `json:"nodeCount"`
 }
 
 func normalizeOutboundSubscription(s OutboundSubscription) (OutboundSubscription, error) {
@@ -69,6 +74,17 @@ func normalizeOutboundSubscription(s OutboundSubscription) (OutboundSubscription
 	}
 	if len(s.Group) > 128 || strings.ContainsAny(s.Group, "\r\n") {
 		return s, fmt.Errorf("некорректная группа")
+	}
+	if len(s.FilterKeep) > 4096 || len(s.FilterExclude) > 4096 {
+		return s, fmt.Errorf("фильтр должен быть не длиннее 4096 байт")
+	}
+	if len(s.ExcludedNodeKeys) > maxSubscriptionNodes {
+		return s, fmt.Errorf("слишком много исключённых узлов")
+	}
+	for _, key := range s.ExcludedNodeKeys {
+		if len(key) > 64 || len(key) < 5 || strings.ContainsAny(key, " \t\r\n") {
+			return s, fmt.Errorf("некорректный ключ исключённого узла")
+		}
 	}
 	return s, nil
 }
@@ -237,19 +253,83 @@ func parseOutboundSubscription(data []byte) ([]MihomoOutbound, error) {
 	return items, nil
 }
 
-// Uniqueness and stable names are essential for Mihomo group references.
-// The source is never allowed to overwrite a manually maintained Outbound.
+// Mihomo's Outbound name limit is 128 BYTES, not Unicode code points.
+// Provider names can include commas, newlines and multi-byte characters.
+// Sanitize at the subscription boundary, not in the shared manual editor.
+func safeSubscriptionNamePart(raw string) string {
+	var builder strings.Builder
+	lastSpace := false
+	for _, char := range strings.TrimSpace(raw) {
+		switch {
+		case char == ',':
+			char = '·'
+		case char == '\r' || char == '\n' || char == '\t':
+			char = ' '
+		case char < 32 || char == 127:
+			continue
+		}
+		if char == ' ' {
+			if lastSpace {
+				continue
+			}
+			lastSpace = true
+		} else {
+			lastSpace = false
+		}
+		builder.WriteRune(char)
+	}
+	return strings.TrimSpace(builder.String())
+}
+
+func truncateSubscriptionName(raw string, maxBytes int) string {
+	if maxBytes <= 0 {
+		return ""
+	}
+	length := 0
+	var builder strings.Builder
+	for _, char := range raw {
+		charBytes := utf8.RuneLen(char)
+		if charBytes < 0 {
+			charBytes = 3
+		}
+		if length+charBytes > maxBytes {
+			break
+		}
+		builder.WriteRune(char)
+		length += charBytes
+	}
+	return strings.TrimSpace(builder.String())
+}
+
+// Reserve at most 45 bytes for the subscription label. This keeps node
+// names readable while respecting the exact normalization limit.
 func subscriptionOutboundName(source OutboundSubscription, nodeName string, ordinal int) string {
-	name := strings.TrimSpace(nodeName)
+	label := truncateSubscriptionName(safeSubscriptionNamePart(source.Name), 45)
+	if label == "" {
+		label = "Subscription"
+	}
+	name := safeSubscriptionNamePart(nodeName)
 	if name == "" {
 		name = fmt.Sprintf("Node %d", ordinal)
 	}
-	prefix := source.Name + " | "
-	r := []rune(prefix + name)
-	if len(r) > 120 {
-		r = r[:120]
+	prefix := label + " | "
+	available := 128 - len(prefix)
+	return prefix + truncateSubscriptionName(name, available)
+}
+
+func uniqueSubscriptionName(base string, used map[string]bool) string {
+	if !used[base] {
+		used[base] = true
+		return base
 	}
-	return string(r)
+	for suffixIndex := 2; ; suffixIndex++ {
+		suffix := fmt.Sprintf(" [%d]", suffixIndex)
+		candidate := truncateSubscriptionName(base, 128-len(suffix)) + suffix
+		if !used[candidate] {
+			used[candidate] = true
+			return candidate
+		}
+	}
 }
 
 func applySubscriptionNodes(state State, sub OutboundSubscription, imported []MihomoOutbound) (State, error) {
@@ -270,26 +350,19 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 		updated = append(updated, item)
 		existingNames[item.Name] = true
 	}
-	nameUsed := map[string]int{}
+	// Keep manual Outbounds untouched. Any collision is resolved by a
+	// deterministic suffix on the newly imported name.
+	used := make(map[string]bool, len(existingNames)+len(imported))
+	for name := range existingNames {
+		used[name] = true
+	}
 	addedNames := map[string]bool{}
 	orderedNames := make([]string, 0, len(imported))
 	for idx, node := range imported {
 		if node.Kind != "proxy" {
 			return state, errors.New("подписки могут содержать только узлы")
 		}
-		name := subscriptionOutboundName(sub, node.Name, idx+1)
-		nameUsed[name]++
-		if nameUsed[name] > 1 {
-			suffix := fmt.Sprintf(" [%d]", nameUsed[name])
-			base := []rune(name)
-			if len(base)+len([]rune(suffix)) > 128 {
-				base = base[:128-len([]rune(suffix))]
-			}
-			name = string(base) + suffix
-		}
-		if existingNames[name] || addedNames[name] {
-			return state, fmt.Errorf("конфликт имени узла %q с существующим Outbound", name)
-		}
+		name := uniqueSubscriptionName(subscriptionOutboundName(sub, node.Name, idx+1), used)
 		addedNames[name] = true
 		orderedNames = append(orderedNames, name)
 		node.Name = name
@@ -401,13 +474,17 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 		}
 		writeJSON(w, http.StatusOK, apiResponse{OK: true, Data: items})
 	case http.MethodPost:
-		var input OutboundSubscription
+		var input struct {
+			OutboundSubscription
+			CreateGroup bool   `json:"createGroup"`
+			GroupType   string `json:"groupType"`
+		}
 		if err := decodeJSON(r, &input); err != nil {
 			writeJSON(w, 400, apiResponse{Message: "некорректная подписка"})
 			return
 		}
 		input.ID = ""
-		sub, err := normalizeOutboundSubscription(input)
+		sub, err := normalizeOutboundSubscription(input.OutboundSubscription)
 		if err != nil {
 			writeJSON(w, 400, apiResponse{Message: err.Error()})
 			return
@@ -435,7 +512,7 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 			var items []MihomoOutbound
 			items, err = parseOutboundSubscription(data)
 			if err == nil {
-				err = a.manager.commitOutboundSubscription(sub, items, true)
+				err = a.manager.commitOutboundSubscriptionWithGroup(sub, items, true, input.CreateGroup, input.GroupType)
 			}
 		}
 		if err != nil {
@@ -450,6 +527,10 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 
 func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	if r.URL.Path == "/api/mihomo/subscriptions/preview" {
+		a.previewOutboundSubscription(w, r)
+		return
+	}
 	suffix := strings.TrimPrefix(r.URL.Path, "/api/mihomo/subscriptions/")
 	parts := strings.Split(suffix, "/")
 	if len(parts) < 1 || len(parts) > 2 || parts[0] == "" {
@@ -501,7 +582,9 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 		if err == nil {
 			// Renaming the source is allowed; existing nodes change name in a
 			// single validated transaction, with a conservative dependency check.
-			if changes.URL != current.URL || changes.Name != current.Name || changes.Group != current.Group {
+			if changes.URL != current.URL || changes.Name != current.Name || changes.Group != current.Group ||
+				changes.FilterKeep != current.FilterKeep || changes.FilterExclude != current.FilterExclude ||
+				!slices.Equal(changes.ExcludedNodeKeys, current.ExcludedNodeKeys) {
 				var body []byte
 				body, err = downloadOutboundSubscription(r.Context(), changes.URL)
 				if err == nil {
@@ -549,6 +632,27 @@ func (m *CoreManager) updateOutboundSubscriptionMetadata(sub OutboundSubscriptio
 // commitOutboundSubscription performs a full, verified reconciliation before
 // saving any state. The other subscription's and manual outbounds are unchanged.
 func (m *CoreManager) commitOutboundSubscription(sub OutboundSubscription, nodes []MihomoOutbound, isNew bool) error {
+	return m.commitOutboundSubscriptionWithGroup(sub, nodes, isNew, false, "")
+}
+func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscription, nodes []MihomoOutbound, isNew, createGroup bool, groupType string) error {
+	if createGroup && !isNew {
+		return errors.New("новую группу можно создавать только вместе с новой подпиской")
+	}
+	if createGroup {
+		if sub.Group == "" {
+			return errors.New("укажите имя нового балансировщика")
+		}
+		if groupType == "" {
+			groupType = "url-test"
+		}
+		if !containsString([]string{"select", "url-test", "fallback", "load-balance"}, groupType) {
+			return fmt.Errorf("неподдерживаемый тип балансировщика %q", groupType)
+		}
+	}
+	selected, _, err := filterSubscriptionNodes(sub, nodes)
+	if err != nil {
+		return err
+	}
 	m.mu.Lock()
 	before := m.state
 	if isNew {
@@ -559,7 +663,19 @@ func (m *CoreManager) commitOutboundSubscription(sub OutboundSubscription, nodes
 			}
 		}
 	}
-	next, err := applySubscriptionNodes(before, sub, nodes)
+	working := before
+	if createGroup {
+		for _, item := range before.Outbounds {
+			if item.Name == sub.Group {
+				m.mu.Unlock()
+				return fmt.Errorf("Outbound или балансировщик %q уже существует", sub.Group)
+			}
+		}
+		working.Outbounds = append(append([]MihomoOutbound(nil), before.Outbounds...),
+			MihomoOutbound{Kind: "group", Name: sub.Group, Type: groupType,
+				TestURL: defaultMihomoTestURL, Interval: 300})
+	}
+	next, err := applySubscriptionNodes(working, sub, selected)
 	if err != nil {
 		m.mu.Unlock()
 		return err
@@ -569,7 +685,7 @@ func (m *CoreManager) commitOutboundSubscription(sub OutboundSubscription, nodes
 	sub.LastError = ""
 	sub.LastAttempt = time.Now().UTC().Format(time.RFC3339)
 	sub.LastUpdated = sub.LastAttempt
-	sub.NodeCount = len(nodes)
+	sub.NodeCount = len(selected)
 	for i := range copySubs {
 		if copySubs[i].ID == sub.ID {
 			copySubs[i] = sub
@@ -854,4 +970,38 @@ func preflightOutboundSubscriptionConfig(dataDir, corePath string, config []byte
 		return fmt.Errorf("ядро Mihomo отклонило конфигурацию подписки; исходные узлы сохранены")
 	}
 	return nil
+}
+
+// A read-only preview fetches and parses the remote source, returning public
+// node labels and opaque selection keys only, never credentials or raw YAML.
+func (a *App) previewOutboundSubscription(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, 405, apiResponse{Message: "method not allowed"})
+		return
+	}
+	var sub OutboundSubscription
+	if err := decodeJSON(r, &sub); err != nil {
+		writeJSON(w, 400, apiResponse{Message: "некорректные данные"})
+		return
+	}
+	if sub.Name == "" {
+		sub.Name = "Preview"
+	}
+	normalized, err := normalizeOutboundSubscription(sub)
+	if err != nil {
+		writeJSON(w, 400, apiResponse{Message: err.Error()})
+		return
+	}
+	body, err := downloadOutboundSubscription(r.Context(), normalized.URL)
+	if err != nil {
+		writeJSON(w, 400, apiResponse{Message: err.Error()})
+		return
+	}
+	nodes, err := parseOutboundSubscription(body)
+	if err != nil {
+		writeJSON(w, 400, apiResponse{Message: err.Error()})
+		return
+	}
+	_, preview, _ := filterSubscriptionNodes(normalized, nodes)
+	writeJSON(w, 200, apiResponse{OK: true, Data: preview})
 }

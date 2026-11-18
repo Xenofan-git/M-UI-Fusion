@@ -25,3 +25,25 @@
 .outsub-dialog .outsub-actions{justify-content:flex-end;margin-top:18px}
 .outsub-dialog .outsub-warning{color:var(--text-muted);font-size:12px;line-height:1.6}
 @media(max-width:700px){.outsub-card{padding:14px}.outsub-dialog{padding:16px}.outsub-heading{align-items:flex-start}}
+
+/* Balancers tab contains the existing linked subscription cards. */
+[data-mihomo-pane="balancers"] .outsub-page {
+  margin-top:22px; padding-top:18px; border-top:1px solid var(--border);
+}
+[data-mihomo-pane="balancers"] .outsub-heading h1{font-size:18px;}
+.outsub-dialog-wide {width:min(790px,100%);}
+.outsub-preview-toolbar,.outsub-preview-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;}
+.outsub-preview-toolbar input[type=search]{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg,var(--surface));color:var(--text-strong);}
+.outsub-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.outsub-filters label{min-width:0;}
+.outsub-filters textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:9px;background:var(--bg,var(--surface));color:var(--text-strong);font:inherit;padding:10px;resize:vertical;}
+.outsub-preview-count{font-size:13px;color:var(--text-muted);margin:12px 0;}
+.outsub-preview-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px;}
+.outsub-node{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
+.outsub-node:last-child{border-bottom:0;}
+.outsub-node.filtered{opacity:.48;cursor:default;}
+.outsub-node span{display:flex;flex-direction:column;gap:3px;min-width:0;overflow-wrap:anywhere;}
+.outsub-node strong{font-size:13px;font-weight:600;color:var(--text-strong);}
+.outsub-node small{font-size:11px;color:var(--text-muted);}
+.outsub-node input{flex:none;}
+@media(max-width:670px){.outsub-filters{grid-template-columns:1fr;}.outsub-preview-toolbar input[type=search]{min-width:100%;}}
