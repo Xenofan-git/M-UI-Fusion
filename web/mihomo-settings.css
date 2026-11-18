@@ -402,3 +402,42 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
   .mihomo-field.full{grid-column:auto}
 }
 
+
+/* M-UI Fusion: subscription-backed balancer action.
+   Keep the label legible on hover/focus for all UI themes. The inherited
+   legacy --teal-3 hover token can become near-black in a dark palette,
+   without updating the label foreground. Apply an explicit contrast pair. */
+html[data-ui-theme="shadcn"] body .mihomo-toolbar #mihomo-add-sub-balancer {
+  background: var(--sc-primary, #18181b) !important;
+  color: var(--sc-primary-fg, #fafafa) !important;
+  border-color: var(--sc-primary, #18181b) !important;
+  -webkit-text-fill-color: currentColor !important;
+  opacity: 1;
+}
+html[data-ui-theme="shadcn"] body .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover, :focus-visible):not(:disabled) {
+  background: color-mix(in srgb, var(--sc-primary, #18181b) 92%, var(--sc-bg, #fff)) !important;
+  color: var(--sc-primary-fg, #fafafa) !important;
+  -webkit-text-fill-color: currentColor !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+html[data-ui-theme="shadcn"] body.dark .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover, :focus-visible):not(:disabled) {
+  background: #e8e8eb !important;
+  color: #18181b !important;
+  -webkit-text-fill-color: #18181b !important;
+  border-color: #fafafa !important;
+}
+html[data-ui-theme="md3"] body .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover, :focus-visible):not(:disabled) {
+  background: color-mix(in srgb, var(--m3-primary, #6750a4) 92%, var(--m3-on-primary, #fff)) !important;
+  color: var(--m3-on-primary, #fff) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover, :focus-visible):not(:disabled) {
+  --lb-fill: #138dff;
+  --lb-text: #ffffff;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+.mihomo-toolbar #mihomo-add-sub-balancer .sf-symbol {
+  color: inherit !important;
+}

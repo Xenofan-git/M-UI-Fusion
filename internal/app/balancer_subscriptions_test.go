@@ -234,3 +234,23 @@ func TestBalancerManualSubscriptionMemberIsPreserved(t *testing.T) {
 		t.Fatalf("legacy groups broke after migration: %v", err)
 	}
 }
+
+func TestSubscriptionBalancerHoverKeepsContrast(t *testing.T) {
+	stylesheet, err := os.ReadFile("web/mihomo-settings.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(stylesheet)
+	// The dark Shadcn theme uses light primary buttons with dark text.
+	for _, rule := range []string{
+		`body.dark .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover, :focus-visible):not(:disabled)`,
+		`background: #e8e8eb !important`,
+		`color: #18181b !important`,
+		`-webkit-text-fill-color: #18181b !important`,
+		`html[data-ui-theme="md3"] body .mihomo-toolbar #mihomo-add-sub-balancer`,
+	} {
+		if !strings.Contains(css, rule) {
+			t.Errorf("missing high-contrast hover styling: %s", rule)
+		}
+	}
+}
