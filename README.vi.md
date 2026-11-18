@@ -78,7 +78,7 @@ Trình cài đặt chọn một cổng trống có năm chữ số, tạo đư�
 
 ```bash
 sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
-  --port 34567 --listen-ip 192.168.4.26
+  --port 34567
 ```
 
 m-ui được cài vào `/usr/local/m-ui`, dữ liệu nằm trong `/usr/local/m-ui/data`. Trình cài đặt cũng tải lõi Mihomo cho kiến trúc hiện tại; lõi đã có sẽ được giữ lại trừ khi bạn dùng `--update-mihomo`.

@@ -78,7 +78,7 @@ O instalador escolhe uma porta livre de cinco dígitos e gera um caminho de pain
 
 ```bash
 sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
-  --port 34567 --listen-ip 192.168.4.26
+  --port 34567
 ```
 
 O m-ui é instalado em `/usr/local/m-ui` e guarda os dados em `/usr/local/m-ui/data`. O instalador também baixa um núcleo do Mihomo para a arquitetura atual; um núcleo já instalado é mantido, a menos que você use `--update-mihomo`.

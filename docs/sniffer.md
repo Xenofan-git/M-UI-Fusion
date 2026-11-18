@@ -25,4 +25,4 @@ Verification:
 - Run `go test ./...`
 - Run `node --check web/mihomo-settings.js`
 - Generate YAML and validate with the target Mihomo binary (`mihomo -t`).
-- Back up state/config/binary before deploying to ARM64 and test from Keenetic.
+- Back up state/config/binary before deploying to any target server and test using an authorized client.

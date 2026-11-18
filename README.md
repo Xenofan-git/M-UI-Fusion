@@ -13,18 +13,18 @@
 >
 > **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-sniffer/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
 
-## Quick SSH installation (Linux ARM64 / NanoPi)
+## Quick SSH installation (Linux)
 
-Connect from your computer, phone (Termux), or another SSH client on the authorized LAN:
+Connect to your Linux server from an authorized SSH client (replace `USER` and `SERVER_IP` with your own values):
 
 ```bash
-ssh pi@192.168.4.26
+ssh USER@SERVER_IP
 ```
 
-Alternatively, if the NanoPi is connected and reachable via Tailscale:
+Alternatively, if your server is accessible via Tailscale (replace `TAILSCALE_IP`):
 
 ```bash
-ssh pi@100.70.73.57
+ssh USER@TAILSCALE_IP
 ```
 
 Then **on the Linux server** download, syntax-check, and run the Sniffer installer:
@@ -43,7 +43,7 @@ sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
 
-The first install chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, and upgrade steps:** [SSH guide in Russian](docs/INSTALL.ru.md).
+M-UI-sniffer is not tied to a specific device. The installer detects the Linux architecture (including AMD64 and ARM64) and chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, and upgrade steps:** [SSH guide in Russian](docs/INSTALL.ru.md).
 
 ## Build this fork
 
@@ -52,7 +52,9 @@ Use Go **1.26.10** or later with its required security fixes:
 ```bash
 git clone https://github.com/Xenofan-git/M-UI-sniffer.git
 cd M-UI-sniffer
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-sniffer" -o m-ui-linux-arm64-sniffer .
+# Go selects the target CPU architecture from the current machine.
+# For cross-compilation, set GOARCH=arm64, GOARCH=amd64, etc.
+GOOS=linux CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-sniffer" -o m-ui-linux-sniffer .
 ```
 
 GitHub Actions also runs tests and builds the ARM64 binary after each change to `main`. Production upgrade should only be performed after backing up `state.json`, `config.yaml`, and the currently installed binary and testing the new binary.
@@ -133,11 +135,11 @@ bash -n /tmp/m-ui-sniffer-install.sh
 sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl
 ```
 
-The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a local-only address and a fixed port (replace 192.168.4.26 on other servers):
+The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a fixed port; optionally add `--listen-ip SERVER_LOCAL_IP` after replacing the placeholder with an address assigned to your server:
 
 ```bash
 sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.1 --no-ssl \
-  --port 34567 --listen-ip 192.168.4.26
+  --port 34567
 ```
 
 m-ui is installed under `/usr/local/m-ui`, with its data in `/usr/local/m-ui/data`. The installer also downloads a Mihomo core for the current architecture; an existing core is kept unless you pass `--update-mihomo`.

@@ -11,4 +11,4 @@ Based on [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/relea
 
 See [installation instructions in Russian](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/docs/INSTALL.ru.md) for SSH login, first installation, safe updates, backup, verification, and rollback. Use the version tag shown on this release; do not download the original m-ui installer for this fork.
 
-**Security:** The panel contains admin credentials, routing settings, and subscriptions. Keep access restricted to trusted networks and back up state before upgrading. Release assets contain software only, never NanoPi runtime credentials.
+**Security:** The panel contains admin credentials, routing settings, and subscriptions. Keep access restricted to trusted networks and back up state before upgrading. Release assets contain software only, never runtime credentials from any server.
