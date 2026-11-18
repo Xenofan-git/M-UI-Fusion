@@ -13,6 +13,8 @@
 >
 > **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-sniffer/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
 
+**Separate Balancers tab:** Outbounds now shows proxy nodes only. **Balancers** has its own sidebar entry and Mihomo tab, with multiple URL subscriptions attachable to one group and automatic node reconciliation. [Balancer guide (Russian)](docs/BALANCERS.ru.md).
+
 **Inbound VPN node URL subscriptions:** New sidebar **Subscriptions** section imports provider nodes into Outbounds, supports Base64/share-links and Mihomo YAML, manual sync, optional group linking and scheduled updates. [Documentation (Russian)](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).\n\n## Quick SSH installation (Linux)
 
 Connect to your Linux server from an authorized SSH client (replace `USER` and `SERVER_IP` with your own values):
@@ -32,13 +34,13 @@ Then **on the Linux server** download, syntax-check, and run the Sniffer install
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
 bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
 ```
 
 For an existing installation, first back up the binary and state, then use:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.2
+sudo bash /tmp/m-ui-sniffer-install.sh --update --version v0.3.3-sniffer.3
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
@@ -132,13 +134,13 @@ Run as `root` on a Linux system using systemd or OpenRC:
 ```bash
 curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-sniffer/main/install.sh -o /tmp/m-ui-sniffer-install.sh
 bash -n /tmp/m-ui-sniffer-install.sh
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl
 ```
 
 The installer picks an unused five-digit panel port and generates a 16-character panel path, a 14-character username, and a 16-character password. It prints the access URL and credentials once at the end. You can set a fixed port; optionally add `--listen-ip SERVER_LOCAL_IP` after replacing the placeholder with an address assigned to your server:
 
 ```bash
-sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-sniffer-install.sh --version v0.3.3-sniffer.3 --no-ssl \
   --port 34567
 ```
 

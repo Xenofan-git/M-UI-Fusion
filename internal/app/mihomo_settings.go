@@ -43,6 +43,7 @@ type MihomoOutbound struct {
 	// SoftEther VPN Client adapter; the metadata travels with the outbound.
 	VPNGate              *VPNGateConfig `json:"vpngate,omitempty"`
 	SourceSubscriptionID string         `json:"sourceSubscriptionId,omitempty"` // managed inbound URL subscription
+	SubscriptionIDs      []string       `json:"subscriptionIds,omitempty"`      // subscribed sources for a policy group
 
 	// Proxy node common fields.
 	Server            string `json:"server,omitempty"`
@@ -193,6 +194,14 @@ func (a *App) handleMihomoSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *CoreManager) updateMihomoSettings(input mihomoSettingsPayload) error {
+	m.mu.Lock()
+	sourceState := m.state
+	m.mu.Unlock()
+	withSubscriptions, err := materializeGroupSubscriptions(sourceState, input.Outbounds)
+	if err != nil {
+		return err
+	}
+	input.Outbounds = withSubscriptions
 	outbounds, err := normalizeMihomoOutbounds(input.Outbounds)
 	if err != nil {
 		return err
@@ -216,11 +225,17 @@ func (m *CoreManager) applyMihomoSettings(input mihomoSettingsPayload, outbounds
 	if err := validateManagedOutboundSnapshot(m.state.Outbounds, outbounds); err != nil {
 		return err
 	}
+	liveOutbounds, err := materializeGroupSubscriptions(m.state, outbounds)
+	if err != nil {
+		return err
+	}
+	if !groupSubscriptionsMatch(liveOutbounds, outbounds) {
+		return fmt.Errorf("состав подписок изменился; обновите вкладку балансировщиков")
+	}
 	basics := effectiveMihomoBasics(m.state)
 	if input.Basics != nil {
 		basics = *input.Basics
 	}
-	var err error
 	basics, err = normalizeMihomoBasics(basics)
 	if err != nil {
 		return err
@@ -262,6 +277,7 @@ func normalizeMihomoOutbounds(input []MihomoOutbound) ([]MihomoOutbound, error) 
 			parsed.WarpDeviceID = item.WarpDeviceID
 			parsed.VPNGate = item.VPNGate
 			parsed.SourceSubscriptionID = item.SourceSubscriptionID
+			parsed.SubscriptionIDs = append([]string(nil), item.SubscriptionIDs...)
 			*item = parsed
 		}
 		item.Kind = strings.ToLower(strings.TrimSpace(item.Kind))

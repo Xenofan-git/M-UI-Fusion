@@ -331,7 +331,7 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 			}
 			members = append(members, member)
 		}
-		if group.Name == sub.Group {
+		if group.Name == sub.Group || containsString(group.SubscriptionIDs, sub.ID) {
 			changed = true
 			for _, name := range orderedNames {
 				if !containsString(members, name) {
@@ -711,6 +711,12 @@ func (m *CoreManager) removeOutboundSubscription(sub OutboundSubscription, keepN
 	}
 	if keepNodes {
 		next.Outbounds = append([]MihomoOutbound(nil), before.Outbounds...)
+		for i := range next.Outbounds {
+			group := &next.Outbounds[i]
+			if group.Kind == "group" && containsString(group.SubscriptionIDs, sub.ID) {
+				group.SubscriptionIDs = withoutSubscriptionID(group.SubscriptionIDs, sub.ID)
+			}
+		}
 		for i := range next.Outbounds {
 			if next.Outbounds[i].SourceSubscriptionID == sub.ID {
 				next.Outbounds[i].SourceSubscriptionID = ""

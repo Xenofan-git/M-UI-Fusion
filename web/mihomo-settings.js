@@ -13,6 +13,7 @@
   if(!root)return;
 
   let draft={outbounds:[],routingRules:[],basics:defaultBasics()},dirty=false,currentTab='basics',editingOutbound='',editingRule='',outboundMode='form',outboundBusy=false,editingOriginal=null;
+  let balancerSubscriptions=[];
   let outboundFormChanged=false,outboundYAMLCached=false;
 
   function freshID(prefix){return prefix+'-'+crypto.randomUUID().replaceAll('-','').slice(0,12);}
@@ -46,7 +47,7 @@
   }
   function outboundAddress(item){
     if(item.vpngate)return `vpn_vpn${item.vpngate.slot} · table ${100+Number(item.vpngate.slot)}`;
-    if(item.kind==='group')return (item.proxies||[]).join(', ');
+    if(item.kind==='group')return String((item.proxies||[]).length)+' узлов · '+String((item.subscriptionIds||[]).length)+' подписок';
     return `${item.server||'—'}${item.port?':'+item.port:''}`;
   }
   function outboundRows(){
@@ -62,11 +63,12 @@
   function delayLabel(name){const value=delayResults.get(name);return value==='Testing'?muiT('mh.testing'):value||'';}
   function outboundSupportsDelay(item){return !['reject','reject-drop'].includes(String(item.type||'').toLowerCase());}
   function renderOutbounds(){
-    const box=$('#mihomo-outbound-table');
-    const rows=outboundRows(),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
+    const onlyGroups=currentTab==='balancers';
+    const box=$(onlyGroups?'#mihomo-balancer-table':'#mihomo-outbound-table');
+    const rows=outboundRows().filter(item=>onlyGroups?item.kind==='group':item.kind!=='group'),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
     box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
-      const custom=item.kind!=='builtin',position=draft.outbounds.findIndex(entry=>entry.id===item.id),kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
-      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td><span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span></td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===draft.outbounds.length-1?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
+      const custom=item.kind!=='builtin',position=draft.outbounds.filter(entry=>entry.kind===item.kind).findIndex(entry=>entry.id===item.id),lastPosition=draft.outbounds.filter(entry=>entry.kind===item.kind).length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
+      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td><span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span></td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
     bindOutboundTable();
     $$('[data-test-outbound]',root).forEach(button=>button.onclick=()=>testOutbound(button));
@@ -78,7 +80,11 @@
     $$('[data-outbound-down]',root).forEach(button=>button.onclick=()=>moveOutbound(button.dataset.outboundDown,1));
   }
   function moveOutbound(id,delta){
-    const index=draft.outbounds.findIndex(item=>item.id===id),next=index+delta;
+    const index=draft.outbounds.findIndex(item=>item.id===id);
+    const kind=draft.outbounds[index]?.kind;
+    const peers=draft.outbounds.map((item,position)=>({item,position})).filter(x=>x.item.kind===kind);
+    const at=peers.findIndex(x=>x.position===index);
+    const next=peers[at+delta]?.position??-1;
     if(index<0||next<0||next>=draft.outbounds.length)return;
     [draft.outbounds[index],draft.outbounds[next]]=[draft.outbounds[next],draft.outbounds[index]];
     markDirty();
@@ -141,7 +147,7 @@
   function ensureModals(){
     if($('#mihomo-outbound-modal'))return;
     const outboundModal=document.createElement('div');outboundModal.className='modal-backdrop';outboundModal.id='mihomo-outbound-modal';outboundModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-outbound-title"><header class="modal-titlebar"><span id="mihomo-outbound-title">Add Outbound</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-outbound-form" novalidate><div class="modal-content"><div class="mihomo-editor-tabs" role="tablist" aria-label="Outbound input"><button type="button" role="tab" id="outbound-form-tab" aria-controls="outbound-form-panel" aria-selected="true" data-outbound-mode="form">Form</button><button type="button" role="tab" id="outbound-yaml-tab" aria-controls="outbound-yaml-panel" aria-selected="false" data-outbound-mode="yaml">YAML</button><span class="ink-bar"></span></div><div id="outbound-form-panel" role="tabpanel" aria-labelledby="outbound-form-tab"><div class="mihomo-form-note" data-i18n-html="mh.formNote">Proxy Node 会写入 <code>proxies</code>；Proxy Group 会写入 <code>proxy-groups</code>。两者都可作为 Routing Rule 的目标。</div><div class="mihomo-form-grid">
-      <input name="id" type="hidden"><label class="mihomo-field"><span>Kind</span><select name="kind"><option value="proxy">Proxy Node</option><option value="group">Proxy Group</option></select></label><label class="mihomo-field"><span>Name</span><input name="name" maxlength="128" required placeholder="Hong Kong / Proxy"></label>
+      <input name="id" type="hidden"><input name="kind" type="hidden" value="proxy"><label class="mihomo-field"><span>Name</span><input name="name" maxlength="128" required placeholder="Hong Kong / Proxy"></label>
       <label class="mihomo-field"><span>Type</span><select name="type"></select></label><label class="mihomo-field" data-kind="proxy" data-types="ss,snell,socks5,http,vmess,vless,trojan,hysteria2,tuic,wireguard,openvpn"><span>Server</span><input name="server" placeholder="example.com"></label><label class="mihomo-field" data-kind="proxy" data-types="ss,snell,socks5,http,vmess,vless,trojan,hysteria2,tuic,wireguard,openvpn"><span>Port</span><input name="port" type="number" min="1" max="65535" placeholder="443"></label>
       <label class="mihomo-field" data-kind="proxy" data-types="socks5,http,openvpn"><span>Username</span><input name="username" autocomplete="off"></label><label class="mihomo-field" data-kind="proxy" data-types="ss,socks5,http,trojan,hysteria2,tuic,openvpn"><span>Password</span><input name="password" autocomplete="new-password"></label><label class="mihomo-field" data-kind="proxy" data-types="snell"><span data-i18n="mihomo.snellPsk">PSK</span><input name="snellPsk" autocomplete="new-password"></label>
       <label class="mihomo-field" data-kind="proxy" data-types="vmess,vless,tuic"><span>UUID</span><div style="display:flex;gap:7px"><input name="uuid" autocomplete="off"><button class="outline-btn" id="mihomo-generate-uuid" type="button" data-i18n="mh.generate">Generate</button></div></label><label class="mihomo-field" data-kind="proxy" data-types="tuic"><span>Token (TUIC v4)</span><input name="token" autocomplete="new-password"><small data-i18n="mh.tuicTokenNote">填写 Token，或使用 UUID + Password。</small></label>
@@ -156,6 +162,7 @@
       <div class="mihomo-field full" data-kind="proxy" data-types="wireguard"><span>WireGuard</span><div class="mihomo-form-grid"><label class="mihomo-field"><span>Local IPv4 / CIDR</span><input name="wireGuardIp" placeholder="10.0.0.2/24"></label><label class="mihomo-field"><span>Local IPv6 / CIDR</span><input name="wireGuardIpv6" placeholder="fd00::2/64"></label><label class="mihomo-field"><span>Private Key</span><input name="wireGuardPrivateKey" autocomplete="off"></label><label class="mihomo-field"><span>Peer Public Key</span><input name="wireGuardPublicKey" autocomplete="off"></label><label class="mihomo-field"><span>Pre-shared Key</span><input name="wireGuardPreSharedKey" autocomplete="off"></label><label class="mihomo-field"><span>Reserved</span><input name="wireGuardReserved" pattern="[0-9]{1,3}( *, *[0-9]{1,3}){2}" placeholder="209,98,59"></label><label class="mihomo-field"><span>MTU</span><input name="wireGuardMtu" type="number" min="0" placeholder="1420"></label><label class="mihomo-field"><span>Persistent Keepalive</span><input name="wireGuardPersistentKeepalive" type="number" min="0"></label><label class="mihomo-field"><span>Workers</span><input name="wireGuardWorkers" type="number" min="0"></label><label class="mihomo-field"><span>DNS</span><input name="wireGuardDns" placeholder="1.1.1.1,8.8.8.8"></label><label class="mihomo-check"><input name="wireGuardRemoteDnsResolve" type="checkbox">Remote DNS Resolve</label><label class="mihomo-field"><span>Refresh Server IP (s)</span><input name="wireGuardRefreshServerIpInterval" type="number" min="0"></label></div></div>
       <div class="mihomo-field full" data-kind="proxy" data-types="openvpn"><span>OpenVPN</span><div class="mihomo-form-grid"><label class="mihomo-field"><span>Protocol</span><select name="openVpnProto"><option value="udp">udp</option><option value="tcp">tcp</option></select></label><label class="mihomo-field"><span>Device</span><select name="openVpnDev"><option value="tun">tun</option></select></label><label class="mihomo-field"><span>Cipher</span><select name="openVpnCipher"><option>AES-128-GCM</option><option>AES-192-GCM</option><option>AES-256-GCM</option><option>AES-128-CBC</option><option>AES-192-CBC</option><option>AES-256-CBC</option><option>CHACHA20-POLY1305</option></select></label><label class="mihomo-field"><span>Auth</span><select name="openVpnAuth"><option>SHA256</option><option>MD5</option><option>SHA1</option><option>SHA384</option><option>SHA512</option></select></label><label class="mihomo-field"><span>Data Ciphers</span><input name="openVpnDataCiphers" placeholder="AES-256-GCM,AES-128-GCM"></label><label class="mihomo-field"><span>Fallback Cipher</span><input name="openVpnDataCipherFallback"></label><label class="mihomo-field"><span>Comp LZO</span><select name="openVpnCompLzo"><option value="">none</option><option>yes</option><option>no</option><option>adaptive</option></select></label><label class="mihomo-field"><span>Key Direction</span><select name="openVpnKeyDirection"><option value="">bidirectional</option><option>0</option><option>1</option></select></label><label class="mihomo-field full"><span>CA PEM</span><textarea name="openVpnCa" rows="3"></textarea></label><label class="mihomo-field full"><span>Client Cert PEM</span><textarea name="openVpnCert" rows="3"></textarea></label><label class="mihomo-field full"><span>Client Key PEM</span><textarea name="openVpnKey" rows="3"></textarea></label><label class="mihomo-field full"><span>TLS Auth PEM</span><textarea name="openVpnTlsAuth" rows="3"></textarea></label><label class="mihomo-field full"><span>TLS Crypt PEM</span><textarea name="openVpnTlsCrypt" rows="3"></textarea></label><label class="mihomo-field full"><span>TLS Crypt v2 PEM</span><textarea name="openVpnTlsCryptV2" rows="3"></textarea></label><label class="mihomo-field"><span>Ping (s)</span><input name="openVpnPing" type="number" min="0"></label><label class="mihomo-field"><span>Ping Restart (s)</span><input name="openVpnPingRestart" type="number" min="0"></label><label class="mihomo-field"><span>Handshake Timeout (s)</span><input name="openVpnHandshakeTimeout" type="number" min="0"></label><label class="mihomo-field"><span>MTU</span><input name="openVpnMtu" type="number" min="0"></label><label class="mihomo-field"><span>DNS</span><input name="openVpnDns" placeholder="1.1.1.1,8.8.8.8"></label><label class="mihomo-check"><input name="openVpnRemoteDnsResolve" type="checkbox">Remote DNS Resolve</label></div></div>
       <div class="mihomo-field full" data-kind="proxy"><span>Common Options</span><div class="mihomo-checks"><label class="mihomo-check" data-types="ss,snell,socks5,vmess,vless,trojan,wireguard"><input name="udp" type="checkbox">UDP</label><label class="mihomo-check"><input name="tfo" type="checkbox">TCP Fast Open</label><label class="mihomo-check"><input name="mptcp" type="checkbox">MPTCP</label><label class="mihomo-check" data-types="socks5,http,vmess,vless,trojan,hysteria2,tuic"><input name="skipCertVerify" type="checkbox">Skip Certificate Verify</label></div></div>
+      <label class="mihomo-field full" data-kind="group"><span>Подписки (все узлы автоматически)</span><select name="subscriptionIds" multiple size="4"></select><small>Можно выбрать несколько подписок. Все новые узлы автоматически добавляются в балансировщик при синхронизации.</small></label>
       <label class="mihomo-field full" data-kind="group"><span>Members</span><select name="proxies" multiple></select><small data-i18n="mh.membersNote">按 Ctrl / Cmd 多选；成员可以是代理、内置策略或其他无循环依赖的策略组。</small></label><label class="mihomo-field" data-kind="group" data-group-health><span>Test URL</span><input name="testUrl" value="${defaultTestURL}"></label><label class="mihomo-field" data-kind="group" data-group-health><span>Interval (seconds)</span><input name="interval" type="number" min="0" value="300"></label><label class="mihomo-field" data-kind="group" data-group-health><span>Timeout (ms)</span><input name="timeout" type="number" min="0" placeholder="5000"></label><label class="mihomo-field" data-kind="group" data-group-type="url-test"><span>Tolerance (ms)</span><input name="tolerance" type="number" min="0"></label><label class="mihomo-field" data-kind="group" data-group-type="load-balance"><span>Strategy</span><select name="strategy"><option value="consistent-hashing">consistent-hashing</option><option value="round-robin">round-robin</option><option value="sticky-sessions">sticky-sessions</option></select></label><label class="mihomo-field" data-kind="group" data-group-type="select"><span>Default Selected</span><select name="defaultSelected"></select></label><div class="mihomo-field" data-kind="group"><span>Group Options</span><label class="mihomo-check"><input name="disableUdp" type="checkbox">Disable UDP</label></div>
     </div></div><div id="outbound-yaml-panel" role="tabpanel" aria-labelledby="outbound-yaml-tab" hidden>
       <div class="outbound-link-row"><label for="outbound-share-link">Link</label><input id="outbound-share-link" type="text" autocomplete="off" spellcheck="false" placeholder="vmess:// / vless:// / trojan:// / ss:// / hysteria2://"><button type="button" id="outbound-parse-link" title="Parse Link to YAML" aria-label="Parse Link to YAML" data-i18n-title="mh.parseLink" data-i18n-aria="mh.parseLink">${SF('edit')}</button></div>
@@ -174,6 +181,7 @@
     $('#mihomo-outbound-form').elements.snellVersion.onchange=syncSnellOutboundForm;
     $('#mihomo-outbound-form').elements.snellObfsMode.onchange=syncSnellOutboundForm;
     $('#mihomo-outbound-form').elements.proxies.onchange=()=>syncGroupDefaultOptions();
+    $('#mihomo-outbound-form').elements.subscriptionIds.onchange=()=>syncBalancerSubscriptionMembers();
     $$('[data-outbound-mode]').forEach(button=>button.onclick=()=>switchOutboundMode(button.dataset.outboundMode));
     $('#outbound-parse-link').onclick=parseOutboundLink;
     $('#outbound-share-link').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();parseOutboundLink();}};
@@ -191,7 +199,7 @@
     const yamlDraft=$('#outbound-yaml').value,linkDraft=$('#outbound-share-link').value;
     form.reset();form.elements.kind.value=item.kind||'proxy';populateOutboundTypes(form,item.type);syncOutboundTargets(item);
     for(const field of form.querySelectorAll('[name]')){
-      if(['kind','type','proxies','defaultSelected'].includes(field.name))continue;
+      if(['kind','type','proxies','defaultSelected','subscriptionIds'].includes(field.name))continue;
       setFormValue(form,field.name,item[field.name]??(field.type==='checkbox'?false:''));
     }
     form.elements.tls.value=String(!!item.tls);
@@ -203,16 +211,27 @@
     form.elements.openVpnAuth.value=item.openVpnAuth||'SHA256';
     form.elements.snellVersion.value=String(item.snellVersion||1);
     for(const option of form.elements.proxies.options)option.selected=(item.proxies||[]).includes(option.value);
+    syncBalancerSubscriptionOptions(item);
+    syncBalancerSubscriptionMembers();
     syncOutboundForm();syncGroupDefaultOptions(item.defaultSelected||'');
     $('#outbound-yaml').value=yamlDraft;$('#outbound-share-link').value=linkDraft;syncYAMLLines();
   }
-  async function openOutboundModal(id=''){
+  async function openOutboundModal(id='',requestedKind='proxy'){
+    const requestedItem=draft.outbounds.find(item=>item.id===id);
+    if((requestedItem?.kind||requestedKind)==='group'){
+      try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
+      catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
+    }
     if(draft.outbounds.find(item=>item.id===id)?.vpngate){await openVPNGateModal(id);return;}
     ensureModals();editingOutbound=id;
-    editingOriginal=clone(draft.outbounds.find(candidate=>candidate.id===id)||{kind:'proxy',type:'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'});
+    editingOriginal=clone(draft.outbounds.find(candidate=>candidate.id===id)||{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'});
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
     outboundFormChanged=false;outboundYAMLCached=false;
-    setOutboundMode('form');$('#mihomo-outbound-title').textContent=muiT(id?'mh.editOutbound':'mihomo.addOutbound');openModal('mihomo-outbound-modal');
+    setOutboundMode('form');
+    $('#mihomo-outbound-title').textContent=editingOriginal.kind==='group'
+      ?(id?'Настройки балансировщика':'Добавить балансировщик')
+      :muiT(id?'mh.editOutbound':'mihomo.addOutbound');
+    openModal('mihomo-outbound-modal');
     requestAnimationFrame(()=>{if(typeof syncInkBars==='function')syncInkBars();});
     if(editingOriginal.native){await switchOutboundMode('yaml',editingOriginal);}else $('#mihomo-outbound-form').elements.name.focus();
   }
@@ -227,6 +246,30 @@
     form.elements.proxies.innerHTML=targetOptions('',true,name);
     for(const member of item.proxies||[])if(!Array.from(form.elements.proxies.options).some(option=>option.value===member))form.elements.proxies.add(new Option(member,member));
     if(selectedDialer&&!Array.from(form.elements.dialerProxy.options).some(option=>option.value===selectedDialer))form.elements.dialerProxy.add(new Option(selectedDialer,selectedDialer,true,true));
+  }
+  function syncBalancerSubscriptionOptions(item={}){
+    const select=$('#mihomo-outbound-form').elements.subscriptionIds;
+    if(!select)return;
+    select.replaceChildren();
+    for(const source of balancerSubscriptions){
+      const option=new Option(source.name+' ('+String(source.nodeCount||0)+')',source.id);
+      option.selected=(item.subscriptionIds||[]).includes(source.id)||source.group===item.name;
+      select.add(option);
+    }
+  }
+  function syncBalancerSubscriptionMembers(){
+    const form=$('#mihomo-outbound-form');
+    if(form.elements.kind.value!=='group')return;
+    const ids=new Set(Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value));
+    const previouslyAttached=new Set((editingOriginal?.subscriptionIds||[]));
+    for(const source of balancerSubscriptions)if(source.group===editingOriginal?.name)previouslyAttached.add(source.id);
+    for(const option of form.elements.proxies.options){
+      const node=draft.outbounds.find(candidate=>candidate.name===option.value);
+      if(!node?.sourceSubscriptionId)continue;
+      if(ids.has(node.sourceSubscriptionId))option.selected=true;
+      else if(previouslyAttached.has(node.sourceSubscriptionId))option.selected=false;
+    }
+    syncGroupDefaultOptions();
   }
   function syncOutboundForm(){
     const form=$('#mihomo-outbound-form'),kind=form.elements.kind.value,previous=form.elements.type.value;
@@ -263,7 +306,7 @@
     const form=$('#mihomo-outbound-form'),kind=form.elements.kind.value,type=form.elements.type.value;
     const csv=value=>String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
     const csvInts=value=>csv(value).map(part=>Number(part)).filter(Number.isFinite);
-    const item={...clone(editingOriginal||{}),id:form.elements.id.value||freshID('outbound'),kind,name:form.elements.name.value.trim(),type,server:type==='direct'?'':form.elements.server.value.trim(),port:type==='direct'?0:Number(form.elements.port.value)||0,username:form.elements.username.value.trim(),password:form.elements.password.value,snellPsk:form.elements.snellPsk.value,snellVersion:Number(form.elements.snellVersion.value)||1,snellReuse:form.elements.snellReuse.checked,snellObfsMode:form.elements.snellObfsMode.value,snellObfsHost:form.elements.snellObfsHost.value.trim(),uuid:form.elements.uuid.value.trim(),alterId:Number(form.elements.alterId.value)||0,cipher:type==='vmess'?form.elements.vmessCipher.value:form.elements.cipher.value,udp:form.elements.udp.checked,tls:form.elements.tls.value==='true',skipCertVerify:form.elements.skipCertVerify.checked,sni:form.elements.sni.value.trim(),alpn:form.elements.alpn.value.trim(),network:form.elements.network.value,wsPath:form.elements.wsPath.value.trim(),wsHost:form.elements.wsHost.value.trim(),grpcServiceName:form.elements.grpcServiceName.value.trim(),flow:form.elements.flow.value.trim(),encryption:form.elements.encryption.value.trim(),clientFingerprint:form.elements.clientFingerprint.value.trim(),ipVersion:form.elements.ipVersion.value,dialerProxy:form.elements.dialerProxy.value,interfaceName:form.elements.interfaceName.value.trim(),routingMark:Number(form.elements.routingMark.value)||0,tfo:form.elements.tfo.checked,mptcp:form.elements.mptcp.checked,wireGuardIp:form.elements.wireGuardIp.value.trim(),wireGuardIpv6:form.elements.wireGuardIpv6.value.trim(),wireGuardPrivateKey:form.elements.wireGuardPrivateKey.value.trim(),wireGuardPublicKey:form.elements.wireGuardPublicKey.value.trim(),wireGuardPreSharedKey:form.elements.wireGuardPreSharedKey.value.trim(),wireGuardReserved:csvInts(form.elements.wireGuardReserved.value),wireGuardPersistentKeepalive:Number(form.elements.wireGuardPersistentKeepalive.value)||0,wireGuardMtu:Number(form.elements.wireGuardMtu.value)||0,wireGuardWorkers:Number(form.elements.wireGuardWorkers.value)||0,wireGuardDns:csv(form.elements.wireGuardDns.value),wireGuardRemoteDnsResolve:form.elements.wireGuardRemoteDnsResolve.checked,wireGuardRefreshServerIpInterval:Number(form.elements.wireGuardRefreshServerIpInterval.value)||0,openVpnProto:form.elements.openVpnProto.value,openVpnDev:form.elements.openVpnDev.value,openVpnCipher:form.elements.openVpnCipher.value,openVpnDataCiphers:csv(form.elements.openVpnDataCiphers.value),openVpnDataCipherFallback:form.elements.openVpnDataCipherFallback.value.trim(),openVpnAuth:form.elements.openVpnAuth.value,openVpnCompLzo:form.elements.openVpnCompLzo.value,openVpnCa:form.elements.openVpnCa.value.trim(),openVpnCert:form.elements.openVpnCert.value.trim(),openVpnKey:form.elements.openVpnKey.value.trim(),openVpnTlsAuth:form.elements.openVpnTlsAuth.value.trim(),openVpnKeyDirection:form.elements.openVpnKeyDirection.value,openVpnTlsCrypt:form.elements.openVpnTlsCrypt.value.trim(),openVpnTlsCryptV2:form.elements.openVpnTlsCryptV2.value.trim(),openVpnPing:Number(form.elements.openVpnPing.value)||0,openVpnPingRestart:Number(form.elements.openVpnPingRestart.value)||0,openVpnHandshakeTimeout:Number(form.elements.openVpnHandshakeTimeout.value)||0,openVpnMtu:Number(form.elements.openVpnMtu.value)||0,openVpnDns:csv(form.elements.openVpnDns.value),openVpnRemoteDnsResolve:form.elements.openVpnRemoteDnsResolve.checked,up:form.elements.up.value.trim(),down:form.elements.down.value.trim(),obfs:form.elements.obfs.value,obfsPassword:form.elements.obfsPassword.value,token:form.elements.token.value.trim(),congestionController:form.elements.congestionController.value,udpRelayMode:form.elements.udpRelayMode.value,proxies:orderedMembers(form),testUrl:form.elements.testUrl.value.trim(),interval:Number(form.elements.interval.value)||0,timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,strategy:form.elements.strategy.value,defaultSelected:form.elements.defaultSelected.value,disableUdp:form.elements.disableUdp.checked};
+    const item={...clone(editingOriginal||{}),id:form.elements.id.value||freshID('outbound'),kind,subscriptionIds:kind==='group'?Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value):[],name:form.elements.name.value.trim(),type,server:type==='direct'?'':form.elements.server.value.trim(),port:type==='direct'?0:Number(form.elements.port.value)||0,username:form.elements.username.value.trim(),password:form.elements.password.value,snellPsk:form.elements.snellPsk.value,snellVersion:Number(form.elements.snellVersion.value)||1,snellReuse:form.elements.snellReuse.checked,snellObfsMode:form.elements.snellObfsMode.value,snellObfsHost:form.elements.snellObfsHost.value.trim(),uuid:form.elements.uuid.value.trim(),alterId:Number(form.elements.alterId.value)||0,cipher:type==='vmess'?form.elements.vmessCipher.value:form.elements.cipher.value,udp:form.elements.udp.checked,tls:form.elements.tls.value==='true',skipCertVerify:form.elements.skipCertVerify.checked,sni:form.elements.sni.value.trim(),alpn:form.elements.alpn.value.trim(),network:form.elements.network.value,wsPath:form.elements.wsPath.value.trim(),wsHost:form.elements.wsHost.value.trim(),grpcServiceName:form.elements.grpcServiceName.value.trim(),flow:form.elements.flow.value.trim(),encryption:form.elements.encryption.value.trim(),clientFingerprint:form.elements.clientFingerprint.value.trim(),ipVersion:form.elements.ipVersion.value,dialerProxy:form.elements.dialerProxy.value,interfaceName:form.elements.interfaceName.value.trim(),routingMark:Number(form.elements.routingMark.value)||0,tfo:form.elements.tfo.checked,mptcp:form.elements.mptcp.checked,wireGuardIp:form.elements.wireGuardIp.value.trim(),wireGuardIpv6:form.elements.wireGuardIpv6.value.trim(),wireGuardPrivateKey:form.elements.wireGuardPrivateKey.value.trim(),wireGuardPublicKey:form.elements.wireGuardPublicKey.value.trim(),wireGuardPreSharedKey:form.elements.wireGuardPreSharedKey.value.trim(),wireGuardReserved:csvInts(form.elements.wireGuardReserved.value),wireGuardPersistentKeepalive:Number(form.elements.wireGuardPersistentKeepalive.value)||0,wireGuardMtu:Number(form.elements.wireGuardMtu.value)||0,wireGuardWorkers:Number(form.elements.wireGuardWorkers.value)||0,wireGuardDns:csv(form.elements.wireGuardDns.value),wireGuardRemoteDnsResolve:form.elements.wireGuardRemoteDnsResolve.checked,wireGuardRefreshServerIpInterval:Number(form.elements.wireGuardRefreshServerIpInterval.value)||0,openVpnProto:form.elements.openVpnProto.value,openVpnDev:form.elements.openVpnDev.value,openVpnCipher:form.elements.openVpnCipher.value,openVpnDataCiphers:csv(form.elements.openVpnDataCiphers.value),openVpnDataCipherFallback:form.elements.openVpnDataCipherFallback.value.trim(),openVpnAuth:form.elements.openVpnAuth.value,openVpnCompLzo:form.elements.openVpnCompLzo.value,openVpnCa:form.elements.openVpnCa.value.trim(),openVpnCert:form.elements.openVpnCert.value.trim(),openVpnKey:form.elements.openVpnKey.value.trim(),openVpnTlsAuth:form.elements.openVpnTlsAuth.value.trim(),openVpnKeyDirection:form.elements.openVpnKeyDirection.value,openVpnTlsCrypt:form.elements.openVpnTlsCrypt.value.trim(),openVpnTlsCryptV2:form.elements.openVpnTlsCryptV2.value.trim(),openVpnPing:Number(form.elements.openVpnPing.value)||0,openVpnPingRestart:Number(form.elements.openVpnPingRestart.value)||0,openVpnHandshakeTimeout:Number(form.elements.openVpnHandshakeTimeout.value)||0,openVpnMtu:Number(form.elements.openVpnMtu.value)||0,openVpnDns:csv(form.elements.openVpnDns.value),openVpnRemoteDnsResolve:form.elements.openVpnRemoteDnsResolve.checked,up:form.elements.up.value.trim(),down:form.elements.down.value.trim(),obfs:form.elements.obfs.value,obfsPassword:form.elements.obfsPassword.value,token:form.elements.token.value.trim(),congestionController:form.elements.congestionController.value,udpRelayMode:form.elements.udpRelayMode.value,proxies:orderedMembers(form),testUrl:form.elements.testUrl.value.trim(),interval:Number(form.elements.interval.value)||0,timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,strategy:form.elements.strategy.value,defaultSelected:form.elements.defaultSelected.value,disableUdp:form.elements.disableUdp.checked};
     return item;
   }
   function importRequest(extra){return {context:draft.outbounds,editingId:editingOutbound,...extra};}
@@ -328,6 +371,10 @@
         const exported=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify({outbound:readOutboundForm()})});yaml=exported.yaml;
       }
       const response=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify(importRequest({yaml}))});
+      const groupSubscriptionIDs=editingOriginal?.kind==='group'||$('#mihomo-outbound-form').elements.kind.value==='group'
+        ?Array.from($('#mihomo-outbound-form').elements.subscriptionIds.selectedOptions,option=>option.value):[];
+      if(response.outbounds.length===1 && response.outbounds[0].kind==='group')
+        response.outbounds[0].subscriptionIds=groupSubscriptionIDs;
       const next=clone(draft),index=next.outbounds.findIndex(item=>item.id===editingOutbound);
       if(index>=0){
         const previous=next.outbounds[index],item=response.outbounds[0];item.id=editingOutbound;
@@ -714,6 +761,7 @@
   ensureModals();
   $$('.mihomo-tab',root).forEach(button=>button.onclick=()=>setTab(button.dataset.mihomoTab));
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
+  $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
   $('#mihomo-add-rule').onclick=()=>openRuleModal();
   $('#mihomo-warp').onclick=openWarpModal;
   $('#mihomo-vpngate').onclick=()=>openVPNGateModal();
@@ -733,5 +781,6 @@
     if($('#warp-modal')?.classList.contains('open'))renderWarpModal();
     if($('#vpngate-modal')?.classList.contains('open'))renderVPNGateModal();
   });
+  window.MUIMihomoSettings={openTab:setTab};
   setupBasics();syncFromState();setTab('basics');
 })();

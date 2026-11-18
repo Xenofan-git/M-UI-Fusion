@@ -2,6 +2,7 @@
 
 Based on [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3), with native configurable Sniffer for HTTP, TLS and QUIC, `force-dns-mapping`, `parse-pure-ip`, and `override-destination`.
 
+- **New in v0.3.3-sniffer.3:** a dedicated **Balancers** sidebar entry and separate Mihomo tab. The Outbounds page lists individual nodes only; every balancer can link multiple provider subscriptions, with automatic membership reconciliation on subscription refresh. Existing group names, policies, manual members, and routing rule references stay unchanged. [Balancer guide (Russian)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/docs/BALANCERS.ru.md).
 - **New in v0.3.3-sniffer.2:** a separate **Subscriptions** sidebar page to import remote VPN node lists into managed Outbounds. Supports Mihomo/Clash YAML, plain share links, and Base64-encoded lists, with manual and scheduled refresh (5–10080 minutes), optional proxy-group linking, stable node identities, and failure-safe updates.
 - Scheduled imports validate candidate configurations using the installed Mihomo core and apply them through its local controller when available; a normal core restart is the fallback. The downloader blocks local/private IP destinations and limits size and redirects. See [Subscription management (Russian)](https://github.com/Xenofan-git/M-UI-sniffer/blob/main/docs/OUTBOUND-SUBSCRIPTIONS.ru.md).
 - The panel saves Sniffer settings under `mihomoBasics.sniffer` in `state.json` and emits native Mihomo YAML. A post-generation watcher is **not** required.
