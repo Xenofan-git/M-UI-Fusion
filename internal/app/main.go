@@ -609,16 +609,17 @@ type TrafficTotals struct {
 }
 
 type State struct {
-	Settings           Settings                `json:"settings"`
-	Inbounds           []Inbound               `json:"inbounds"`
-	Outbounds          []MihomoOutbound        `json:"outbounds,omitempty"`
-	RoutingRules       []MihomoRoutingRule     `json:"routingRules"`
-	MihomoBasics       *MihomoBasics           `json:"mihomoBasics,omitempty"`
-	OutboundTraffic    map[string]TrafficStats `json:"outboundTraffic,omitempty"`
-	WARP               *WarpAccount            `json:"warp,omitempty"`
-	SubscriptionTokens map[string]string       `json:"subscriptionTokens,omitempty"`
-	Traffic            TrafficTotals           `json:"traffic"`
-	UpdatedAt          string                  `json:"updatedAt"`
+	Settings              Settings                `json:"settings"`
+	Inbounds              []Inbound               `json:"inbounds"`
+	Outbounds             []MihomoOutbound        `json:"outbounds,omitempty"`
+	RoutingRules          []MihomoRoutingRule     `json:"routingRules"`
+	MihomoBasics          *MihomoBasics           `json:"mihomoBasics,omitempty"`
+	OutboundSubscriptions []OutboundSubscription  `json:"outboundSubscriptions,omitempty"`
+	OutboundTraffic       map[string]TrafficStats `json:"outboundTraffic,omitempty"`
+	WARP                  *WarpAccount            `json:"warp,omitempty"`
+	SubscriptionTokens    map[string]string       `json:"subscriptionTokens,omitempty"`
+	Traffic               TrafficTotals           `json:"traffic"`
+	UpdatedAt             string                  `json:"updatedAt"`
 }
 
 type CoreManager struct {
@@ -649,15 +650,16 @@ type CoreManager struct {
 	lastTrafficInformLog    time.Time
 	// VPNGate 的安装进度与每个网卡序号对应的维护任务，都不受 mu 保护，
 	// 因为它们会长时间等待网络和外部命令。
-	vpngateInstaller  vpnGateInstaller
-	vpngateMu         sync.Mutex
-	vpngateSyncMu     sync.Mutex
-	vpngateStopped    bool
-	vpngateTasks      map[int]*vpnGateTask
-	vpngateASN        *vpnGateASNResolver
-	vpngateServiceMu  sync.Mutex
-	vpngateServiceCmd *exec.Cmd
-	vpngateAppArmor   vpnGateAppArmor
+	vpngateInstaller   vpnGateInstaller
+	vpngateMu          sync.Mutex
+	vpngateSyncMu      sync.Mutex
+	vpngateStopped     bool
+	subscriptionSyncMu sync.Mutex
+	vpngateTasks       map[int]*vpnGateTask
+	vpngateASN         *vpnGateASNResolver
+	vpngateServiceMu   sync.Mutex
+	vpngateServiceCmd  *exec.Cmd
+	vpngateAppArmor    vpnGateAppArmor
 }
 
 type App struct {
@@ -735,6 +737,8 @@ func Run(buildVersion string) {
 		manager.addLogLocked("Mihomo 自动启动失败: " + err.Error())
 		manager.mu.Unlock()
 	}
+	// Subscriptions begin after Mihomo startup; never race its initial config.
+	go manager.monitorOutboundSubscriptions()
 	peerContext, stopPeers := context.WithCancel(context.Background())
 	defer stopPeers()
 	if peers, err := newPeerNetwork(dataDir); err != nil {
@@ -1033,6 +1037,8 @@ func (a *App) panelRoutes(serveSubscriptions bool) http.Handler {
 	mux.HandleFunc("/api/multi-control", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/multi-control/", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/mihomo/settings", a.auth(a.handleMihomoSettings))
+	mux.HandleFunc("/api/mihomo/subscriptions", a.auth(a.handleOutboundSubscriptions))
+	mux.HandleFunc("/api/mihomo/subscriptions/", a.auth(a.handleOutboundSubscriptionAction))
 	mux.HandleFunc("/api/mihomo/outbound/parse", a.auth(a.handleMihomoOutboundYAML))
 	mux.HandleFunc("/api/mihomo/outbound/delay", a.auth(a.handleMihomoOutboundDelay))
 	mux.HandleFunc("/api/mihomo/warp", a.auth(a.handleWarp))

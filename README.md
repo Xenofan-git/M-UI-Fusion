@@ -13,7 +13,7 @@
 >
 > **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-sniffer/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
 
-## Quick SSH installation (Linux)
+**Inbound VPN node URL subscriptions:** New sidebar **Subscriptions** section imports provider nodes into Outbounds, supports Base64/share-links and Mihomo YAML, manual sync, optional group linking and scheduled updates. [Documentation (Russian)](docs/OUTBOUND-SUBSCRIPTIONS.ru.md).\n\n## Quick SSH installation (Linux)
 
 Connect to your Linux server from an authorized SSH client (replace `USER` and `SERVER_IP` with your own values):
 

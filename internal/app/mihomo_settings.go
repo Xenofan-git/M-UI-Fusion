@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -40,7 +41,8 @@ type MihomoOutbound struct {
 
 	// VPNGate turns the outbound into a managed direct proxy bound to a
 	// SoftEther VPN Client adapter; the metadata travels with the outbound.
-	VPNGate *VPNGateConfig `json:"vpngate,omitempty"`
+	VPNGate              *VPNGateConfig `json:"vpngate,omitempty"`
+	SourceSubscriptionID string         `json:"sourceSubscriptionId,omitempty"` // managed inbound URL subscription
 
 	// Proxy node common fields.
 	Server            string `json:"server,omitempty"`
@@ -209,6 +211,11 @@ func (m *CoreManager) updateMihomoSettings(input mihomoSettingsPayload) error {
 func (m *CoreManager) applyMihomoSettings(input mihomoSettingsPayload, outbounds []MihomoOutbound, rules []MihomoRoutingRule) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	// A subscription may refresh while the Mihomo Settings draft is open.
+	// Do not allow a stale draft to erase managed nodes or modify their source.
+	if err := validateManagedOutboundSnapshot(m.state.Outbounds, outbounds); err != nil {
+		return err
+	}
 	basics := effectiveMihomoBasics(m.state)
 	if input.Basics != nil {
 		basics = *input.Basics
@@ -254,6 +261,7 @@ func normalizeMihomoOutbounds(input []MihomoOutbound) ([]MihomoOutbound, error) 
 			parsed.ID = item.ID
 			parsed.WarpDeviceID = item.WarpDeviceID
 			parsed.VPNGate = item.VPNGate
+			parsed.SourceSubscriptionID = item.SourceSubscriptionID
 			*item = parsed
 		}
 		item.Kind = strings.ToLower(strings.TrimSpace(item.Kind))
@@ -1214,4 +1222,29 @@ func mihomoRoutingConfig(rules []MihomoRoutingRule) []string {
 		result = append(result, line)
 	}
 	return result
+}
+
+// Subscription-managed nodes are read-only in regular Outbounds editing.
+// They are changed only through the Subscriptions view after full validation.
+func validateManagedOutboundSnapshot(current, incoming []MihomoOutbound) error {
+	currentByID := make(map[string]MihomoOutbound)
+	for _, item := range current {
+		if item.SourceSubscriptionID != "" {
+			currentByID[item.ID] = item
+		}
+	}
+	for _, item := range incoming {
+		if item.SourceSubscriptionID == "" {
+			continue
+		}
+		previous, exists := currentByID[item.ID]
+		if !exists || !reflect.DeepEqual(previous, item) {
+			return fmt.Errorf("узлы подписок изменились; обновите страницу и используйте раздел Подписки")
+		}
+		delete(currentByID, item.ID)
+	}
+	if len(currentByID) != 0 {
+		return fmt.Errorf("Outbounds обновились по подписке; перезагрузите страницу перед сохранением")
+	}
+	return nil
 }
