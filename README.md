@@ -4,6 +4,31 @@
   <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
 </p>
 
+# M-UI-sniffer (downstream fork)
+
+> [!IMPORTANT]
+> **This is the [Xenofan-git/M-UI-sniffer](https://github.com/Xenofan-git/M-UI-sniffer) variant of [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui), based on upstream v0.3.3.**
+> It adds **native Mihomo Sniffer** controls under **Mihomo Settings → Basics → Sniffer**, including HTTP, TLS, QUIC, DNS mapping, pure-IP parsing, and destination-override settings.
+> These settings are saved in `state.json` and written directly to generated `config.yaml`; an external watchdog/patching service is **not** required. See [Sniffer documentation](docs/sniffer.md).
+>
+> **Installation warning:** The upstream installation commands below install the **original** m-ui, not this Sniffer fork. Use the [build instructions](#build-this-fork) or a verified artifact from this repository's own [Actions](https://github.com/Xenofan-git/M-UI-sniffer/actions). Back up your current m-ui executable and state before upgrading; do not run an upstream installer over a Sniffer installation.
+
+## Build this fork
+
+Use Go **1.26.10** or later with its required security fixes:
+
+```bash
+git clone https://github.com/Xenofan-git/M-UI-sniffer.git
+cd M-UI-sniffer
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=v0.3.3-sniffer" -o m-ui-linux-arm64-sniffer .
+```
+
+GitHub Actions also runs tests and builds the ARM64 binary after each change to `main`. Production upgrade should only be performed after backing up `state.json`, `config.yaml`, and the currently installed binary and testing the new binary.
+
+---
+
+## Original m-ui documentation
+
 # m-ui
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)

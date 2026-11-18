@@ -4,6 +4,13 @@
   <img src="./media/m-ui_logo.png" alt="m-ui logo" width="420">
 </p>
 
+
+> [!IMPORTANT]
+> **Это форк [Xenofan-git/M-UI-sniffer](https://github.com/Xenofan-git/M-UI-sniffer) оригинальной панели [RomanovCaesar/m-ui](https://github.com/RomanovCaesar/m-ui) на основе v0.3.3.**
+> Добавлены штатные настройки **Sniffer** в разделе **Mihomo Settings → Basics → Sniffer**: HTTP, TLS, QUIC, Force DNS Mapping, Parse Pure IP, Override Destination. Настройки сохраняются в `state.json` и встраиваются непосредственно в `config.yaml` — без дополнительного сервиса.
+>
+> **Внимание:** команды установки оригинальной m-ui ниже на этой странице устанавливают **не наш форк**. Для нашего варианта используйте сборку из [GitHub Actions](https://github.com/Xenofan-git/M-UI-sniffer/actions) или соберите исходники с Go 1.26.10. Перед обновлением сохраните бинарник, `state.json` и `config.yaml`. Документация: [docs/sniffer.md](docs/sniffer.md).
+
 # m-ui
 
 [![Release](https://img.shields.io/github/v/release/RomanovCaesar/m-ui.svg)](https://github.com/RomanovCaesar/m-ui/releases)

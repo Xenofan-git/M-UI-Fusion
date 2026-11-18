@@ -1,0 +1,47 @@
+name: Verify Sniffer and build ARM64
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Tests and Linux ARM64 binary
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.10'
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Check web JavaScript syntax
+        run: node --check web/mihomo-settings.js
+      - name: Run tests
+        run: go test ./...
+      - name: Run Go vet
+        run: go vet ./...
+      - name: Build native Sniffer ARM64
+        env:
+          GOOS: linux
+          GOARCH: arm64
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags='-s -w -X main.version=v0.3.3-sniffer.ci' -o dist/m-ui-linux-arm64-sniffer .
+          sha256sum dist/m-ui-linux-arm64-sniffer > dist/SHA256SUMS
+      - name: Upload ARM64 test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: m-ui-linux-arm64-sniffer
+          path: |
+            dist/m-ui-linux-arm64-sniffer
+            dist/SHA256SUMS
+          retention-days: 14
