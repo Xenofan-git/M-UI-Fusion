@@ -74,20 +74,24 @@
     }
     for(const sub of subs){
       const card=make('article','outsub-card');
-      const title=make('div','outsub-card-head'),block=make('div');
+      // Keep all subscription metadata inside a dedicated compact frame;
+      // action buttons remain outside so information and actions are distinct.
+      const info=make('div','outsub-info-frame');
+      const title=make('div','outsub-card-head'),block=make('div','outsub-card-title');
       block.appendChild(make('h3','',sub.name));
-      block.appendChild(make('p','outsub-muted','Балансировщик: '+(sub.group||'не выбран')+' · интервал '+sub.intervalMinutes+' мин'));
       title.appendChild(block);
       title.appendChild(make('span','outsub-pill'+(sub.enabled?'':' off'),sub.enabled?'Автообновление':'Приостановлено'));
-      card.appendChild(title);
+      info.appendChild(title);
+      info.appendChild(make('p','outsub-muted outsub-card-meta','Балансировщик: '+(sub.group||'не выбран')+' · интервал '+sub.intervalMinutes+' мин'));
       const stats=make('div','outsub-stat');
       stats.appendChild(make('span','',String(sub.nodeCount||0)+' узлов · последнее обновление '+date(sub.lastUpdated)));
-      card.appendChild(stats);
+      info.appendChild(stats);
       if(sub.lastError){
         const problem=make('div','outsub-error','Ошибка: '+sub.lastError);
         problem.setAttribute('role','alert');
-        card.appendChild(problem);
+        info.appendChild(problem);
       }
+      card.appendChild(info);
       const actions=make('div','outsub-actions');
       for(const [caption,action] of [['Обновить','refresh'],['Фильтры и настройки','edit'],['Удалить','delete']]){
         actions.appendChild(newButton(caption,action,sub));

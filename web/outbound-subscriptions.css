@@ -1,19 +1,25 @@
-.outsub-page{display:flex;flex-direction:column;gap:18px;padding:8px 4px 30px}
-.outsub-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
-.outsub-heading h1{font-size:clamp(20px,2.5vw,27px);color:var(--text-strong);margin:0 0 8px}
-.outsub-heading p,.outsub-muted{color:var(--text-muted);font-size:13px;line-height:1.6;margin:0}
-.outsub-buttons,.outsub-actions{display:flex;gap:8px;flex-wrap:wrap}
-.outsub-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:16px}
-.outsub-card{background:var(--surface,var(--card-bg));border:1px solid var(--border);border-radius:var(--radius-lg,14px);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.outsub-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.outsub-card h3{color:var(--text-strong);font-size:17px;margin:0 0 5px;overflow-wrap:anywhere}
+/* Compact subscription list under the subscription-based balancer table. */
+.outsub-page{display:flex;flex-direction:column;gap:0;padding:12px 4px 22px;min-width:0}
+.outsub-heading{display:flex;justify-content:space-between;align-items:center;gap:8px 14px;flex-wrap:wrap;margin:0 0 12px}
+.outsub-summary{display:flex;flex:1 1 350px;flex-direction:column;gap:4px;min-width:0}
+.outsub-intro,.outsub-muted{margin:0;color:var(--text-muted);font-size:13px;line-height:1.5}
+.outsub-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.outsub-status{min-height:0;margin:0;color:var(--text-muted);font-size:12px;line-height:1.5}
+.outsub-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px;align-items:start}
+.outsub-card{display:flex;flex-direction:column;gap:10px;width:100%;max-width:740px;min-width:0;padding:0;background:transparent;border:0}
+.outsub-info-frame{display:flex;flex-direction:column;gap:9px;min-width:0;padding:15px 18px;border:1px solid var(--line,var(--border));border-radius:var(--radius-lg,14px);background:var(--surface-2,var(--surface,var(--card-bg)));box-shadow:0 2px 9px rgba(0,0,0,.035)}
+.outsub-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.outsub-card-title{min-width:0}
+.outsub-card h3{color:var(--text-strong);font-size:16px;font-weight:700;line-height:1.35;margin:0;overflow-wrap:anywhere}
+.outsub-card-meta{font-size:12.5px}
 .outsub-pill{display:inline-flex;align-items:center;border-radius:100px;background:var(--teal-soft);color:var(--teal);font-size:11px;padding:4px 9px;font-weight:650;white-space:nowrap}
 .outsub-pill.off{background:var(--surface-2,var(--border));color:var(--text-muted)}
-.outsub-stat{font-size:13px;line-height:1.5;display:flex;flex-direction:column;gap:6px}
+.outsub-stat{color:var(--text-muted);font-size:12.5px;line-height:1.5;display:flex;flex-direction:column;gap:5px}
 .outsub-stat strong{color:var(--text-strong)}
 .outsub-error{font-size:12px;line-height:1.5;color:var(--red,#d54343);overflow-wrap:anywhere}
-.outsub-status{min-height:0;color:var(--text-muted);font-size:12px}
-.outsub-empty{padding:35px 20px;border:1px dashed var(--border);border-radius:16px;text-align:center;color:var(--text-muted)}
+.outsub-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 2px}
+.outsub-empty{padding:22px 18px;border:1px dashed var(--border);border-radius:12px;text-align:center;color:var(--text-muted)}
+@media(max-width:700px){.outsub-info-frame{padding:13px 14px}.outsub-dialog{padding:16px}.outsub-heading{align-items:flex-start}.outsub-card-head{align-items:flex-start}}
 .outsub-modal{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.56);display:none;align-items:center;justify-content:center;padding:16px}
 .outsub-modal.open{display:flex}
 .outsub-dialog{width:min(500px,100%);max-height:92vh;overflow:auto;background:var(--surface,var(--card-bg));color:var(--text-strong);border-radius:16px;padding:22px;border:1px solid var(--border);box-shadow:0 18px 56px #0004}
@@ -26,11 +32,6 @@
 .outsub-dialog .outsub-warning{color:var(--text-muted);font-size:12px;line-height:1.6}
 @media(max-width:700px){.outsub-card{padding:14px}.outsub-dialog{padding:16px}.outsub-heading{align-items:flex-start}}
 
-/* Balancers tab contains the existing linked subscription cards. */
-[data-mihomo-pane="balancers"] .outsub-page {
-  margin-top:22px; padding-top:18px; border-top:1px solid var(--border);
-}
-[data-mihomo-pane="balancers"] .outsub-heading h1{font-size:18px;}
 .outsub-dialog-wide {width:min(790px,100%);}
 .outsub-preview-toolbar,.outsub-preview-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;}
 .outsub-preview-toolbar input[type=search]{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg,var(--surface));color:var(--text-strong);}
