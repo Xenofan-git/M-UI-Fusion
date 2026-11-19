@@ -5,24 +5,25 @@ import (
 	"testing"
 )
 
-func TestSubscriptionCardsStayCompactOnWideScreens(t *testing.T) {
+func TestSubscriptionCardsShowThreePerRowOnWideScreens(t *testing.T) {
 	cssRaw, err := webFS.ReadFile("web/outbound-subscriptions.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	css := string(cssRaw)
 	for _, part := range []string{
-		".outsub-list{display:flex;flex-wrap:wrap;align-items:flex-start;",
-		".outsub-card{display:flex;flex:0 1 600px;",
-		"width:min(100%,600px);max-width:600px;",
-		"@media(max-width:640px){.outsub-card{flex-basis:100%;max-width:100%}}",
+		".outsub-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:1254px;",
+		".outsub-card{display:flex;flex-direction:column;gap:10px;width:100%;max-width:410px;",
+		"width:100%;max-width:410px;",
+		"@media(max-width:1060px){.outsub-list{grid-template-columns:repeat(2,minmax(0,1fr));max-width:832px}}",
+		"@media(max-width:700px){.outsub-list{grid-template-columns:minmax(0,1fr);max-width:410px}}",
 	} {
 		if !strings.Contains(css, part) {
 			t.Errorf("missing compact subscription frame layout: %s", part)
 		}
 	}
-	if strings.Contains(css, ".outsub-list{display:grid;grid-template-columns:repeat(auto-fit") {
-		t.Fatal("auto-fit subscription grid stretches a single card across the panel")
+	if strings.Contains(css, "max-width:600px") || strings.Contains(css, "flex:0 1 600px") {
+		t.Fatal("the former 600px single-card layout must not remain")
 	}
 	htmlRaw, err := webFS.ReadFile("web/index.html")
 	if err != nil {
