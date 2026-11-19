@@ -1871,7 +1871,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'banner.securityTitle':'Уведомление безопасности','dash.start':'Запустить','dash.stop':'Остановить','dash.restart':'Перезапустить','dash.manage':'Управление','dash.logs':'Журналы','dash.config':'Конфигурация','dash.backup':'Резервная копия','dash.documentation':'Документация','dash.uptime':'Время работы','dash.systemLoad':'Нагрузка системы','dash.usage':'Использование','dash.overallSpeed':'Общая скорость','dash.upload':'Отправка','dash.download':'Загрузка','dash.totalData':'Всего данных','dash.sent':'Отправлено','dash.received':'Получено','dash.ipAddresses':'IP-адреса','dash.connStats':'Статистика соединений','dash.cpuHistory':'История CPU','dash.coreRunning':'Работает','dash.coreStopped':'Остановлено','dash.unknown':'Неизвестно',
       'inbounds.totalTraffic':'Всего отправлено/получено','inbounds.totalUsage':'Общее использование','inbounds.allTimeUsage':'Использование за всё время','inbounds.totalInbounds':'Всего входов','inbounds.clients':'Клиенты','inbounds.add':'Добавить вход','inbounds.generalActions':'Общие действия','inbounds.import':'Импортировать вход','inbounds.exportUrls':'Экспортировать все URL','inbounds.exportSubs':'Экспортировать все подписки','inbounds.testConfig':'Проверить конфигурацию','inbounds.resetInbounds':'Сбросить трафик входов','inbounds.resetClients':'Сбросить трафик клиентов','inbounds.sync':'Синхронизировать вход','inbounds.deleteDepleted':'Удалить исчерпавших клиентов','inbounds.searchPh':'Поиск','inbounds.statusNone':'Нет','inbounds.statusDisabled':'Отключено','inbounds.statusEnded':'Завершено','inbounds.statusOnline':'В сети',
       'conn.eyebrow':'Активные соединения','conn.title':'Активные соединения','conn.closeAll':'Закрыть все соединения','conn.list':'Соединения','conn.autoRefresh':'Обновлять каждые 5 с','logs.eyebrow':'Рабочие журналы','logs.title':'Рабочие журналы','logs.refresh':'Обновить журналы','logs.empty':'Журналов пока нет',
-      'mihomo.restart':'Перезапустить Mihomo','mihomo.tabBasics':'Основные','mihomo.tabOutbounds':'Выходы','mihomo.tabRouting':'Правила маршрутизации','mihomo.addOutbound':'Добавить выход','mihomo.addRule':'Добавить правило','mihomo.secStatistics':'Статистика','mihomo.secLog':'Журнал','mihomo.secBasicRouting':'Базовая маршрутизация','mihomo.secReset':'Сбросить по умолчанию',
+      'mihomo.restart':'Перезапустить Mihomo','mihomo.tabBasics':'Основные','mihomo.tabOutbounds':'Исходящие','mihomo.tabRouting':'Правила маршрутизации','mihomo.addOutbound':'Добавить выход','mihomo.addRule':'Добавить правило','mihomo.secStatistics':'Статистика','mihomo.secLog':'Журнал','mihomo.secBasicRouting':'Базовая маршрутизация','mihomo.secReset':'Сбросить по умолчанию',
       'settings.restartPanel':'Перезапустить панель','settings.tabAuthentication':'Аутентификация','settings.secNotifications':'Уведомления','settings.secCerts':'Сертификаты','settings.secExternalTraffic':'Внешний трафик','settings.secDateTime':'Дата и время','settings.secMihomoCore':'Ядро Mihomo','settings.secAdminCreds':'Учётные данные администратора','settings.language':'Язык','settings.clearIpinfoToken':'Очистить','settings.ipinfoTokenSet':'Уже задано','settings.ipinfoTokenWillClear':'Будет очищено при сохранении','settings.modeRule':'Правила','settings.modeGlobal':'Глобальный','settings.modeDirect':'Прямой','settings.logLevel':'Уровень журнала','settings.allowLan':'Разрешить LAN',
       'client.add':'Добавить клиента','client.edit':'Изменить клиента','client.email':'Email','client.username':'Имя пользователя','client.passwordToken':'Пароль / токен','client.totalFlowGb':'Общий трафик (ГБ)','client.expiryTime':'Срок действия','client.comment':'Комментарий','client.addClients':'Добавить клиентов','common.update':'Обновить','action.edit':'Изменить','action.clone':'Клонировать','action.exportInbound':'Экспортировать вход','action.resetTraffic':'Сбросить трафик','action.recommended':'Рекомендуется'
     },
@@ -1913,9 +1913,31 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   LOCALIZED.ru['settings.descLanguage']='Язык интерфейса переключается сразу и сохраняется автоматически.';
   LOCALIZED.fa['settings.descLanguage']='زبان رابط کاربری بلافاصله تغییر می‌کند و به‌طور خودکار ذخیره می‌شود.';
   LOCALIZED['zh-TW']['settings.descLanguage']='介面語言切換後立即生效並自動儲存。';
+  // Human-reviewed names of the two distinct balancer tabs. The underlying
+  // data-mihomo-tab identifiers and proxy/subscription routing are unchanged.
+  var BALANCER_TAB_LABELS = {
+    'ru': ['Балансировщики-исходящие', 'Балансировщики-Подписки'],
+    'en': ['Outbound Balancers', 'Subscription Balancers'],
+    'zh-CN': ['出站均衡器', '订阅均衡器'],
+    'zh-TW': ['出站平衡器', '訂閱平衡器'],
+    'fa': ['متعادل‌سازهای خروجی', 'متعادل‌سازهای اشتراک'],
+    'tr': ['Giden Dengeleyicileri', 'Abonelik Dengeleyicileri'],
+    'vi': ['Bộ cân bằng đầu ra', 'Bộ cân bằng thuê bao'],
+    'es': ['Balanceadores de salida', 'Balanceadores de suscripciones'],
+    'ja': ['アウトバウンドのバランサー', 'サブスクリプションのバランサー'],
+    'uk': ['Балансувальники виходів', 'Балансувальники підписок'],
+    'pt-BR': ['Balanceadores de saída', 'Balanceadores de assinaturas']
+  };
   var GENERATED_LOCALES = window.MUI_LOCALES || {};
   Object.keys(GENERATED_LOCALES).forEach(function (language) {
     DICT[language] = Object.assign({}, DICT.en, GENERATED_LOCALES[language], LOCALIZED[language] || {});
+  });
+  // Apply custom tab translations after merging the generated locale catalogs.
+  Object.keys(BALANCER_TAB_LABELS).forEach(function (language) {
+    var labels = BALANCER_TAB_LABELS[language];
+    var target = DICT[language] || (DICT[language] = Object.assign({}, DICT.en));
+    target['mihomo.tabManualBalancers'] = labels[0];
+    target['mihomo.tabSubscriptionBalancers'] = labels[1];
   });
 
   /* 页面原始文案 → key。首遍 muiApply 按原文精确匹配并打标；之后按 data-i18n* 属性走。 */

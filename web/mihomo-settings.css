@@ -155,6 +155,7 @@
   background:transparent;color:var(--muted);font-size:13px;font-weight:500;
   cursor:pointer;box-shadow:none;transition:all .2s var(--ease);
 }
+.mihomo-tab-label{white-space:nowrap}
 .mihomo-tab:hover{color:var(--text-strong);background:rgba(0,0,0,.03)}
 body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
 .mihomo-tab.active{

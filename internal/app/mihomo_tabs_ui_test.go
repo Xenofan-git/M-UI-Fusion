@@ -46,6 +46,25 @@ func TestMihomoManualAndSubscribedBalancerTabsRemainSeparated(t *testing.T) {
 			t.Errorf("subscription control leaked into manual pane %s", marker)
 		}
 	}
+	// Labels are localized text only: the tab identifiers remain stable.
+	for _, expected := range []string{
+		`data-i18n="mihomo.tabOutbounds">Исходящие</span>`,
+		`data-i18n="mihomo.tabManualBalancers">Балансировщики-исходящие</span>`,
+		`data-i18n="mihomo.tabSubscriptionBalancers">Балансировщики-Подписки</span>`,
+	} {
+		if !strings.Contains(html, expected) {
+			t.Errorf("missing descriptive Russian balancer tab label: %s", expected)
+		}
+	}
+	i18n, err := webFS.ReadFile("web/i18n.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"mihomo.tabManualBalancers", "mihomo.tabSubscriptionBalancers"} {
+		if !strings.Contains(string(i18n), key) {
+			t.Errorf("tab label missing translation key %s", key)
+		}
+	}
 	if strings.Contains(manual, "Подписки балансировщиков") {
 		t.Error("provider subscription cards must not appear in manual balancers pane")
 	}

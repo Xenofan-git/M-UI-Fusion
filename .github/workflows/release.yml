@@ -51,6 +51,8 @@ jobs:
 
       - name: Test balancer display labels
         run: node tests/balancer-labels.cjs
+      - name: Test balancer tab labels and locales
+        run: node tests/balancer-tab-labels.cjs
       - name: Run tests
         run: go test -count=1 ./...
 

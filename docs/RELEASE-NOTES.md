@@ -1,3 +1,5 @@
+**Update v0.3.3-fusion.22:** rename the Outbounds tab to **«Исходящие»** in Russian and rename the two Mihomo balancer tabs in Russian to **«Балансировщики-исходящие»** (manual outbound groups) and **«Балансировщики-Подписки»** (groups tied to imported provider subscriptions). The display labels have explicit translations for all 11 interface languages; internal tab identifiers `balancers` and `subscriptions`, subscription scheduling, node selection, Mihomo rules and stored state are unchanged.
+
 **Update v0.3.3-fusion.21:** Russian balancer-table copy polish (UI only): the active outbound cell now shows the selected node without a redundant `Текущий:` label and hides the provider prefix (e.g. `quatro-vpn |`) only if it duplicates the owning balancer name; the real node name and Mihomo runtime selection stay unchanged. The Russian group strategy is displayed as `URL-тест` (the persisted Mihomo key remains `url-test`), the `Добрый` column becomes `Источник`, and `Меры` becomes `Настройки`. The subscription-group creation modal also uses `URL-тест`. Other locales and routing are unaffected.
 
 ## M-UI Fusion — native Mihomo Sniffer fork
