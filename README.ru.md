@@ -36,13 +36,13 @@ ssh USER@TAILSCALE_IP
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.16 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.17 --no-ssl
 ```
 
 Если m-ui уже установлена, сначала сделайте резервную копию и используйте **обновление с сохранением настроек**:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.16
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v0.3.3-fusion.17
 sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
@@ -120,13 +120,13 @@ M-UI Fusion не привязан к определённой модели ус�
 ```bash
 curl -fL https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.16 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.17 --no-ssl
 ```
 
 Установщик выбирает свободный пятизначный порт панели и генерирует путь панели из 16 символов, имя пользователя из 14 символов и пароль из 16 символов. Адрес и учётные данные выводятся один раз в конце установки. Можно явно указать порт. Для привязки только к локальному интерфейсу дополнительно задайте `--listen-ip SERVER_LOCAL_IP`, заменив переменную реальным адресом интерфейса:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.16 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-fusion.17 --no-ssl \
   --port 34567
 ```
 

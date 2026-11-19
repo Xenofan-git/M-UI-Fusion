@@ -11,7 +11,21 @@
   <link rel="apple-touch-icon" href="media/m-ui_logo.png?v=12">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>M-UI Fusion | 登录</title>
+  <title>M-UI Fusion | Вход</title>
+  <script>
+    // Set the browser tab title before the UI scripts/styles load.
+    // A previously chosen browser locale may differ from the server setting.
+    (() => {
+      const titles = {
+        ru: 'Вход', en: 'Log In', 'zh-CN': '登录', 'zh-TW': '登入',
+        fa: 'ورود', ja: 'ログイン', vi: 'Đăng nhập',
+        es: 'Iniciar sesión', tr: 'Giriş', uk: 'Вхід', 'pt-BR': 'Entrar'
+      };
+      let language = document.documentElement.dataset.defaultLanguage || 'ru';
+      try { language = localStorage.getItem('mui-language') || language; } catch {}
+      document.title = 'M-UI Fusion | ' + (titles[language] || titles.ru);
+    })();
+  </script>
   <link rel="stylesheet" href="static/liquid-glass.css">
   <style>
     /* ===== m-ui Apple SwiftUI / macOS Sequoia 锁屏风格登录页 =====

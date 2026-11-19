@@ -1173,6 +1173,20 @@ func (a *App) serveLocalizedPage(w http.ResponseWriter, name string) {
 	language := a.lang()
 	text := strings.Replace(string(page), `data-default-language="ru"`, `data-default-language="`+language+`"`, 1)
 	text = strings.Replace(text, `<html lang="ru"`, `<html lang="`+language+`"`, 1)
+	// Translate the static <title> before the browser receives the HTML.
+	// Unlike body content, the tab title remains visible during i18n startup.
+	if name == "web/login.html" {
+		titles := map[string]string{
+			"ru": "Вход", "en": "Log In", "zh-CN": "登录", "zh-TW": "登入",
+			"fa": "ورود", "ja": "ログイン", "vi": "Đăng nhập",
+			"es": "Iniciar sesión", "tr": "Giriş", "uk": "Вхід", "pt-BR": "Entrar",
+		}
+		title, ok := titles[language]
+		if !ok {
+			title = titles["ru"]
+		}
+		text = strings.Replace(text, `<title>M-UI Fusion | Вход</title>`, `<title>M-UI Fusion | `+title+`</title>`, 1)
+	}
 	a.writeAsset(w, []byte(themedPage(text, a.uiTheme())), "text/html; charset=utf-8")
 }
 
