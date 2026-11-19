@@ -4,6 +4,19 @@
   const ruleTypes=['DOMAIN','DOMAIN-SUFFIX','DOMAIN-KEYWORD','DOMAIN-WILDCARD','DOMAIN-REGEX','GEOSITE','IP-CIDR','IP-CIDR6','IP-SUFFIX','IP-ASN','GEOIP','SRC-GEOIP','SRC-IP-ASN','SRC-IP-CIDR','SRC-IP-SUFFIX','DST-PORT','SRC-PORT','IN-PORT','IN-TYPE','IN-USER','IN-NAME','REMATCH-NAME','PROCESS-PATH','PROCESS-PATH-WILDCARD','PROCESS-PATH-REGEX','PROCESS-NAME','PROCESS-NAME-WILDCARD','PROCESS-NAME-REGEX','UID','NETWORK','DSCP','AND','MATCH'];
   const builtins=['DIRECT','REJECT','REJECT-DROP','PASS','PASS-RULE','COMPATIBLE','GLOBAL'];
   const groupBuiltins=['DIRECT','REJECT','REJECT-DROP','COMPATIBLE'];
+  // Display-only hints for Mihomo built-ins; keep raw option values unchanged.
+  const builtinOutboundRu={
+    'DIRECT':'ПРЯМОЙ',
+    'REJECT':'БЛОКИРОВАТЬ',
+    'REJECT-DROP':'ОТБРОСИТЬ БЕЗ ОТВЕТА',
+    'PASS':'ПРОПУСТИТЬ',
+    'PASS-RULE':'ПРОПУСТИТЬ ПОДПРАВИЛО',
+    'COMPATIBLE':'СОВМЕСТИМОСТЬ',
+    'GLOBAL':'ГЛОБАЛЬНЫЙ'
+  };
+  const targetDisplayName=name=>window.muiGetLang?.()==='ru'&&
+    Object.prototype.hasOwnProperty.call(builtinOutboundRu,name)
+    ? name+' ('+builtinOutboundRu[name]+')' : name;
   const defaultTestURL='https://www.gstatic.com/generate_204';
   const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
@@ -263,7 +276,7 @@
   function targetOptions(selected='',forGroup=false,exclude=''){
     const base=forGroup?groupBuiltins:builtins;
     const names=[...base,...draft.outbounds.map(item=>item.name).filter(name=>name!==exclude)];
-    return [...new Set(names)].map(name=>`<option value="${esc(name)}" ${name===selected?'selected':''}>${esc(name)}</option>`).join('');
+    return [...new Set(names)].map(name=>`<option value="${esc(name)}" ${name===selected?'selected':''}>${esc(targetDisplayName(name))}</option>`).join('');
   }
   function ensureModals(){
     if($('#mihomo-outbound-modal'))return;

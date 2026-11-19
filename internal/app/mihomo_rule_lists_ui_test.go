@@ -77,3 +77,18 @@ func TestRussianRoutingCopyIsHumanReadable(t *testing.T) {
   if !strings.Contains(string(locale),want) {t.Errorf("missing Russian locale string %q",want)}
  }
 }
+
+func TestRoutingTargetBuiltinLabelsAreDisplayOnly(t *testing.T) {
+ js,err:=webFS.ReadFile("web/mihomo-settings.js")
+ if err!=nil {t.Fatal(err)}
+ source:=string(js)
+ for _,expected:=range []string{
+  "'DIRECT':'ПРЯМОЙ'","'REJECT':'БЛОКИРОВАТЬ'",
+  "'REJECT-DROP':'ОТБРОСИТЬ БЕЗ ОТВЕТА'",
+  "'PASS':'ПРОПУСТИТЬ'","'PASS-RULE':'ПРОПУСТИТЬ ПОДПРАВИЛО'",
+  "'COMPATIBLE':'СОВМЕСТИМОСТЬ'","'GLOBAL':'ГЛОБАЛЬНЫЙ'",
+  "esc(targetDisplayName(name))", "name===selected?'selected':''",
+ } {
+  if !strings.Contains(source,expected) {t.Errorf("missing display-only built-in translation %q",expected)}
+ }
+}
