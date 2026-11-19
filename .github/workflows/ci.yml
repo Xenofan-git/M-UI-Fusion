@@ -34,6 +34,8 @@ jobs:
         run: node tests/panel-settings-ru.cjs
       - name: Test Mihomo Basics RU localization, login hover and peer errors
         run: node tests/mihomo-basics-russian.cjs
+      - name: Test five color skins, contrast, persistence and translations
+        run: node tests/color-skins.cjs
       - name: Test balancer tab labels and locales
         run: node tests/balancer-tab-labels.cjs
       - name: Test routing list editor

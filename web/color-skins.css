@@ -1,0 +1,268 @@
+/* M-UI Fusion: opt-in color palettes, independent of the 3 layout styles.
+   All status colors (success/warning/error) keep their semantic meaning.
+   No custom skin = exactly the pre-existing Light / Dark / Ultra Dark styles. */
+
+html[data-color-skin="graphite"] {
+  --skin-bg: #131518;
+  --skin-card: #202329;
+  --skin-soft: #292d34;
+  --skin-hover: #363b44;
+  --skin-active: #414650;
+  --skin-sidebar: #1b1e24;
+  --skin-modal: #242832;
+  --skin-line: #39414b;
+  --skin-text: #f0f3f7;
+  --skin-muted: #aeb8c5;
+  --skin-accent: #9dc3d5;
+  --skin-accentHover: #b5dae9;
+  --skin-accentFg: #0e2432;
+  --skin-glow: #17202a;
+  --skin-focus: #9dc3d5;
+  color-scheme: dark;
+}
+
+html[data-color-skin="midnight"] {
+  --skin-bg: #09162a;
+  --skin-card: #10233c;
+  --skin-soft: #182e49;
+  --skin-hover: #213954;
+  --skin-active: #2a4562;
+  --skin-sidebar: #0c1d34;
+  --skin-modal: #152a46;
+  --skin-line: #284661;
+  --skin-text: #ebf4ff;
+  --skin-muted: #adc4dc;
+  --skin-accent: #6dbefa;
+  --skin-accentHover: #9dd8ff;
+  --skin-accentFg: #08233c;
+  --skin-glow: #0b294e;
+  --skin-focus: #6dbefa;
+  color-scheme: dark;
+}
+
+html[data-color-skin="ivory"] {
+  --skin-bg: #f5f0e6;
+  --skin-card: #fffaf0;
+  --skin-soft: #ede4d7;
+  --skin-hover: #e6d8c6;
+  --skin-active: #dfceb7;
+  --skin-sidebar: #f7eddf;
+  --skin-modal: #fffaf1;
+  --skin-line: #d6c6b0;
+  --skin-text: #30291f;
+  --skin-muted: #6c5945;
+  --skin-accent: #925c2c;
+  --skin-accentHover: #75471e;
+  --skin-accentFg: #fff8ed;
+  --skin-glow: #f1d8b9;
+  --skin-focus: #925c2c;
+  color-scheme: light;
+}
+
+html[data-color-skin="emerald"] {
+  --skin-bg: #071c18;
+  --skin-card: #112b25;
+  --skin-soft: #193a32;
+  --skin-hover: #23483d;
+  --skin-active: #2c5949;
+  --skin-sidebar: #0b241d;
+  --skin-modal: #15342c;
+  --skin-line: #2d5b4a;
+  --skin-text: #e7fbf2;
+  --skin-muted: #b1d2c3;
+  --skin-accent: #65ddb0;
+  --skin-accentHover: #9aefcd;
+  --skin-accentFg: #07372a;
+  --skin-glow: #0c3f32;
+  --skin-focus: #65ddb0;
+  color-scheme: dark;
+}
+
+html[data-color-skin="aurora"] {
+  --skin-bg: #17112b;
+  --skin-card: #241b3e;
+  --skin-soft: #31264e;
+  --skin-hover: #40345e;
+  --skin-active: #524271;
+  --skin-sidebar: #1c1536;
+  --skin-modal: #292044;
+  --skin-line: #584775;
+  --skin-text: #f3edff;
+  --skin-muted: #cbbde6;
+  --skin-accent: #c7a8ff;
+  --skin-accentHover: #dec8ff;
+  --skin-accentFg: #25153c;
+  --skin-glow: #482d71;
+  --skin-focus: #c7a8ff;
+  color-scheme: dark;
+}
+
+/* Panel variables shared by Liquid Glass, shadcn and Material 3. */
+html[data-color-skin] body {
+  --bg: var(--skin-bg);
+  --surface: var(--skin-card);
+  --surface-2: var(--skin-soft);
+  --surface-3: var(--skin-hover);
+  --surface-4: var(--skin-active);
+  --surface-glass: var(--skin-sidebar);
+  --surface-glass-heavy: var(--skin-card);
+  --surface-modal: var(--skin-modal);
+  --line: var(--skin-line);
+  --stroke: var(--skin-line);
+  --stroke-2: var(--skin-line);
+  --text: var(--skin-text);
+  --text-strong: var(--skin-text);
+  --muted: var(--skin-muted);
+  --muted-2: var(--skin-muted);
+  --accent: var(--skin-accent);
+  --teal: var(--skin-accent);
+  --teal-2: var(--skin-accentHover);
+  --teal-3: var(--skin-accentHover);
+  --teal-soft: color-mix(in srgb, var(--skin-accent) 15%, transparent);
+  --blue: var(--skin-accent);
+  --indigo: var(--skin-accent);
+  --purple: var(--skin-accentHover);
+  --glass-bg: var(--skin-sidebar);
+  --glass-border: var(--skin-line);
+  --table-hover: color-mix(in srgb, var(--skin-accent) 8%, transparent);
+  --row-selected: color-mix(in srgb, var(--skin-accent) 14%, transparent);
+  --select-bg: var(--skin-soft);
+  --select-hover: var(--skin-hover);
+  --select-item-hover: color-mix(in srgb, var(--skin-accent) 16%, transparent);
+  --select-item-selected: color-mix(in srgb, var(--skin-accent) 23%, transparent);
+  --select-item-color: var(--skin-text);
+  --code-bg: var(--skin-soft);
+  --code-color: var(--skin-text);
+  --login-wave: var(--skin-bg);
+  --sider-trigger-bg: var(--skin-soft);
+  --sider-trigger-color: var(--skin-muted);
+  --shadow: 0 4px 20px color-mix(in srgb, var(--skin-bg) 25%, transparent);
+  --shadow-hover: 0 10px 28px color-mix(in srgb, var(--skin-bg) 50%, transparent);
+}
+/* shadcn uses an extra set of color tokens for navigation, inputs and buttons. */
+html[data-ui-theme="shadcn"][data-color-skin] body {
+  --sc-bg: var(--skin-bg);
+  --sc-sidebar: var(--skin-sidebar);
+  --sc-card: var(--skin-card);
+  --sc-muted: var(--skin-soft);
+  --sc-accent: var(--skin-hover);
+  --sc-border: var(--skin-line);
+  --sc-input: var(--skin-line);
+  --sc-ring: var(--skin-focus);
+  --sc-fg: var(--skin-text);
+  --sc-muted-fg: var(--skin-muted);
+  --sc-primary: var(--skin-accent);
+  --sc-primary-fg: var(--skin-accentFg);
+}
+/* Material 3 maps tonal surfaces from m3 variables. */
+html[data-ui-theme="md3"][data-color-skin] body {
+  --m3-surface: var(--skin-bg);
+  --m3-surface-lowest: var(--skin-bg);
+  --m3-surface-low: var(--skin-card);
+  --m3-surface-container: var(--skin-soft);
+  --m3-surface-high: var(--skin-hover);
+  --m3-surface-highest: var(--skin-active);
+  --m3-on-surface: var(--skin-text);
+  --m3-on-surface-variant: var(--skin-muted);
+  --m3-outline: var(--skin-line);
+  --m3-outline-variant: var(--skin-line);
+  --m3-primary: var(--skin-accent);
+  --m3-on-primary: var(--skin-accentFg);
+  --m3-primary-container: var(--skin-active);
+  --m3-on-primary-container: var(--skin-text);
+  --m3-secondary-container: var(--skin-soft);
+  --m3-on-secondary-container: var(--skin-text);
+  --m3-inverse-surface: var(--skin-text);
+  --m3-inverse-on-surface: var(--skin-bg);
+  --m3-inverse-primary: var(--skin-accent);
+}
+/* M3 fills are also set on its components. Explicitly recolor primary actions
+   because the built-in dark scheme sets its own --m3-primary on child scopes. */
+html[data-ui-theme="md3"][data-color-skin] body :is(.primary-btn, .mihomo-primary, .login-button, .glass-button.primary, .swift-btn.primary) {
+  background: var(--skin-accent) !important;
+  color: var(--skin-accentFg) !important;
+}
+/* Login uses separate, login-only tokens. Keep form controls legible. */
+html[data-color-skin] {
+  --page-bg: var(--skin-bg);
+  --card-bg: var(--skin-card);
+  --card-border: var(--skin-line);
+  --card-stroke: var(--skin-line);
+  --input-bg: var(--skin-soft);
+  --input-bg-focus: var(--skin-hover);
+  --primary: var(--skin-accent);
+  --primary-hover: var(--skin-accentHover);
+  --primary-active: var(--skin-accent);
+  --shadow-card: 0 24px 68px color-mix(in srgb, var(--skin-bg) 65%, transparent);
+  --checkbox-bg: var(--skin-soft);
+  --text: var(--skin-text);
+  --text-strong: var(--skin-text);
+  --muted: var(--skin-muted);
+  --line: var(--skin-line);
+}
+html[data-color-skin] body #login-button:not(:hover) {
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+html[data-ui-theme="liquid"][data-color-skin] body :is(.primary-btn, .mihomo-primary, .login-button, #add-inbound) {
+  --lb-fill: var(--skin-accent);
+  --lb-text: var(--skin-accentFg);
+}
+/* A separate surface material gives each skin a visible, consistent identity. */
+html[data-color-skin] .sidebar { background: var(--skin-sidebar); }
+html[data-color-skin] .top-theme-menu button[aria-checked="true"] {
+  background: color-mix(in srgb, var(--skin-accent) 16%, var(--skin-card));
+  color: var(--skin-text);
+}
+html[data-color-skin] .theme-selected { color: var(--skin-accent); }
+html[data-color-skin] .top-theme-menu button:focus-visible,
+html[data-color-skin] button:focus-visible,
+html[data-color-skin] input:focus-visible,
+html[data-color-skin] select:focus-visible {
+  outline: 2px solid var(--skin-focus); outline-offset: 2px;
+}
+html[data-color-skin="graphite"] .card, html[data-color-skin="graphite"] .overview-card {
+  box-shadow: none; /* Matte graphite */
+}
+html[data-color-skin="midnight"] .sidebar {
+  box-shadow: 0 10px 30px rgb(0 0 0 / .22);
+}
+html[data-color-skin="ivory"] .card, html[data-color-skin="ivory"] .overview-card {
+  box-shadow: 0 4px 24px rgb(115 85 48 / .07);
+}
+html[data-color-skin="emerald"] .card, html[data-color-skin="emerald"] .overview-card {
+  box-shadow: 0 5px 24px rgb(0 35 19 / .18);
+}
+html[data-color-skin="aurora"] .app {
+  background: radial-gradient(ellipse at 95% 0%, #352454 0%, transparent 40%),
+              radial-gradient(ellipse at 0% 100%, #142d54 0%, transparent 45%), var(--skin-bg);
+}
+html[data-color-skin="aurora"] .card, html[data-color-skin="aurora"] .overview-card {
+  box-shadow: 0 8px 30px rgb(23 7 62 / .26);
+  border-color: color-mix(in srgb, var(--skin-accent) 28%, var(--skin-line));
+}
+/* Liquid wallpaper should follow named skins rather than its default blue image. */
+html[data-color-skin][data-ui-theme="liquid"] body::before {
+  background: radial-gradient(circle at 85% 10%, var(--skin-glow), transparent 45%),
+              var(--skin-bg) !important;
+  filter: none !important;
+}
+/* Named skins never recolor the meanings of success (green), warning (amber),
+   or failure (red). Respect reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-color-skin] .card, html[data-color-skin] button { transition: none; }
+}
+
+
+/* Accessible eight-option menu with five color swatches; scroll on small screens. */
+.top-theme-menu { min-width: 240px; max-height: min(65vh, 470px); overflow-y: auto; }
+.theme-menu-divider { height: 1px; margin: 5px 4px 6px; background: var(--line); flex: none; }
+.theme-menu-section-label { padding: 5px 10px 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.top-theme-menu button[data-skin-choice] { justify-content: flex-start; }
+.top-theme-menu button[data-skin-choice] .theme-selected { margin-left: auto; }
+.skin-swatch { display: inline-block; flex: 0 0 17px; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--line); }
+.skin-swatch-graphite { background: linear-gradient(135deg, #131518 48%, #9dc3d5 48%); }
+.skin-swatch-midnight { background: linear-gradient(135deg, #09162a 48%, #6dbefa 48%); }
+.skin-swatch-ivory { background: linear-gradient(135deg, #fffaf0 48%, #925c2c 48%); }
+.skin-swatch-emerald { background: linear-gradient(135deg, #071c18 48%, #65ddb0 48%); }
+.skin-swatch-aurora { background: linear-gradient(135deg, #17112b 46%, #c7a8ff 52%, #73b7fa 94%); }

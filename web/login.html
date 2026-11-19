@@ -26,6 +26,7 @@
       document.title = 'M-UI Fusion | ' + (titles[language] || titles.ru);
     })();
   </script>
+  <script src="static/color-skins.js"></script>
   <link rel="stylesheet" href="static/liquid-glass.css">
   <style>
     /* ===== m-ui Apple SwiftUI / macOS Sequoia 锁屏风格登录页 =====
@@ -389,6 +390,7 @@
   <script defer src="static/liquid-toggle.js" data-ui-only="liquid"></script>
   <script defer src="static/liquid-button.js" data-ui-only="liquid"></script>
 <link rel="stylesheet" href="static/fonts.css" data-ui-only="shadcn"><link rel="stylesheet" href="static/fonts.css" data-ui-only="md3"><link rel="stylesheet" href="static/theme-shadcn.css" data-ui-only="shadcn"><link rel="stylesheet" href="static/theme-md3.css" data-ui-only="md3">
+  <link rel="stylesheet" href="static/color-skins.css">
   <style id="login-button-hover-legibility">
     /* A light hover surface requires dark text in all visual themes. */
     html body #login-button:hover:not(:disabled) {
@@ -422,6 +424,15 @@
       <div class="settings-body">
         <div class="settings-row"><label class="theme-switch"><input id="dark-mode" type="checkbox" aria-label="Тёмная тема"><span></span></label><span>Тёмная тема</span></div>
         <div class="settings-row ultra-row" id="ultra-row" hidden><label class="ultra-check"><input id="ultra-dark" type="checkbox" aria-label="Очень тёмная тема"><span></span></label><span>Очень тёмная тема</span></div>
+        <label class="language-label" for="login-color-skin">Цветовой скин</label>
+        <select class="language-select" id="login-color-skin" aria-label="Цветовой скин">
+          <option value="">Без скина (стандартная тема)</option>
+          <option value="graphite">Графитовая</option>
+          <option value="midnight">Полуночная</option>
+          <option value="ivory">Слоновая кость</option>
+          <option value="emerald">Изумрудная</option>
+          <option value="aurora">Аврора</option>
+        </select>
         <span class="language-label">Язык</span>
         <select class="language-select" id="language-select" aria-label="Язык"><option value="ru">🇷🇺 Русский</option><option value="en">🇺🇸 English</option><option value="zh-CN">🇨🇳 简体中文</option><option value="fa">🇮🇷 فارسی (персидский)</option><option value="zh-TW">🇹🇼 繁體中文</option><option value="ja">🇯🇵 日本語</option><option value="vi">🇻🇳 Tiếng Việt</option><option value="es">🇪🇸 Español</option><option value="tr">🇹🇷 Türkçe</option><option value="uk">🇺🇦 Українська</option><option value="pt-BR">🇧🇷 Português</option></select>
       </div>
@@ -465,6 +476,7 @@
     const ultraDark = document.getElementById('ultra-dark');
     const ultraRow = document.getElementById('ultra-row');
     const languageSelect = document.getElementById('language-select');
+    const colorSkinSelect = document.getElementById('login-color-skin');
     const passwordInput = document.getElementById('password');
     const passwordToggle = document.getElementById('password-toggle');
     const loginButton = document.getElementById('login-button');
@@ -481,6 +493,124 @@
       uk: { pageTitle:'M-UI Fusion | Вхід', title:'Ласкаво просимо', username:"Ім'я користувача", password:'Пароль', login:'Увійти', logging:'Вхід…', settings:'Налаштування панелі', dark:'Темна', ultra:'Дуже темна', language:'Мова', show:'Показати пароль', hide:'Приховати пароль', failed:'Помилка входу', languageFailed:'Не вдалося зберегти мову' },
       'pt-BR': { pageTitle:'M-UI Fusion | Entrar', title:'Bem-vindo', username:'Nome de Usuário', password:'Senha', login:'Entrar', logging:'Entrando…', settings:'Configurações do Painel', dark:'Escuro', ultra:'Muito Escuro', language:'Idioma', show:'Mostrar senha', hide:'Ocultar senha', failed:'Falha no login', languageFailed:'Falha ao salvar a configuração de idioma' }
     };
+
+    const colorSkinLabels = {
+  "ru": [
+    "Цветовой скин",
+    "Без скина (стандартная тема)",
+    "Графитовая",
+    "Полуночная",
+    "Слоновая кость",
+    "Изумрудная",
+    "Аврора"
+  ],
+  "en": [
+    "Color skin",
+    "Default theme",
+    "Graphite",
+    "Midnight Blue",
+    "Ivory",
+    "Emerald",
+    "Aurora"
+  ],
+  "zh-CN": [
+    "配色主题",
+    "默认主题",
+    "石墨灰",
+    "午夜蓝",
+    "象牙白",
+    "祖母绿",
+    "极光紫"
+  ],
+  "zh-TW": [
+    "配色主題",
+    "預設主題",
+    "石墨灰",
+    "午夜藍",
+    "象牙白",
+    "祖母綠",
+    "極光"
+  ],
+  "ja": [
+    "カラーテーマ",
+    "標準テーマ",
+    "グラファイト",
+    "ミッドナイトブルー",
+    "アイボリー",
+    "エメラルド",
+    "オーロラ"
+  ],
+  "fa": [
+    "پوسته رنگی",
+    "پوسته پیش‌فرض",
+    "گرافیتی",
+    "آبی نیمه‌شب",
+    "عاجی",
+    "زمردی",
+    "شفق"
+  ],
+  "vi": [
+    "Giao diện màu",
+    "Giao diện mặc định",
+    "Than chì",
+    "Xanh nửa đêm",
+    "Ngà",
+    "Ngọc lục bảo",
+    "Cực quang"
+  ],
+  "es": [
+    "Tema de color",
+    "Tema predeterminado",
+    "Grafito",
+    "Azul medianoche",
+    "Marfil",
+    "Esmeralda",
+    "Aurora"
+  ],
+  "tr": [
+    "Renk teması",
+    "Varsayılan tema",
+    "Grafit",
+    "Gece Mavisi",
+    "Fildişi",
+    "Zümrüt",
+    "Aurora"
+  ],
+  "uk": [
+    "Кольорова тема",
+    "Стандартна тема",
+    "Графітова",
+    "Опівнічна",
+    "Слонова кістка",
+    "Смарагдова",
+    "Аврора"
+  ],
+  "pt-BR": [
+    "Tema de cor",
+    "Tema padrão",
+    "Grafite",
+    "Azul da meia-noite",
+    "Marfim",
+    "Esmeralda",
+    "Aurora"
+  ]
+};
+    const colorSkinValues=['','graphite','midnight','ivory','emerald','aurora'];
+    function applyLoginColorSkin(value){
+      const skin=window.MUIColorSkins.select(value);
+      colorSkinSelect.value=skin;
+      if(!skin){
+        applyTheme(localStorage.getItem('mui-theme') || 'light',localStorage.getItem('mui-is-ultra-dark')==='true');
+        return;
+      }
+      const dark=window.MUIColorSkins.isDark(skin);
+      root.classList.toggle('dark',dark);
+      root.removeAttribute('data-theme');
+      darkMode.checked=dark;
+      ultraDark.checked=false;
+      ultraRow.hidden=!dark;
+      // Keep legacy brightness preferences unchanged for the next default theme choice.
+    }
 
     /* Apple Design 三套主题（Light / Dark / Ultra Dark OLED）。Ultra Dark 只在深色模式下开启，
        切换期间打上 data-theme-animations="off" 抑制所有闪烁过渡。 */
@@ -522,6 +652,11 @@
       darkMode.setAttribute('aria-label', text.dark);
       ultraDark.setAttribute('aria-label', text.ultra);
       languageSelect.setAttribute('aria-label', text.language);
+      const localizedSkins=colorSkinLabels[lang]||colorSkinLabels.en;
+      const skinCaption=document.querySelector('label[for="login-color-skin"]');
+      skinCaption.textContent=localizedSkins[0];
+      colorSkinSelect.setAttribute('aria-label',localizedSkins[0]);
+      [...colorSkinSelect.options].forEach((option,index)=>{option.textContent=localizedSkins[index+1];});
       passwordToggle.setAttribute('aria-label', passwordInput.type === 'password' ? text.show : text.hide);
       localStorage.setItem('mui-language', lang);
       root.removeAttribute('data-l10n-pending');
@@ -541,8 +676,15 @@
     });
     document.addEventListener('click', event => { if (!settingsMenu.contains(event.target) && !settingsButton.contains(event.target)) closeSettings(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSettings(); });
-    darkMode.addEventListener('change', () => applyTheme(darkMode.checked ? 'dark' : 'light'));
-    ultraDark.addEventListener('change', () => applyTheme('dark', ultraDark.checked));
+    darkMode.addEventListener('change', () => {
+      window.MUIColorSkins.select(''); colorSkinSelect.value='';
+      applyTheme(darkMode.checked ? 'dark' : 'light');
+    });
+    ultraDark.addEventListener('change', () => {
+      window.MUIColorSkins.select(''); colorSkinSelect.value='';
+      applyTheme('dark', ultraDark.checked);
+    });
+    colorSkinSelect.addEventListener('change',()=>applyLoginColorSkin(colorSkinSelect.value));
     /* 在主题控件上 mousedown 关掉过渡、mouseleave/touchend 恢复，避免整页背景渐变闪烁 */
     for (const control of [darkMode.closest('.settings-row'), ultraRow]) {
       control.addEventListener('mousedown', () => root.setAttribute('data-theme-animations', 'off'));
@@ -595,6 +737,7 @@
     });
 
     applyTheme(localStorage.getItem('mui-theme') || 'light', localStorage.getItem('mui-is-ultra-dark') === 'true');
+    if(window.MUIColorSkins.current())applyLoginColorSkin(window.MUIColorSkins.current());
     // 面板设置里的 Language 通过 data-default-language 注进来，作为没访问过本面板的
     // 浏览器的初始语言；本机手动选过的话以 localStorage 为准。
     applyLanguage(localStorage.getItem('mui-language') || document.documentElement.dataset.defaultLanguage || 'ru');

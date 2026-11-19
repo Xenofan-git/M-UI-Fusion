@@ -2152,6 +2152,11 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     "mihomo.descWarpRouting": "Указанные домены направляются через WARP. Приоритет ниже блокировки и правил IPv4.",
     "mc.invalidPairingToken": "Недействительный токен сопряжения Multi-control",
   });
+  // Optional color-skin names; visual layout remains a separate server setting.
+  Object.assign(DICT.en, {"nav.colorSkins": "Color skins", "nav.skin.graphite": "Graphite", "nav.skin.midnight": "Midnight Blue", "nav.skin.ivory": "Ivory", "nav.skin.emerald": "Emerald", "nav.skin.aurora": "Aurora"});
+  Object.assign(DICT['zh-CN'], {"nav.colorSkins": "配色主题", "nav.skin.graphite": "石墨灰", "nav.skin.midnight": "午夜蓝", "nav.skin.ivory": "象牙白", "nav.skin.emerald": "祖母绿", "nav.skin.aurora": "极光紫"});
+  Object.assign(DICT.ru, {"nav.colorSkins": "Цветовые скины", "nav.skin.graphite": "Графитовая", "nav.skin.midnight": "Полуночная", "nav.skin.ivory": "Слоновая кость", "nav.skin.emerald": "Изумрудная", "nav.skin.aurora": "Аврора"});
+  Object.assign(DICT.fa, {"nav.colorSkins": "پوسته‌های رنگی", "nav.skin.graphite": "گرافیتی", "nav.skin.midnight": "آبی نیمه‌شب", "nav.skin.ivory": "عاجی", "nav.skin.emerald": "زمردی", "nav.skin.aurora": "شفق"});
   /* 页面原始文案 → key。首遍 muiApply 按原文精确匹配并打标；之后按 data-i18n* 属性走。 */
   var SOURCE = {
     'Theme': 'nav.theme', 'Dark': 'nav.dark', 'Ultra Dark': 'nav.ultraDark',

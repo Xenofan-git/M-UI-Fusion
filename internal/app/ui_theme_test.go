@@ -231,3 +231,37 @@ func TestThemeSegmentedRulesCoverAddedSecurityButtons(t *testing.T) {
 		}
 	}
 }
+
+// Named palette skins are browser-local and must be served for every page and
+// layout. The existing three server-controlled UI layouts stay independent.
+func TestNamedColorSkinsLoadWithEveryUITheme(t *testing.T) {
+ for _,name:=range []string{"web/index.html","web/login.html"} {
+  source,err:=os.ReadFile(name)
+  if err!=nil{t.Fatal(err)}
+  for _,layout:=range []string{"liquid","shadcn","md3"} {
+   rendered:=themedPage(string(source),layout)
+   for _,asset:=range []string{
+     "static/color-skins.css","static/color-skins.js",
+   } {
+    if !strings.Contains(rendered,asset){
+      t.Errorf("%s/%s: missing global client-side skin asset %q",name,layout,asset)
+    }
+   }
+  }
+ }
+ styles,err:=os.ReadFile("web/color-skins.css")
+ if err!=nil{t.Fatal(err)}
+ script,err:=os.ReadFile("web/color-skins.js")
+ if err!=nil{t.Fatal(err)}
+ for _,name:=range []string{"graphite","midnight","ivory","emerald","aurora"} {
+  if !strings.Contains(string(styles),"data-color-skin=\""+name+"\"") {
+    t.Errorf("missing CSS palette %s",name)
+  }
+  if !strings.Contains(string(script),"'"+name+"'") {
+    t.Errorf("missing whitelist skin %s",name)
+  }
+ }
+ if strings.Contains(string(styles),"--danger:")||strings.Contains(string(styles),"--green:") {
+   t.Fatal("color skins must not change status semantics")
+ }
+}

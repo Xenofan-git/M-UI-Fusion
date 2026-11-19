@@ -40,7 +40,7 @@ assert.equal(context.window.muiT('nav.light'),'Светлая');
 assert.equal(context.window.muiT('nav.dark'),'Тёмная');
 assert.equal(context.window.muiT('nav.ultraDark'),'Очень тёмная');
 // Execute the actual theme handlers with a small DOM stub.
-const script=html.slice(html.indexOf('    function applyTheme('),html.indexOf('    /* ===== 侧边栏：底部 48px',html.indexOf('    function applyTheme(')));
+const script=html.slice(html.indexOf('    function syncThemeChoices('),html.indexOf('    /* ===== 侧边栏：底部 48px',html.indexOf('    function applyTheme(')));
 const handlers=html.slice(html.indexOf("    $('#theme-toggle').onclick="),html.indexOf("    $('#sidebar-logout').onclick=",html.indexOf("    $('#theme-toggle').onclick=")));
 const attrs={},stored={},callbacks={};
 const bodyClasses=new Set();
@@ -51,12 +51,15 @@ const mk=(choice)=>({
   focus(){this.focused=true}
 });
 const light=mk('light'),dark=mk('dark'),ultra=mk('ultra'),trigger=mk();
+const skinNames=['graphite','midnight','ivory','emerald','aurora'];
+const skins=skinNames.map(choice=>({...mk(choice),dataset:{skinChoice:choice}}));
+const choices=[light,dark,ultra,...skins];
 const menu={hidden:true,querySelector(sel){
-  if(sel.includes('aria-checked'))return [light,dark,ultra].find(b=>b.attributes['aria-checked']==='true');
+  if(sel.includes('aria-checked'))return choices.find(b=>b.attributes['aria-checked']==='true');
   return light;
 }};
-const wrapper={classList:{add(){},remove(){}},contains(target){return [trigger,menu,light,dark,ultra].includes(target)}};
-const root={setAttribute(k,v){attrs[k]=v},removeAttribute(k){delete attrs[k]}};
+const wrapper={classList:{add(){},remove(){}},contains(target){return [trigger,menu,...choices].includes(target)}};
+const root={setAttribute(k,v){attrs[k]=v},removeAttribute(k){delete attrs[k]},getAttribute(k){return attrs[k]??null}};
 const fakeDocument={
   documentElement:root,
   body:{classList:{toggle(c,v){if(v)bodyClasses.add(c);else bodyClasses.delete(c)},contains(c){return bodyClasses.has(c)}}},
@@ -65,14 +68,15 @@ const fakeDocument={
 const nodes={'#top-theme-control':wrapper,'#top-theme-menu':menu,'#theme-toggle':trigger};
 const state={
   window:{},document:fakeDocument,
-  localStorage:{getItem:k=>stored[k]??null,setItem:(k,v)=>{stored[k]=v}},
+  localStorage:{getItem:k=>stored[k]??null,setItem:(k,v)=>{stored[k]=v},removeItem:k=>{delete stored[k]}},
   '$':sel=>sel==='#top-theme-menu [aria-checked="true"]'
-    ? [dark,ultra].find(button=>button.attributes['aria-checked']==='true')
+    ? choices.find(button=>button.attributes['aria-checked']==='true')
     : sel==='#top-theme-menu [data-theme-choice="light"]' ? light : nodes[sel],
-  '$$':sel=>sel==='[data-theme-choice]'?[light,dark,ultra]:[],
+  '$$':sel=>sel==='[data-theme-choice]'?[light,dark,ultra]:sel==='[data-skin-choice]'?skins:[],
   setTimeout:()=>1,clearTimeout:()=>{},console
 };
 vm.createContext(state);
+vm.runInContext(fs.readFileSync('web/color-skins.js','utf8'),state);
 vm.runInContext(script+handlers,state);
 vm.runInContext('applyTheme(true,false)',state);
 assert.equal(stored['mui-theme'],'dark');
@@ -117,3 +121,24 @@ dark.onclick();
 assert.equal(bodyClasses.has('dark'),true);
 assert.equal(dark.attributes['aria-checked'],'true');
 console.log('PASS: light/dark/ultra themes, saved selection, reload, outside click/Escape and inbound label');
+
+// The five named skins work as a separate UI-only layer, and the original
+// Light/Dark/Ultra Dark preferences remain intact until explicitly changed.
+const savedBefore=stored['mui-theme'];
+for(const [index,name] of skinNames.entries()){
+  trigger.onclick();
+  skins[index].onclick();
+  assert.equal(attrs['data-color-skin'],name);
+  assert.equal(stored['mui-color-skin'],name);
+  assert.equal(skins[index].attributes['aria-checked'],'true');
+  assert.equal(choices.filter(b=>b.attributes['aria-checked']==='true').length,1);
+  assert.equal(bodyClasses.has('dark'),name!=='ivory');
+  assert.equal(stored['mui-theme'],savedBefore,'legacy preference must not be overwritten');
+}
+// Existing buttons clear the custom skin and restore the original preference.
+trigger.onclick();
+light.onclick();
+assert.equal(attrs['data-color-skin'],undefined);
+assert.equal(stored['mui-color-skin'],undefined);
+assert.equal(light.attributes['aria-checked'],'true');
+console.log('PASS: five additional named color skins and legacy preferences');
