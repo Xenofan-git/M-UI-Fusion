@@ -188,7 +188,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'settings.clearIpinfoToken': '清除',
       'settings.ipinfoTokenSet': '已设置',
       'settings.ipinfoTokenWillClear': '保存后清除',
-      'settings.descLanguage': '界面语言，切换后立即生效，并随保存写回服务端。',
+      'settings.descLanguage': '界面语言。选择后立即切换并自动保存。',
       'settings.expireNotify': '到期时间提醒',
       'settings.descExpireNotify': '距到期时间不足该阈值时提醒。（单位：天）',
       'settings.trafficNotify': '流量上限提醒',
@@ -1105,7 +1105,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'settings.clearIpinfoToken': 'Clear',
       'settings.ipinfoTokenSet': 'Already set',
       'settings.ipinfoTokenWillClear': 'Will clear on save',
-      'settings.descLanguage': 'UI language. Applies immediately and is written back to the server when you save.',
+      'settings.descLanguage': 'Interface language. Changes take effect immediately and are saved automatically.',
       'settings.expireNotify': 'Expiration Date Notification',
       'settings.descExpireNotify': 'Get notified about expiration date when reaching this threshold. (unit: day)',
       'settings.trafficNotify': 'Traffic Cap Notification',
@@ -1908,6 +1908,11 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'client.add':'Añadir cliente','client.edit':'Editar cliente','client.email':'Correo electrónico','client.username':'Usuario','client.passwordToken':'Contraseña / token','client.totalFlowGb':'Tráfico total (GB)','client.expiryTime':'Caducidad','client.comment':'Comentario','client.addClients':'Añadir clientes','common.update':'Actualizar','action.edit':'Editar','action.clone':'Clonar','action.exportInbound':'Exportar entrada','action.resetTraffic':'Restablecer tráfico','action.recommended':'Recomendado'
     }
   };
+  // Language selection now saves immediately through the API.
+  // Human-reviewed strings override the automatically generated translations.
+  LOCALIZED.ru['settings.descLanguage']='Язык интерфейса переключается сразу и сохраняется автоматически.';
+  LOCALIZED.fa['settings.descLanguage']='زبان رابط کاربری بلافاصله تغییر می‌کند و به‌طور خودکار ذخیره می‌شود.';
+  LOCALIZED['zh-TW']['settings.descLanguage']='介面語言切換後立即生效並自動儲存。';
   var GENERATED_LOCALES = window.MUI_LOCALES || {};
   Object.keys(GENERATED_LOCALES).forEach(function (language) {
     DICT[language] = Object.assign({}, DICT.en, GENERATED_LOCALES[language], LOCALIZED[language] || {});
@@ -2252,14 +2257,14 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, PRE: 1, CODE: 1, SVG: 1, OPTION: 1, NOSCRIPT: 1 };
   var SKIP_SELECTOR = '#security-segmented,.mui-select-menu,.release-list';
 
-  var lang = 'zh-CN';
+  var lang = 'ru';
   var SUPPORTED_LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ru', 'fa', 'vi', 'es', 'tr', 'uk', 'pt-BR'];
 
   function muiGetLang() {
     var stored = null;
     try { stored = localStorage.getItem('mui-language'); } catch (e) {}
-    var value = stored || document.documentElement.getAttribute('data-default-language') || 'zh-CN';
-    return SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'zh-CN';
+    var value = stored || document.documentElement.getAttribute('data-default-language') || 'ru';
+    return SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'ru';
   }
 
   function muiT(key, params) {
@@ -2359,7 +2364,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   }
 
   function muiSetLang(value) {
-    var next = SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'zh-CN';
+    var next = SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'ru';
     try { localStorage.setItem('mui-language', next); } catch (e) {}
     lang = next;
     muiApply(document);
@@ -2379,6 +2384,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   function boot() {
     lang = muiGetLang();
     muiApply(document);
+    document.documentElement.removeAttribute('data-l10n-pending');
     window.dispatchEvent(new Event('mui-langchange'));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -1,7 +1,12 @@
 <!doctype html>
-<html lang="zh-CN" data-default-language="zh-CN" data-ui-theme="shadcn">
+<html lang="ru" data-default-language="ru" data-ui-theme="shadcn" data-l10n-pending="1">
 <head>
   <meta charset="utf-8">
+  <style>html[data-l10n-pending="1"] body {visibility:hidden}</style>
+  <script>
+    // Safety fallback: do not leave the panel blank if an i18n asset fails.
+    setTimeout(() => document.documentElement.removeAttribute('data-l10n-pending'), 3000);
+  </script>
   <link rel="icon" type="image/png" sizes="1024x1024" href="media/m-ui_logo.png?v=12">
   <link rel="apple-touch-icon" href="media/m-ui_logo.png?v=12">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1010,20 +1015,20 @@
         </div>
       </div>
       <nav class="nav" id="nav">
-        <div class="theme-control" id="sidebar-theme-control"><button class="theme-trigger" id="sidebar-theme" type="button" aria-expanded="false"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg></span><span>Theme</span><span class="theme-chevron"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-down"></use></svg></span></button><div class="theme-options"><div class="theme-option-row"><span>Dark</span><label class="switch switch-sm"><input id="sidebar-dark-toggle" type="checkbox"><span></span></label></div><div class="theme-option-row" id="sidebar-ultra-row" hidden><span>Ultra Dark</span><label class="switch switch-sm"><input id="sidebar-ultra-toggle" type="checkbox"><span></span></label></div></div></div>
-        <button data-view="dashboard" class="active"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-dashboard"></use></svg></span><span>Overview</span></button>
-        <button data-view="inbounds"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-user"></use></svg></span><span>Inbounds</span></button>
-        <button data-view="subtemplates"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-file-text"></use></svg></span><span data-i18n="nav.subTemplates">Subscription Templates</span></button>
-        <button data-view="mihomo"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-tool"></use></svg></span><span>Mihomo Settings</span></button>
-        <button data-view="settings"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-setting"></use></svg></span><span>Panel Settings</span></button>
-        <button id="sidebar-logout"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></span><span>Log Out</span></button>
+        <div class="theme-control" id="sidebar-theme-control"><button class="theme-trigger" id="sidebar-theme" type="button" aria-expanded="false"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg></span><span data-i18n="nav.theme">Тема</span><span class="theme-chevron"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-down"></use></svg></span></button><div class="theme-options"><div class="theme-option-row"><span>Dark</span><label class="switch switch-sm"><input id="sidebar-dark-toggle" type="checkbox"><span></span></label></div><div class="theme-option-row" id="sidebar-ultra-row" hidden><span>Ultra Dark</span><label class="switch switch-sm"><input id="sidebar-ultra-toggle" type="checkbox"><span></span></label></div></div></div>
+        <button data-view="dashboard" class="active"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-dashboard"></use></svg></span><span data-i18n="nav.overview">Обзор</span></button>
+        <button data-view="inbounds"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-user"></use></svg></span><span data-i18n="nav.inbounds">Входы</span></button>
+        <button data-view="subtemplates"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-file-text"></use></svg></span><span data-i18n="nav.subTemplates">Шаблоны подписок</span></button>
+        <button data-view="mihomo"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-tool"></use></svg></span><span data-i18n="nav.mihomoSettings">Настройки Mihomo</span></button>
+        <button data-view="settings"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-setting"></use></svg></span><span data-i18n="nav.panelSettings">Настройки панели</span></button>
+        <button id="sidebar-logout"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></span><span data-i18n="nav.logOut">Выйти</span></button>
       </nav>
       <button class="sider-trigger" id="sider-trigger" type="button" title="折叠/展开菜单"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-left" id="sider-trigger-use"></use></svg></button>
       <button class="drawer-handle" id="drawer-handle" type="button" title="菜单"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-menu-fold" id="drawer-handle-use"></use></svg></button>
     </aside>
     <div class="drawer-mask" id="drawer-mask"></div>
     <section class="content">
-      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">仪表盘</strong></div><div class="top-actions"><button class="outline-btn theme-toggle" id="theme-toggle"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span>主题</span></button><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
+      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">Обзор</strong></div><div class="top-actions"><button class="outline-btn theme-toggle" id="theme-toggle"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span data-i18n="nav.theme">Тема</span></button><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
       <div class="security-banner" id="panel-security-banner" hidden><strong>安全提醒</strong><span>面板当前未配置 HTTPS TLS 证书，建议在面板设置中配置证书和私钥并重启 m-ui。</span><button id="dismiss-security-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <div class="security-banner" id="panel-path-banner" hidden><strong>安全提醒</strong><span data-i18n-html="banner.pathText">面板当前直接挂在根路径 <code>/</code> 上，任何扫到这个端口的脚本都能立刻拿到登录页并开始撞库爆破。请在面板设置中把「面板 URI 路径」改成一个不易猜到的值（例如 <code>/a-users-path/</code>），改完只有带这个路径的地址才能访问面板。</span><button id="dismiss-path-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <main class="main">
@@ -1128,7 +1133,7 @@
               <div class="setting-row"><div><strong>Session Duration</strong><p>The duration for which you can stay logged in. (unit: minute)</p></div><div class="setting-control"><input name="sessionMaxAge" type="number" min="60" step="10"></div></div>
               <div class="setting-row"><div><strong>Pagination Size</strong><p>Define page size for inbounds table. (0 = disable)</p></div><div class="setting-control"><input name="pageSize" type="number" min="0" step="5"></div></div>
               <div class="setting-row"><div><strong data-i18n="settings.ipinfoToken">IPinfo Token</strong><p data-i18n="settings.descIpinfoToken">VPNGate ASN 查询：留空优先使用 IPinfo 免费接口，明确耗尽额度后使用 ip-api 的非商业 HTTP 免费接口；填写后只发送到 IPinfo。</p></div><div class="setting-control"><div class="setting-secret-control"><input name="ipinfoToken" type="password" autocomplete="new-password" spellcheck="false"><button type="button" class="outline-btn" id="clear-ipinfo-token" data-i18n="settings.clearIpinfoToken">Clear</button><small id="ipinfo-token-status" hidden>Already set</small><input name="ipinfoTokenClear" type="checkbox" style="display:none"></div></div></div>
-              <div class="setting-row"><div><strong>Language</strong><p data-i18n="settings.descLanguage">UI language. Applies immediately and is written back to the server when you save.</p></div><div class="setting-control"><select name="language"><option value="zh-CN">🇨🇳 简体中文</option><option value="zh-TW">🇹🇼 繁體中文</option><option value="en">🇺🇸 English</option><option value="ja">🇯🇵 日本語</option><option value="ru">🇷🇺 Русский</option><option value="fa">🇮🇷 فارسی</option><option value="vi">🇻🇳 Tiếng Việt</option><option value="es">🇪🇸 Español</option><option value="tr">🇹🇷 Türkçe</option><option value="uk">🇺🇦 Українська</option><option value="pt-BR">🇧🇷 Português</option></select></div></div><div class="setting-row"><div><strong data-i18n="settings.uiTheme">Panel Theme</strong><p data-i18n="settings.descUiTheme">Look of the panel, the login page and the subscription page. The page reloads after you save.</p></div><div class="setting-control"><select name="uiTheme"><option value="shadcn" data-i18n="settings.themeShadcn">shadcn</option><option value="md3" data-i18n="settings.themeMd3">Material Design 3</option><option value="liquid" data-i18n="settings.themeLiquid">Liquid Glass</option></select></div></div>
+              <div class="setting-row"><div><strong data-i18n="settings.language">Язык</strong><p data-i18n="settings.descLanguage">Выбор языка применяется сразу и сохраняется на сервере.</p></div><div class="setting-control"><select name="language"><option value="ru">🇷🇺 Русский</option><option value="en">🇺🇸 English</option><option value="zh-CN">🇨🇳 简体中文</option><option value="fa">🇮🇷 فارسی (персидский)</option><option value="zh-TW">🇹🇼 繁體中文</option><option value="ja">🇯🇵 日本語</option><option value="vi">🇻🇳 Tiếng Việt</option><option value="es">🇪🇸 Español</option><option value="tr">🇹🇷 Türkçe</option><option value="uk">🇺🇦 Українська</option><option value="pt-BR">🇧🇷 Português</option></select></div></div><div class="setting-row"><div><strong data-i18n="settings.uiTheme">Panel Theme</strong><p data-i18n="settings.descUiTheme">Look of the panel, the login page and the subscription page. The page reloads after you save.</p></div><div class="setting-control"><select name="uiTheme"><option value="shadcn" data-i18n="settings.themeShadcn">shadcn</option><option value="md3" data-i18n="settings.themeMd3">Material Design 3</option><option value="liquid" data-i18n="settings.themeLiquid">Liquid Glass</option></select></div></div>
             </div></details>
             <details class="setting-section"><summary>Notifications</summary><div class="setting-section-body">
               <div class="setting-row"><div><strong>Expiration Date Notification</strong><p>Get notified about expiration date when reaching this threshold. (unit: day)</p></div><div class="setting-control"><input name="expireDiff" type="number" min="0"></div></div>
@@ -1243,7 +1248,9 @@
     function renderConnections(){const box=$('#connections-table'); const snapshot=app.state?.connections||{}; const items=snapshot.connections||[]; $('#connection-count').textContent=muiT('conn.count',{n:items.length}); if(!items.length){box.innerHTML=`<div class="empty">${muiT('conn.emptyTable')}</div>`;return;} box.innerHTML=`<table><thead><tr><th>${muiT('conn.colTarget')}</th><th>${muiT('conn.colSource')}</th><th>${muiT('conn.colInbound')}</th><th>${muiT('conn.colRuleProxy')}</th><th>${muiT('table.colTraffic')}</th><th></th></tr></thead><tbody>${items.map(c=>{const meta=c.metadata||{}; const target=meta.host||meta.destination||meta.dst||muiT('conn.unknownTarget'); const source=meta.source||meta.src||muiT('conn.unknownSource'); const inbound=meta.inbound||meta.inboundName||'-'; const rule=c.rule||c.rulePayload||'-'; const proxy=c.chains?.join(' / ')||c.proxy||'-'; return `<tr><td class="name-cell"><strong>${esc(target)}</strong><span>${esc(c.type||'TCP')}</span></td><td class="mono">${esc(source)}</td><td>${esc(inbound)}</td><td><span class="tag">${esc(String(rule))}</span><span class="tag">${esc(String(proxy))}</span></td><td class="mono">${fmt(c.upload||0)} ${SF('arrow-up')} / ${fmt(c.download||0)} ${SF('arrow-down')}</td><td><button class="small-btn" data-close-connection="${esc(c.id||'')}">${muiT('common.close')}</button></td></tr>`;}).join('')}</tbody></table>`; $$('#connections-table [data-close-connection]').forEach(b=>b.onclick=()=>closeConnection(b.dataset.closeConnection));}
     async function closeConnection(id){if(!id)return;try{await api('/api/core/connections?id='+encodeURIComponent(id),{method:'DELETE'});toast(muiT('msg.connectionClosed'));await refresh();}catch(e){toast(e.message,true);}}
     async function loadRaw(){try{const d=await api('/api/raw-config'); $('#raw-config').value=d.config||'';}catch(e){toast(e.message,true);}}
-    function renderSettings(){const form=$('#settings-form'); if(!form||!app.state)return; if(app.settingsDirty){syncSettingsButtons();return;} const s=(app.state.state&&app.state.state.settings)||{}; const listen=splitPanelListen(s.panelListen); form.querySelector('[name="listenIp"]').value=listen.ip; form.querySelector('[name="listenPort"]').value=listen.port; Object.entries(s).forEach(([k,v])=>{const el=form.querySelector(`[name="${k}"]`);if(!el||k==='password'||k==='username'||k==='ipinfoToken'||k==='ipinfoTokenSet'||k==='ipinfoTokenClear')return;if(el.type==='checkbox')el.checked=!!v;else el.value=v??'';}); const token=form.elements.ipinfoToken,status=$('#ipinfo-token-status'),clear=$('#clear-ipinfo-token'),clearField=form.elements.ipinfoTokenClear; if(token)token.value=''; if(clearField)clearField.checked=false; if(status){status.hidden=!s.ipinfoTokenSet;status.textContent=s.ipinfoTokenSet?muiT('settings.ipinfoTokenSet'):'';} if(clear)clear.disabled=!s.ipinfoTokenSet; const zone=s.timeLocation||'Local',zoneSelect=$('#time-location'); if(zoneSelect){if(!Array.from(zoneSelect.options).some(option=>option.value===zone))zoneSelect.add(new Option(zone,zone));zoneSelect.value=zone;} applyRemarkModel(s.remarkModel); applyLanguagePreference(s.language); syncSettingsButtons();}
+    function renderSettings(){const form=$('#settings-form'); if(!form||!app.state)return; if(app.settingsDirty){syncSettingsButtons();return;} const s=(app.state.state&&app.state.state.settings)||{}; const listen=splitPanelListen(s.panelListen); form.querySelector('[name="listenIp"]').value=listen.ip; form.querySelector('[name="listenPort"]').value=listen.port; Object.entries(s).forEach(([k,v])=>{const el=form.querySelector(`[name="${k}"]`);if(!el||k==='password'||k==='username'||k==='ipinfoToken'||k==='ipinfoTokenSet'||k==='ipinfoTokenClear')return;if(el.type==='checkbox')el.checked=!!v;else el.value=v??'';}); const token=form.elements.ipinfoToken,status=$('#ipinfo-token-status'),clear=$('#clear-ipinfo-token'),clearField=form.elements.ipinfoTokenClear; if(token)token.value=''; if(clearField)clearField.checked=false; if(status){status.hidden=!s.ipinfoTokenSet;status.textContent=s.ipinfoTokenSet?muiT('settings.ipinfoTokenSet'):'';} if(clear)clear.disabled=!s.ipinfoTokenSet; const zone=s.timeLocation||'Local',zoneSelect=$('#time-location'); if(zoneSelect){if(!Array.from(zoneSelect.options).some(option=>option.value===zone))zoneSelect.add(new Option(zone,zone));zoneSelect.value=zone;} applyRemarkModel(s.remarkModel);
+      if(pendingLanguage)form.elements.language.value=pendingLanguage;
+      applyLanguagePreference(s.language); syncSettingsButtons();}
     // 面板监听地址在后端是一个 host:port 字符串，界面将其拆为 Listen IP + Listen Port 两行。
     function splitPanelListen(value){const listen=String(value||'').trim(); const cut=listen.lastIndexOf(':'); if(cut<0)return{ip:/^\d+$/.test(listen)?'':listen,port:/^\d+$/.test(listen)?listen:''}; let ip=listen.slice(0,cut); if(ip.startsWith('[')&&ip.endsWith(']'))ip=ip.slice(1,-1); return{ip,port:listen.slice(cut+1)};}
     function joinPanelListen(ip,port){const host=String(ip||'').trim(); return host.includes(':')?`[${host}]:${port}`:`${host}:${port}`;}
@@ -1696,7 +1703,40 @@
     setupCrossPanelSubscriptionPathUI();
     setupSubscriptionClientsUI();
     // 语言：面板设置里的 language 是权威值，localStorage 只是本地缓存；两者不一致时立即切换并广播。
-    function applyLanguagePreference(value){const target=['zh-CN','zh-TW','en','ja','ru','fa','vi','es','tr','uk','pt-BR'].includes(value)?value:'zh-CN';try{if(typeof muiGetAppliedLang==='function'&&muiGetAppliedLang()!==target)muiSetLang(target);else localStorage.setItem('mui-language',target);}catch{}}
+    let pendingLanguage=null;
+    let languageSaveQueue=Promise.resolve();
+    function applyLanguagePreference(value){
+      // While an immediate save is in flight, do not overwrite the user's
+      // selection with the stale language from the last state snapshot.
+      if(pendingLanguage)return;
+      const target=['zh-CN','zh-TW','en','ja','ru','fa','vi','es','tr','uk','pt-BR'].includes(value)?value:'ru';
+      try{
+        if(typeof muiGetAppliedLang==='function'&&muiGetAppliedLang()!==target)muiSetLang(target);
+        else localStorage.setItem('mui-language',target);
+      }catch{}
+    }
+    async function changePanelLanguage(target){
+      pendingLanguage=target;
+      muiSetLang(target);
+      // Serialize fast consecutive changes; otherwise a slow response for
+      // English can overwrite a later user's choice of Persian.
+      languageSaveQueue=languageSaveQueue.catch(()=>{}).then(()=>api('/api/language',{
+        method:'POST',body:JSON.stringify({language:target})
+      }));
+      try{
+        await languageSaveQueue;
+        if(app.state?.state?.settings)app.state.state.settings.language=target;
+        if(pendingLanguage===target)pendingLanguage=null;
+      }catch(error){
+        if(pendingLanguage!==target)return;
+        pendingLanguage=null;
+        const previous=app.state?.state?.settings?.language||document.documentElement.dataset.defaultLanguage||'ru';
+        muiSetLang(previous);
+        const select=$('#settings-form [name="language"]');
+        if(select)select.value=previous;
+        toast(error.message,true);
+      }
+    }
     // muiApply 已经把静态文案换好，这里只重跑由 JS 生成的动态内容。
     function refreshLanguageUI(){
       const safe=fn=>{try{fn();}catch(error){console.error(error);}};
@@ -1721,7 +1761,9 @@
       $$('.modal-backdrop.open').forEach(modal=>muiApply(modal));
     }
     window.addEventListener('mui-langchange',refreshLanguageUI);
-    $('#settings-form [name="language"]')?.addEventListener('change',event=>muiSetLang(event.target.value));
+    $('#settings-form [name="language"]')?.addEventListener('change',event=>{
+      changePanelLanguage(event.target.value);
+    });
     $('#settings-form [name="ipinfoToken"]')?.addEventListener('input',()=>{const clear=$('#settings-form [name="ipinfoTokenClear"]');if(clear)clear.checked=false;const status=$('#ipinfo-token-status');if(status)status.hidden=true;});
     $('#clear-ipinfo-token')?.addEventListener('click',()=>{const input=$('#settings-form [name="ipinfoToken"]'),clear=$('#settings-form [name="ipinfoTokenClear"]'),status=$('#ipinfo-token-status');if(input)input.value='';if(clear)clear.checked=true;if(status){status.hidden=false;status.textContent=muiT('settings.ipinfoTokenWillClear');}markSettingsDirty();});
     reorderProtocolOptions();

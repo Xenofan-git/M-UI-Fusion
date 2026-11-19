@@ -292,8 +292,8 @@ func TestIndexPageCarriesThePanelLanguage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(page), `data-default-language="zh-CN"`) {
-		t.Fatal("web/index.html must ship the zh-CN placeholder that serveLocalizedPage rewrites")
+	if !strings.Contains(string(page), `data-default-language="ru"`) {
+		t.Fatal("web/index.html must ship the Russian placeholder that serveLocalizedPage rewrites")
 	}
 	app := i18nTestApp(t)
 	i18nSetLanguage(app, "en")
@@ -307,6 +307,16 @@ func TestIndexPageCarriesThePanelLanguage(t *testing.T) {
 	body := recorder.Body.String()
 	if !strings.Contains(body, `data-default-language="en"`) || strings.Contains(body, `data-default-language="zh-CN"`) {
 		t.Fatal("the index page must carry the stored language, replacing the placeholder")
+	}
+
+	for _, language := range []string{"ru", "zh-CN", "fa"} {
+		i18nSetLanguage(app, language)
+		recorder = httptest.NewRecorder()
+		app.handleIndex(recorder, request)
+		want := `<html lang="` + language + `" data-default-language="` + language + `"`
+		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), want) {
+			t.Fatalf("index initial HTML must be %s, got %q", language, recorder.Body.String()[:110])
+		}
 	}
 }
 
@@ -389,21 +399,35 @@ func TestStandalonePagesSupportEveryLanguage(t *testing.T) {
 	}
 }
 
-func TestTraditionalChineseIsSecondInEveryLanguageList(t *testing.T) {
+func TestLanguageMenusKeepAllLocalesAndPrioritizeRussianEnglishChinesePersian(t *testing.T) {
 	for _, name := range []string{"web/index.html", "web/login.html", "web/subscription.html"} {
 		data, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 		page := string(data)
-		zhCN := strings.Index(page, `<option value="zh-CN">🇨🇳 简体中文</option>`)
-		zhTW := strings.Index(page, `<option value="zh-TW">🇹🇼 繁體中文</option>`)
-		en := strings.Index(page, `<option value="en">🇺🇸 English</option>`)
-		ja := strings.Index(page, `<option value="ja">🇯🇵 日本語</option>`)
-		uk := strings.Index(page, `<option value="uk">🇺🇦 Українська</option>`)
-		ptBR := strings.Index(page, `<option value="pt-BR">🇧🇷 Português</option>`)
-		if zhCN < 0 || zhTW < 0 || en < 0 || ja < 0 || uk < 0 || ptBR < 0 || !(zhCN < zhTW && zhTW < en && en < ja && ja < uk && uk < ptBR) {
-			t.Fatalf("%s language order must start with zh-CN, zh-TW, en, ja and end with uk, pt-BR", name)
+		options := []string{"ru", "en", "zh-CN", "fa", "zh-TW", "ja", "vi", "es", "tr", "uk", "pt-BR"}
+		pos := make(map[string]int)
+		for _, language := range options {
+			marker := `<option value="` + language + `"`
+			pos[language] = strings.Index(page, marker)
+			if pos[language] < 0 {
+				t.Fatalf("%s is missing %s option", name, language)
+			}
+		}
+		if name == "web/subscription.html" {
+			if !(pos["zh-CN"] < pos["zh-TW"] && pos["zh-TW"] < pos["en"]) {
+				t.Fatalf("subscription page legacy locale list changed unexpectedly in %s", name)
+			}
+			continue
+		}
+		for i := 1; i < 4; i++ {
+			if pos[options[i]] <= pos[options[i-1]] {
+				t.Fatalf("%s first four options should be ru, en, zh-CN, fa", name)
+			}
+		}
+		if pos["fa"] >= pos["zh-TW"] || pos["uk"] >= pos["pt-BR"] {
+			t.Fatalf("%s secondary locale order unexpectedly changed", name)
 		}
 	}
 }

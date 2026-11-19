@@ -143,7 +143,7 @@ func TestMihomoSettingsPageWiring(t *testing.T) {
 	content := string(index)
 	for _, needle := range []string{
 		`data-general="import"`, `id="inbound-import-modal"`, `id="inbound-import-form"`, `id="inbound-import-yaml"`,
-		`data-view="mihomo"`, `id="view-mihomo"`, `Mihomo Settings`, `id="mihomo-settings-root"`,
+		`data-view="mihomo"`, `id="view-mihomo"`, `Настройки Mihomo`, `id="mihomo-settings-root"`,
 		`id="mihomo-add-outbound"`, `id="mihomo-add-rule"`, `id="mihomo-warp"`, `id="mihomo-save"`,
 		`mihomo-settings.css`, `mihomo-settings.js`,
 	} {
@@ -4281,8 +4281,8 @@ func TestLoginPageCarriesTheConfiguredLanguage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(login), `data-default-language="zh-CN"`) {
-		t.Fatal("web/login.html must ship the zh-CN placeholder that handleLoginPage rewrites")
+	if !strings.Contains(string(login), `data-default-language="ru"`) {
+		t.Fatal("web/login.html must ship the Russian placeholder that handleLoginPage rewrites")
 	}
 	if !strings.Contains(string(login), "document.documentElement.dataset.defaultLanguage") {
 		t.Fatal("web/login.html must fall back to the injected language when localStorage is empty")
@@ -4311,8 +4311,16 @@ func TestLoginPageCarriesTheConfiguredLanguage(t *testing.T) {
 	if strings.Contains(page, `data-default-language="zh-CN"`) {
 		t.Fatal("the placeholder must be replaced, not duplicated")
 	}
-	if !strings.Contains(page, `<html lang="zh-CN"`) {
-		t.Fatal("the rewrite must not touch the document lang attribute")
+	if !strings.Contains(page, `<html lang="en"`) {
+		t.Fatal("the document lang must follow the configured language")
+	}
+
+	for _, language := range []string{"ru", "fa", "zh-CN"} {
+		manager.state.Settings.Language = language
+		page = serve()
+		if !strings.Contains(page, `<html lang="`+language+`" data-default-language="`+language+`"`) {
+			t.Fatalf("login HTML language mismatch for %s", language)
+		}
 	}
 	// 存了个不认识的值（手改 state.json）时不能把这段注释成空的。
 	manager.state.Settings.Language = "fr"
@@ -4844,4 +4852,3 @@ func TestMediaLogoServing(t *testing.T) {
 		t.Fatal("expected non-empty response body for logo")
 	}
 }
-

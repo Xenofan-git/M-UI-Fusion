@@ -1170,7 +1170,9 @@ func (a *App) serveLocalizedPage(w http.ResponseWriter, name string) {
 		http.NotFound(w, nil)
 		return
 	}
-	text := strings.Replace(string(page), `data-default-language="zh-CN"`, `data-default-language="`+a.lang()+`"`, 1)
+	language := a.lang()
+	text := strings.Replace(string(page), `data-default-language="ru"`, `data-default-language="`+language+`"`, 1)
+	text = strings.Replace(text, `<html lang="ru"`, `<html lang="`+language+`"`, 1)
 	a.writeAsset(w, []byte(themedPage(text, a.uiTheme())), "text/html; charset=utf-8")
 }
 
