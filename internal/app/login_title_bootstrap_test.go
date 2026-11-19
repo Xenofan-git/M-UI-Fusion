@@ -55,3 +55,40 @@ func TestLoginPageTitleIsLocalizedBeforeClientJavascript(t *testing.T) {
 		}
 	}
 }
+
+// The welcome heading is a single localized element, not a timed carousel.
+// Its logo should remain clearly visible under all UI theme overrides.
+func TestLoginPageStableWelcomeAndEnlargedCat(t *testing.T) {
+ page, err := webFS.ReadFile("web/login.html")
+ if err != nil { t.Fatal(err) }
+ html := string(page)
+ for _, expected := range []string{
+  "<h1 class=\"headline\" data-word=\"title\">Добро пожаловать</h1>",
+  "document.querySelector('.headline').textContent = text.title;",
+  "width: 96px;",
+  "height: 96px;",
+  "<img src=\"media/m-ui_logo.png\" alt=\"M-UI Fusion\" width=\"96\" height=\"96\">",
+  "ru: { pageTitle:'M-UI Fusion | Вход', title:'Добро пожаловать'",
+  "en: { pageTitle:'M-UI Fusion | Log In', title:'Welcome'",
+ } {
+  if !strings.Contains(html,expected) { t.Errorf("login UI missing expected fragment %q",expected) }
+ }
+ for _, obsolete := range []string{
+  "rotateHeadline(",
+  "data-word=\"hello\"",
+  "words-wrapper",
+  "setTimeout(() => rotateHeadline",
+ } {
+  if strings.Contains(html,obsolete) { t.Errorf("login still rotates welcome headline: %q",obsolete) }
+ }
+ if strings.Count(html,"<h1 class=\"headline\"") != 1 {
+  t.Fatal("login page needs exactly one welcome heading")
+ }
+ for _, filename := range []string{"web/theme-shadcn.css","web/theme-md3.css"} {
+  data,err:=webFS.ReadFile(filename)
+  if err!=nil {t.Fatal(err)}
+  if !strings.Contains(string(data), "body .brand-icon { filter: none !important; width: 96px !important; height: 96px !important; }") {
+   t.Errorf("%s: theme forces a small cat logo",filename)
+  }
+ }
+}
