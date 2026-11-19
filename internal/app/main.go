@@ -1075,6 +1075,7 @@ func (a *App) panelRoutes(serveSubscriptions bool) http.Handler {
 	mux.HandleFunc("/api/core/logs", a.auth(a.handleCoreLogs))
 	mux.HandleFunc("/api/core/releases", a.auth(a.handleCoreReleases))
 	mux.HandleFunc("/api/core/install", a.auth(a.handleCoreInstall))
+	mux.HandleFunc("/api/mihomo/geo-categories", a.auth(a.handleMihomoGeoCategories))
 	mux.HandleFunc("/api/geofiles/update", a.auth(a.handleGeofileUpdate))
 	mux.HandleFunc("/api/config/download", a.auth(a.handleConfigDownload))
 	mux.HandleFunc("/api/logs/download", a.auth(a.handleLogsDownload))

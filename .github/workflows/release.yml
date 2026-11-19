@@ -47,12 +47,14 @@ jobs:
         run: go mod download
 
       - name: Validate web JavaScript
-        run: node --check web/mihomo-settings.js
+        run: node --check web/mihomo-settings.js && node --check web/mihomo-rule-lists.js
 
       - name: Test balancer display labels
         run: node tests/balancer-labels.cjs
       - name: Test balancer tab labels and locales
         run: node tests/balancer-tab-labels.cjs
+      - name: Test routing list editor
+        run: node tests/routing-lists.cjs
       - name: Run tests
         run: go test -count=1 ./...
 

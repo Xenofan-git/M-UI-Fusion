@@ -1940,6 +1940,32 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     target['mihomo.tabSubscriptionBalancers'] = labels[1];
   });
 
+  // Precise routing-editor terminology, plus human-readable list controls.
+  Object.assign(DICT.ru, {
+    'mh.colRuleType':'Тип правила', 'mh.colOutbound':'Исходящий',
+    'mh.colPayload':'Условия', 'mh.domainsAndIP':'Домены и IP',
+    'mh.chooseGeoCategories':'Выбрать из списка',
+    'mh.advancedPayload':'Выражение (расширенный режим)',
+    'mh.ruleListHelp':'По одному значению в строке. Условия объединяются через ИЛИ и направляются в выбранный исходящий.'
+  });
+  Object.assign(DICT.en, {
+    'mh.domainsAndIP':'Domains and IPs',
+    'mh.chooseGeoCategories':'Choose from list',
+    'mh.advancedPayload':'Expression (advanced mode)',
+    'mh.ruleListHelp':'One entry per line. Conditions match with OR and use the selected outbound.'
+  });
+  Object.assign(DICT['zh-CN'], {
+    'mh.domainsAndIP':'域名和 IP',
+    'mh.chooseGeoCategories':'从列表选择',
+    'mh.advancedPayload':'表达式（高级模式）',
+    'mh.ruleListHelp':'每行一个条目，条件以 OR 组合并路由到所选出站。'
+  });
+  Object.assign(DICT.fa, {
+    'mh.domainsAndIP':'دامنه‌ها و IP',
+    'mh.chooseGeoCategories':'انتخاب از فهرست',
+    'mh.advancedPayload':'عبارت (حالت پیشرفته)',
+    'mh.ruleListHelp':'هر خط یک مقدار؛ شرط‌ها با OR و خروجی انتخاب‌شده اعمال می‌شوند.'
+  });
   /* 页面原始文案 → key。首遍 muiApply 按原文精确匹配并打标；之后按 data-i18n* 属性走。 */
   var SOURCE = {
     'Theme': 'nav.theme', 'Dark': 'nav.dark', 'Ultra Dark': 'nav.ultraDark',

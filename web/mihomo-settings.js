@@ -9,6 +9,7 @@
   const delayResults=new Map();
   const activeGroupResults=new Map();
   let activeGroupRequest=null;
+  let geoCategoryCatalog=null,geoCategoryLoading=null;
   let warpData=null,warpBusy=false;
   const clone=value=>JSON.parse(JSON.stringify(value??null));
   const root=$('#mihomo-settings-root');
@@ -223,12 +224,25 @@
     const warp=currentWarpOutbound();for(const value of b.warpDomains||[])rows.push(domain(value,warp?.name||'warp'));
     return rows;
   }
+  function ruleReadableType(rule){
+    if(window.MUIRuleLists?.decode(rule))return window.muiGetLang?.()==='ru'?'Списки':'Lists';
+    return rule.type;
+  }
+  function ruleReadablePayload(rule){
+    const decoded=window.MUIRuleLists?.decode(rule);
+    if(!decoded)return rule.type==='MATCH'?muiT('mh.matchAll'):rule.payload||'—';
+    const geo=window.MUIRuleLists.lines(decoded.geos).length;
+    const domains=window.MUIRuleLists.lines(decoded.domains).length;
+    return window.muiGetLang?.()==='ru'
+      ?'Категории: '+geo+' · Домены/IP: '+domains
+      :'Geo categories: '+geo+' · Domains/IPs: '+domains;
+  }
   function renderRules(){
     const box=$('#mihomo-rule-table');
     ensureFinalMatch();
     const managed=basicsRuleRows();
     const managedHTML=managed.map((rule,index)=>'<tr><td>'+(index+1)+'</td><td><span class="mihomo-pill">'+esc(rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td><td><span class="mihomo-pill group">Basics</span></td></tr>').join('');
-    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colRuleType')}</th><th>${muiT('mh.colPayload')}</th><th>${muiT('mh.colOutbound')}</th><th>${muiT('mh.colOptions')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${managedHTML}${draft.routingRules.map((rule,index)=>`<tr><td>${managed.length+index+1}</td><td><span class="mihomo-pill">${esc(rule.type)}</span></td><td><div class="mihomo-rule-payload" title="${esc(rule.payload||'')}">${esc(rule.type==='MATCH'?muiT('mh.matchAll'):rule.payload||'—')}</div></td><td class="mihomo-name">${esc(rule.target)}</td><td>${rule.noResolve?'<span class="mihomo-pill group">no-resolve</span>':'—'}</td><td><div class="mihomo-actions"><button class="mihomo-icon" data-rule-up="${esc(rule.id)}" title="${muiT('mh.moveUp')}" ${index===0||rule.type==='MATCH'?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-rule-down="${esc(rule.id)}" title="${muiT('mh.moveDown')}" ${index===draft.routingRules.length-1||draft.routingRules[index+1]?.type==='MATCH'?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-rule-edit="${esc(rule.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-rule-delete="${esc(rule.id)}" title="${muiT('common.delete')}">${SF('delete')}</button></div></td></tr>`).join('')}</tbody></table></div>`;
+    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colRuleType')}</th><th>${muiT('mh.colPayload')}</th><th>${muiT('mh.colOutbound')}</th><th>${muiT('mh.colOptions')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${managedHTML}${draft.routingRules.map((rule,index)=>`<tr><td>${managed.length+index+1}</td><td><span class="mihomo-pill">${esc(ruleReadableType(rule))}</span></td><td><div class="mihomo-rule-payload" title="${esc(rule.payload||'')}">${esc(ruleReadablePayload(rule))}</div></td><td class="mihomo-name">${esc(rule.target)}</td><td>${rule.noResolve?'<span class="mihomo-pill group">no-resolve</span>':'—'}</td><td><div class="mihomo-actions"><button class="mihomo-icon" data-rule-up="${esc(rule.id)}" title="${muiT('mh.moveUp')}" ${index===0||rule.type==='MATCH'?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-rule-down="${esc(rule.id)}" title="${muiT('mh.moveDown')}" ${index===draft.routingRules.length-1||draft.routingRules[index+1]?.type==='MATCH'?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-rule-edit="${esc(rule.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-rule-delete="${esc(rule.id)}" title="${muiT('common.delete')}">${SF('delete')}</button></div></td></tr>`).join('')}</tbody></table></div>`;
     $$('[data-rule-edit]',root).forEach(button=>button.onclick=()=>openRuleModal(button.dataset.ruleEdit));
     $$('[data-rule-delete]',root).forEach(button=>button.onclick=()=>deleteRule(button.dataset.ruleDelete));
     $$('[data-rule-up]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleUp,-1));
@@ -277,8 +291,24 @@
     </div><div id="outbound-import-error" role="alert" hidden></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" id="outbound-apply" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
     document.body.appendChild(outboundModal);
 
-    const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid"><input name="id" type="hidden"><label class="mihomo-field"><span>Rule Type</span><select name="type">${ruleTypes.map(type=>`<option value="${type}">${type}</option>`).join('')}</select></label><label class="mihomo-field"><span>Outbound</span><select name="target"></select></label><label class="mihomo-field full" id="mihomo-rule-payload-field"><span>Payload</span><input name="payload" required><small id="mihomo-rule-hint"></small></label><div class="mihomo-field full" id="mihomo-no-resolve-field"><label class="mihomo-check" data-i18n-multi="mh.noResolveLabel"><input name="noResolve" type="checkbox">no-resolve（匹配目标 IP 时不触发 DNS 解析）</label></div></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
+    const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid"><input name="id" type="hidden"><label class="mihomo-field"><span data-i18n="mh.colRuleType">Тип правила</span><select name="type"><option value="LIST">Списки категорий, доменов и IP</option>${ruleTypes.map(type=>`<option value="${type}">${type}</option>`).join('')}</select></label><label class="mihomo-field"><span data-i18n="mh.colOutbound">Исходящий</span><select name="target"></select></label><div class="mihomo-rule-lists full" id="mihomo-rule-lists">
+        <div class="mihomo-rule-list-grid">
+          <label class="mihomo-field"><span>GeoSite/GeoIP</span><textarea name="geoCategories" rows="9" spellcheck="false" placeholder="youtube&#10;category-ru&#10;ru"></textarea></label>
+          <label class="mihomo-field"><span data-i18n="mh.domainsAndIP">Домены и IP</span><textarea name="domainIPs" rows="9" spellcheck="false" placeholder="example.com&#10;full:api.example.com&#10;192.168.1.0/24"></textarea></label>
+        </div>
+        <div class="mihomo-rule-list-toolbar"><button type="button" class="mihomo-tool" id="mihomo-geo-picker-open" data-i18n="mh.chooseGeoCategories">Выбрать из списка</button><small data-i18n="mh.ruleListHelp">По одному значению в строке. Условия объединяются через ИЛИ, все направляются в выбранный исходящий.</small></div>
+      </div>
+      <label class="mihomo-field full" id="mihomo-rule-payload-field"><span data-i18n="mh.advancedPayload">Выражение (расширенный режим)</span><textarea name="payload" rows="6" spellcheck="false"></textarea><small id="mihomo-rule-hint"></small></label><div class="mihomo-field full" id="mihomo-no-resolve-field"><label class="mihomo-check" data-i18n-multi="mh.noResolveLabel"><input name="noResolve" type="checkbox">no-resolve（匹配目标 IP 时不触发 DNS 解析）</label></div></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
     document.body.appendChild(ruleModal);
+    const geoPicker=document.createElement('div');
+    geoPicker.id='mihomo-geo-picker-modal';geoPicker.className='modal-backdrop';
+    geoPicker.innerHTML='<section class="modal-panel mihomo-modal mihomo-geo-picker" role="dialog" aria-modal="true" aria-labelledby="mihomo-geo-picker-title"><header class="modal-titlebar"><span id="mihomo-geo-picker-title" data-i18n="mh.chooseGeoCategories">Выбрать из списка</span><button type="button" class="modal-close" id="mihomo-geo-picker-close" title="Закрыть">'+SF('close')+'</button></header><div class="modal-content"><div class="mihomo-geo-picker-filter"><input id="mihomo-geo-picker-search" type="search" placeholder="Поиск категорий…" aria-label="Поиск категорий"><select id="mihomo-geo-picker-source" aria-label="Источник категорий"><option value="all">GeoSite + GeoIP</option><option value="geosite">GeoSite</option><option value="geoip">GeoIP</option></select></div><p class="mihomo-geo-picker-count" id="mihomo-geo-picker-count"></p><div class="mihomo-geo-picker-list" id="mihomo-geo-picker-list" role="list"></div></div><footer class="modal-footer"><button type="button" class="outline-btn" id="mihomo-geo-picker-done" data-i18n="common.close">Закрыть</button></footer></section>';
+    document.body.appendChild(geoPicker);
+    $('#mihomo-geo-picker-close').onclick=$('#mihomo-geo-picker-done').onclick=()=>closeModal(geoPicker);
+    geoPicker.onclick=event=>{if(event.target===geoPicker)closeModal(geoPicker);};
+    $('#mihomo-geo-picker-search').oninput=renderGeoPicker;
+    $('#mihomo-geo-picker-source').onchange=renderGeoPicker;
+    $('#mihomo-geo-picker-open').onclick=openGeoPicker;
     $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>{window.MUIBalancerServers?.teardown();closeModal(button.closest('.modal-backdrop'));});
     for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal){window.MUIBalancerServers?.teardown();closeModal(modal);}};
     $('#mihomo-outbound-form').onsubmit=saveOutboundDraft;
@@ -565,24 +595,137 @@
     if(type==='GEOIP'||type==='SRC-GEOIP')return muiT('mh.hintGeoip');
     return muiT('mh.hintDefault');
   }
+  async function loadGeoCategories(){
+    if(geoCategoryCatalog)return geoCategoryCatalog;
+    if(!geoCategoryLoading){
+      geoCategoryLoading=api('/api/mihomo/geo-categories').then(data=>{
+        if(!Array.isArray(data.geosite)||!Array.isArray(data.geoip))throw Error('Неверный ответ каталога GeoSite/GeoIP');
+        geoCategoryCatalog=data;
+        return data;
+      }).finally(()=>{geoCategoryLoading=null;});
+    }
+    return geoCategoryLoading;
+  }
+  function renderGeoPicker(){
+    const container=$('#mihomo-geo-picker-list'),count=$('#mihomo-geo-picker-count');
+    container.replaceChildren();
+    if(!geoCategoryCatalog){count.textContent='Загрузка категорий…';return;}
+    const source=$('#mihomo-geo-picker-source').value;
+    const search=$('#mihomo-geo-picker-search').value.toLowerCase().trim();
+    const collection=[];
+    for(const kind of ['geosite','geoip']){
+      if(source!=='all'&&source!==kind)continue;
+      for(const name of geoCategoryCatalog[kind])if(!search||name.includes(search))collection.push({kind,name});
+    }
+    const limited=collection.slice(0,250);
+    count.textContent='Найдено: '+collection.length+(limited.length<collection.length?' · показаны первые 250':'');
+    if(!collection.length){
+      const node=document.createElement('div');node.className='mihomo-geo-picker-empty';
+      node.textContent='Категорий не найдено';container.appendChild(node);
+      return;
+    }
+    for(const item of limited){
+      const line=document.createElement('div');line.className='mihomo-geo-picker-item';line.setAttribute('role','listitem');
+      const name=document.createElement('span');name.className='mihomo-geo-picker-name';name.textContent=item.name;
+      const sourceTag=document.createElement('small');sourceTag.textContent=item.kind==='geosite'?'GeoSite':'GeoIP';
+      const add=document.createElement('button');add.type='button';add.className='mihomo-tool';add.textContent='Добавить';
+      add.onclick=()=>{
+        const field=$('#mihomo-rule-form').elements.geoCategories;
+        const existing=window.MUIRuleLists.lines(field.value);
+        const other=item.kind==='geosite'?'geoip':'geosite';
+        const ambiguous=geoCategoryCatalog[other].includes(item.name);
+        const value=ambiguous?item.kind+':'+item.name:item.name;
+        if(!existing.includes(value)&&!existing.includes(item.kind+':'+item.name)){
+          existing.push(value);field.value=existing.join('\n');field.dispatchEvent(new Event('input',{bubbles:true}));
+        }
+        add.textContent='Добавлено';
+      };
+      line.append(name,sourceTag,add);container.appendChild(line);
+    }
+  }
+  async function openGeoPicker(){
+    if($('#mihomo-rule-form').elements.type.value!=='LIST')return;
+    $('#mihomo-geo-picker-search').value='';
+    $('#mihomo-geo-picker-source').value='all';
+    openModal('mihomo-geo-picker-modal');
+    renderGeoPicker();
+    try{
+      await loadGeoCategories();
+      renderGeoPicker();
+    }catch(error){
+      $('#mihomo-geo-picker-count').textContent='Каталог недоступен';
+      $('#mihomo-geo-picker-list').textContent=error.message;
+    }
+    $('#mihomo-geo-picker-search').focus();
+  }
   function openRuleModal(id=''){
     ensureModals();editingRule=id;
-    const form=$('#mihomo-rule-form'),item=draft.routingRules.find(rule=>rule.id===id)||{id:'',type:'DOMAIN-SUFFIX',payload:'',target:'DIRECT',noResolve:false};
-    form.reset();form.elements.id.value=item.id||'';form.elements.type.value=item.type;form.elements.payload.value=item.payload||'';form.elements.target.innerHTML=targetOptions(item.target||'DIRECT');form.elements.target.value=item.target||'DIRECT';form.elements.noResolve.checked=!!item.noResolve;syncRuleForm();
-    $('#mihomo-rule-title').textContent=muiT(id?'mh.editRule':'mh.addRule');openModal('mihomo-rule-modal');(item.type==='MATCH'?form.elements.target:form.elements.payload).focus();
+    const form=$('#mihomo-rule-form');
+    const item=draft.routingRules.find(rule=>rule.id===id)||
+      {id:'',type:'LIST',payload:'',target:'DIRECT',noResolve:false};
+    const decoded=window.MUIRuleLists?.decode(item);
+    form.reset();
+    form.elements.id.value=item.id||'';
+    form.elements.type.value=decoded?'LIST':item.type;
+    form.elements.payload.value=item.payload||'';
+    form.elements.geoCategories.value=decoded?.geos||'';
+    form.elements.domainIPs.value=decoded?.domains||'';
+    form.elements.target.innerHTML=targetOptions(item.target||'DIRECT');
+    form.elements.target.value=item.target||'DIRECT';
+    form.elements.noResolve.checked=decoded?.noResolve??(item.type==='LIST'?true:!!item.noResolve);
+    syncRuleForm();
+    $('#mihomo-rule-title').textContent=muiT(id?'mh.editRule':'mh.addRule');
+    openModal('mihomo-rule-modal');
+    (item.type==='MATCH'?form.elements.target:form.elements.type.value==='LIST'?form.elements.geoCategories:form.elements.payload).focus();
+    if(form.elements.type.value==='LIST'){
+      const original=form.elements.geoCategories.value;
+      loadGeoCategories().then(catalog=>{
+        // Show bare category names when their GeoSite/GeoIP source is unique.
+        if(form.elements.geoCategories.value!==original)return;
+        form.elements.geoCategories.value=original.split('\n').map(value=>window.MUIRuleLists.displayCategoryName(value,catalog)).join('\n');
+      }).catch(()=>{});
+    }
   }
   function syncRuleForm(){
-    const form=$('#mihomo-rule-form'),type=form.elements.type.value,isMatch=type==='MATCH',noResolve=['GEOIP','IP-ASN','IP-CIDR','IP-CIDR6','IP-SUFFIX'].includes(type);
-    $('#mihomo-rule-payload-field').hidden=isMatch;form.elements.payload.required=!isMatch;$('#mihomo-no-resolve-field').hidden=!noResolve;if(!noResolve)form.elements.noResolve.checked=false;$('#mihomo-rule-hint').textContent=rulePayloadHint(type);
+    const form=$('#mihomo-rule-form'),type=form.elements.type.value;
+    const isMatch=type==='MATCH',isList=type==='LIST';
+    const noResolve=isList||['GEOIP','IP-ASN','IP-CIDR','IP-CIDR6','IP-SUFFIX'].includes(type);
+    $('#mihomo-rule-lists').hidden=!isList;
+    $('#mihomo-rule-payload-field').hidden=isMatch||isList;
+    form.elements.payload.required=!isMatch&&!isList;
+    $('#mihomo-no-resolve-field').hidden=!noResolve;
+    if(!noResolve)form.elements.noResolve.checked=false;
+    $('#mihomo-rule-hint').textContent=rulePayloadHint(type);
   }
-  function saveRuleDraft(event){
-    event.preventDefault();const form=event.currentTarget,type=form.elements.type.value,item={id:form.elements.id.value||freshID('rule'),type,payload:type==='MATCH'?'':form.elements.payload.value.trim(),target:form.elements.target.value,noResolve:type==='MATCH'?false:form.elements.noResolve.checked};
-    if(type!=='MATCH'&&!item.payload){toast(muiT('mh.payloadRequired',{type}),true);return;}
-    const duplicateMatch=draft.routingRules.some(rule=>rule.type==='MATCH'&&rule.id!==item.id);if(type==='MATCH'&&duplicateMatch){toast(muiT('mh.singleMatch'),true);return;}
+  async function saveRuleDraft(event){
+    event.preventDefault();
+    const form=event.currentTarget,type=form.elements.type.value;
+    const item={
+      id:form.elements.id.value||freshID('rule'),type,
+      payload:type==='MATCH'?'':form.elements.payload.value.trim(),
+      target:form.elements.target.value,
+      noResolve:type==='MATCH'?false:form.elements.noResolve.checked
+    };
+    if(type==='LIST'){
+      try{
+        const catalog=await loadGeoCategories();
+        Object.assign(item,window.MUIRuleLists.compile(
+          form.elements.geoCategories.value,form.elements.domainIPs.value,catalog,form.elements.noResolve.checked));
+      }catch(error){toast(error.message,true);return;}
+    }else if(type!=='MATCH'&&!item.payload){toast(muiT('mh.payloadRequired',{type}),true);return;}
+    const duplicateMatch=draft.routingRules.some(rule=>rule.type==='MATCH'&&rule.id!==item.id);
+    if(type==='MATCH'&&duplicateMatch){toast(muiT('mh.singleMatch'),true);return;}
     const index=draft.routingRules.findIndex(rule=>rule.id===item.id);
-    if(index>=0)draft.routingRules[index]=item;else{const matchIndex=draft.routingRules.findIndex(rule=>rule.type==='MATCH');draft.routingRules.splice(matchIndex<0?draft.routingRules.length:matchIndex,0,item);}
-    const match=draft.routingRules.find(rule=>rule.type==='MATCH');draft.routingRules=draft.routingRules.filter(rule=>rule.type!=='MATCH');if(match)draft.routingRules.push(match);else ensureFinalMatch();
-    closeModal($('#mihomo-rule-modal'));markDirty();
+    if(index>=0)draft.routingRules[index]=item;
+    else {
+      const matchIndex=draft.routingRules.findIndex(rule=>rule.type==='MATCH');
+      draft.routingRules.splice(matchIndex<0?draft.routingRules.length:matchIndex,0,item);
+    }
+    const match=draft.routingRules.find(rule=>rule.type==='MATCH');
+    draft.routingRules=draft.routingRules.filter(rule=>rule.type!=='MATCH');
+    if(match)draft.routingRules.push(match);else ensureFinalMatch();
+    closeModal($('#mihomo-rule-modal'));
+    markDirty();
   }
 
 
