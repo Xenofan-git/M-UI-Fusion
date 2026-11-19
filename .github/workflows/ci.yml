@@ -32,6 +32,8 @@ jobs:
         run: node tests/routing-lists.cjs
       - name: Test routing editor Russian labels
         run: node tests/routing-labels.cjs
+      - name: Test basic and advanced routing editors
+        run: node tests/routing-basic-editor.cjs
       - name: Run tests
         run: go test -count=1 ./...
       - name: Run Go vet

@@ -713,6 +713,22 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 }
 .mihomo-current-note[hidden]{display:none!important}
 
+/* Ordinary rules use the two lists; advanced Mihomo types are optional. */
+.mihomo-rule-advanced{
+  grid-column:1/-1;min-width:0;border:1px solid var(--line);
+  border-radius:12px;background:var(--surface-subtle);overflow:hidden
+}
+.mihomo-rule-advanced summary{
+  padding:12px 15px;cursor:pointer;font-size:13px;font-weight:600;
+  color:var(--text-strong);list-style-position:inside
+}
+.mihomo-rule-advanced summary:focus-visible{
+  outline:2px solid var(--teal,#a78bfa);outline-offset:-3px
+}
+.mihomo-rule-advanced[open] summary{border-bottom:1px solid var(--line)}
+.mihomo-rule-advanced-body{display:grid;grid-template-columns:minmax(0,1fr);gap:15px;padding:15px}
+.mihomo-rule-advanced-body .mihomo-field{min-width:0}
+
 /* HydraRoute-style two-column routing list editor (one logical OR rule). */
 #mihomo-rule-modal .mihomo-modal{width:min(980px,calc(100vw - 24px))}
 .mihomo-rule-lists{grid-column:1/-1;min-width:0}
