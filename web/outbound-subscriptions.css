@@ -1,7 +1,7 @@
 /* Compact subscription list under the subscription-based balancer table. */
 .outsub-page{display:flex;flex-direction:column;gap:0;padding:12px 4px 22px;min-width:0}
 .outsub-heading{display:flex;justify-content:space-between;align-items:center;gap:8px 14px;flex-wrap:wrap;margin:0 0 12px}
-.outsub-summary{display:flex;flex:1 1 350px;flex-direction:column;gap:4px;min-width:0}
+.outsub-summary{display:flex;flex:1 1 350px;flex-direction:column;min-width:0}
 .outsub-intro,.outsub-muted{margin:0;color:var(--text-muted);font-size:13px;line-height:1.5}
 .outsub-buttons{display:flex;gap:8px;flex-wrap:wrap}
 .outsub-status{min-height:0;margin:0;color:var(--text-muted);font-size:12px;line-height:1.5}

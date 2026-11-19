@@ -489,6 +489,12 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .mihomo-toolbar #mihomo-add-sub-balancer .sf-symbol {
   color: inherit !important;
 }
+@media(max-width:700px){
+  /* The long subscription action must wrap instead of overflowing the screen. */
+  .mihomo-toolbar #mihomo-add-sub-balancer{
+    max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;
+  }
+}
 
 /* Subscribed-balancer node manager — HydraRoute-style table.
    Only active on groups linked to a provider; manual group editor unchanged. */

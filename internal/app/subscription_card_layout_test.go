@@ -11,6 +11,11 @@ func TestSubscriptionCardsUseCompactFramedInformation(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := string(index)
+	if strings.Count(html, "Все узлы автоматически добавляются в Outbounds и обновляются по расписанию.") != 1 ||
+		!strings.Contains(html, `<span class="mihomo-muted">Все узлы автоматически добавляются в Outbounds и обновляются по расписанию.</span>`) ||
+		strings.Contains(html, "Группы, связанные с подписками, и их автоматическое обновление.") {
+		t.Fatal("subscription description must appear once in the toolbar, replacing the old explanatory text")
+	}
 	start := strings.Index(html, `<div class="outsub-page" id="outsub-root">`)
 	if start < 0 {
 		t.Fatal("subscription list root missing")
@@ -24,11 +29,11 @@ func TestSubscriptionCardsUseCompactFramedInformation(t *testing.T) {
 		t.Fatal("redundant subscriptions heading still present")
 	}
 	if !strings.Contains(section, `class="outsub-summary"`) ||
-		!strings.Contains(section, "Все узлы автоматически добавляются в Outbounds") ||
+		strings.Contains(section, "Все узлы автоматически добавляются в Outbounds") ||
 		!strings.Contains(section, `class="outsub-status" id="outsub-status"`) ||
 		!strings.Contains(section, `id="outsub-reload"`) ||
 		!strings.Contains(section, `id="outsub-list"`) {
-		t.Fatal("compact introduction, count, reload and list must remain")
+		t.Fatal("the count, reload button and list must remain without duplicate introduction")
 	}
 	body, err := webFS.ReadFile("web/outbound-subscriptions.js")
 	if err != nil {
@@ -63,6 +68,15 @@ func TestSubscriptionCardsUseCompactFramedInformation(t *testing.T) {
 		t.Fatal(err)
 	}
 	css := string(sheet)
+
+	mihomoCSS, err := webFS.ReadFile("web/mihomo-settings.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(mihomoCSS), ".mihomo-toolbar #mihomo-add-sub-balancer{") ||
+		!strings.Contains(string(mihomoCSS), "max-width:100%;min-width:0;white-space:normal;") {
+		t.Fatal("mobile subscription action must wrap instead of overflowing the viewport")
+	}
 	for _, marker := range []string{
 		".outsub-summary{", ".outsub-info-frame{", ".outsub-card{",
 		".outsub-actions{", "@media(max-width:700px)",
