@@ -1296,8 +1296,8 @@ func (a *App) handleCredentials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input.NewUsername = strings.TrimSpace(input.NewUsername)
-	if input.NewUsername == "" || input.NewPassword == "" {
-		writeJSON(w, http.StatusBadRequest, apiResponse{Message: a.tr("新账号和新密码不能为空")})
+	if input.NewUsername == "" && input.NewPassword == "" {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Message: a.tr("至少输入一个新账号或新密码")})
 		return
 	}
 	if err := a.manager.updateCredentials(input.OldUsername, input.OldPassword, input.NewUsername, input.NewPassword); err != nil {
@@ -1330,13 +1330,29 @@ func (m *CoreManager) updateCredentials(oldUsername, oldPassword, newUsername, n
 	if oldUsername != m.state.Settings.Username || !verifyPassword(m.state.Settings.Password, oldPassword) {
 		return fmt.Errorf("当前账号或密码不正确")
 	}
-	hash, err := hashPassword(newPassword)
-	if err != nil {
+	newUsername = strings.TrimSpace(newUsername)
+	if newUsername == "" && newPassword == "" {
+		return fmt.Errorf("至少输入一个新账号或新密码")
+	}
+	previousUsername, previousPassword := m.state.Settings.Username, m.state.Settings.Password
+	if newUsername != "" {
+		m.state.Settings.Username = newUsername
+	}
+	if newPassword != "" {
+		hash, err := hashPassword(newPassword)
+		if err != nil {
+			m.state.Settings.Username = previousUsername
+			return err
+		}
+		m.state.Settings.Password = hash
+	}
+	if err := m.saveLocked(); err != nil {
+		// A failed disk write must not change the in-memory login credentials.
+		m.state.Settings.Username = previousUsername
+		m.state.Settings.Password = previousPassword
 		return err
 	}
-	m.state.Settings.Username = newUsername
-	m.state.Settings.Password = hash
-	return m.saveLocked()
+	return nil
 }
 
 func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {

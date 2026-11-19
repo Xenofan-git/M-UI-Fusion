@@ -30,6 +30,8 @@ jobs:
         run: node tests/login-welcome.cjs
       - name: Test sidebar logo and header theme selector
         run: node tests/sidebar-theme.cjs
+      - name: Test Russian panel settings and admin credentials form
+        run: node tests/panel-settings-ru.cjs
       - name: Test balancer tab labels and locales
         run: node tests/balancer-tab-labels.cjs
       - name: Test routing list editor

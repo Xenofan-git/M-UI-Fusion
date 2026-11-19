@@ -4496,6 +4496,66 @@ func TestCredentialsEndpointChecksCurrentPairAndRotatesSession(t *testing.T) {
 	}
 }
 
+// Credentials can be changed independently; a failed attempt must not sign
+// users out or alter the saved account. Never touches the installed panel.
+func TestCredentialsEndpointChangeUsernameOrPasswordIndependently(t *testing.T) {
+	manager := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	app := &App{manager: manager}
+	post := func(oldUser, oldPass, newUser, newPass string) *httptest.ResponseRecorder {
+		body, err := json.Marshal(map[string]string{
+			"oldUsername":oldUser,"oldPassword":oldPass,
+			"newUsername":newUser,"newPassword":newPass,
+		})
+		if err != nil { t.Fatal(err) }
+		r := httptest.NewRecorder()
+		app.handleCredentials(r, httptest.NewRequest(http.MethodPost,"/api/auth/credentials",strings.NewReader(string(body))))
+		return r
+	}
+	if got:=post("admin","admin","","");got.Code!=http.StatusBadRequest {
+		t.Fatalf("empty change: HTTP %d",got.Code)
+	}
+	if got:=post("admin","incorrect","changed","");got.Code!=http.StatusBadRequest {
+		t.Fatalf("wrong password: HTTP %d",got.Code)
+	}
+	if got:=post("admin","admin","new-user","");got.Code!=http.StatusOK {
+		t.Fatalf("username-only change: HTTP %d body %s",got.Code,got.Body.String())
+	}
+	if manager.state.Settings.Username!="new-user"||!verifyPassword(manager.state.Settings.Password,"admin") {
+		t.Fatal("username-only change must retain the old password")
+	}
+	if got:=post("new-user","admin","","new-password");got.Code!=http.StatusOK {
+		t.Fatalf("password-only change: HTTP %d body %s",got.Code,got.Body.String())
+	}
+	if manager.state.Settings.Username!="new-user"||!verifyPassword(manager.state.Settings.Password,"new-password") {
+		t.Fatal("password-only change must retain the username and hash the new password")
+	}
+	if verifyPassword(manager.state.Settings.Password,"admin") {
+		t.Fatal("old password must no longer be accepted")
+	}
+	// Check the persisted state, not just in-memory success.
+	stored,err:=os.ReadFile(filepath.Join(manager.dataDir,stateFileName))
+	if err!=nil { t.Fatal(err) }
+	var loaded State
+	if err:=json.Unmarshal(stored,&loaded);err!=nil { t.Fatal(err) }
+	if loaded.Settings.Username!="new-user"||!verifyPassword(loaded.Settings.Password,"new-password") {
+		t.Fatal("saved settings must contain the new account credentials")
+	}
+}
+func TestCredentialUpdateRollsBackWhenPersistingFails(t *testing.T) {
+	root:=t.TempDir()
+	// A regular file cannot serve as a state directory: persistence must fail.
+	badPath:=filepath.Join(root,"not-a-directory")
+	if err:=os.WriteFile(badPath,[]byte("not a folder"),0600);err!=nil {t.Fatal(err)}
+	manager:=&CoreManager{dataDir:badPath,state:defaultState()}
+	previousUsername,previousPassword:=manager.state.Settings.Username,manager.state.Settings.Password
+	if err:=manager.updateCredentials("admin","admin","changed","new-secret");err==nil {
+		t.Fatal("expected persistence failure")
+	}
+	if manager.state.Settings.Username!=previousUsername||manager.state.Settings.Password!=previousPassword {
+		t.Fatal("credential update must roll back in-memory changes when disk save fails")
+	}
+}
+
 func TestSessionExpiresAfterSessionMaxAge(t *testing.T) {
 	manager := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
 	app := &App{manager: manager}
