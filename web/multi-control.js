@@ -46,8 +46,14 @@
     if(!response.ok){let message=response.statusText;try{message=(await response.json()).message||message;}catch{}throw new Error(message);}
     const url=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=url;link.download='m-ui-network.muinet';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  function modalError(modal,message){const box=$('.mc-modal-error',modal);box.textContent=message;box.hidden=!message;}
-  function error(message){$('#mc-error').textContent=message;$('#mc-error').hidden=!message;}
+  // Wire-protocol errors remain stable; translate only their presentation.
+  function readablePeerError(message){
+    if(!message)return '';
+    return /(?:^|:\s*)(?:invalid pairing token|Спаривание токенов инвалид|Недействительный многоконтрольный токен)(?:\s*$)/i.test(message)
+      ? muiT('mc.invalidPairingToken') : message;
+  }
+  function modalError(modal,message){const box=$('.mc-modal-error',modal);box.textContent=readablePeerError(message);box.hidden=!message;}
+  function error(message){$('#mc-error').textContent=readablePeerError(message);$('#mc-error').hidden=!message;}
   function date(value){return !value||value.startsWith('0001-')?'—':new Date(value).toLocaleString();}
   function render(){
     if(!state)return;
@@ -57,7 +63,7 @@
     $('#mc-token-generate').textContent=muiT(state.tokenEnabled?'mc.regenerateToken':'mc.generateToken');$('#mc-token-disable').disabled=busy||!state.tokenEnabled;
     $('#mc-local-status').textContent=muiT(localDirty?'mc.localUnsaved':'mc.localHint');
     const list=$('#mc-peer-list');
-    list.innerHTML=state.peers.length?`<div class="mc-table-wrap"><table class="mc-peer-table"><thead><tr><th>${muiT('mc.colNode')}</th><th>${muiT('mc.colAddress')}</th><th>${muiT('mc.colStatus')}</th><th>${muiT('mc.colLastSeen')}</th><th>${muiT('mc.colActions')}</th></tr></thead><tbody>${state.peers.map(peer=>`<tr><td>${esc(peer.name)}<small>${esc(peer.id)}</small></td><td>${esc(peer.endpoint||muiT('mc.noEndpoint'))}<small class="mc-peer-error" title="${esc(peer.error||'')}">${esc(peer.error||'')}</small></td><td><span class="mc-status ${peer.online?'online':''}">${peer.online?muiT('mc.online'):peer.lastSeen?.startsWith('0001-')?muiT('mc.connectingOffline'):muiT('mc.offline')}</span></td><td>${esc(date(peer.lastSeen))}</td><td><button type="button" class="outline-btn" data-mc-disconnect="${esc(peer.id)}">${muiT('mc.disconnect')}</button></td></tr>`).join('')}</tbody></table></div>`:`<div class="mc-empty">${muiT('mc.emptyPeers')}</div>`;
+    list.innerHTML=state.peers.length?`<div class="mc-table-wrap"><table class="mc-peer-table"><thead><tr><th>${muiT('mc.colNode')}</th><th>${muiT('mc.colAddress')}</th><th>${muiT('mc.colStatus')}</th><th>${muiT('mc.colLastSeen')}</th><th>${muiT('mc.colActions')}</th></tr></thead><tbody>${state.peers.map(peer=>`<tr><td>${esc(peer.name)}<small>${esc(peer.id)}</small></td><td>${esc(peer.endpoint||muiT('mc.noEndpoint'))}<small class="mc-peer-error" title="${esc(readablePeerError(peer.error||''))}">${esc(readablePeerError(peer.error||''))}</small></td><td><span class="mc-status ${peer.online?'online':''}">${peer.online?muiT('mc.online'):peer.lastSeen?.startsWith('0001-')?muiT('mc.connectingOffline'):muiT('mc.offline')}</span></td><td>${esc(date(peer.lastSeen))}</td><td><button type="button" class="outline-btn" data-mc-disconnect="${esc(peer.id)}">${muiT('mc.disconnect')}</button></td></tr>`).join('')}</tbody></table></div>`:`<div class="mc-empty">${muiT('mc.emptyPeers')}</div>`;
     $$('[data-mc-disconnect]',list).forEach(button=>button.onclick=()=>disconnect(button.dataset.mcDisconnect));
     $('#mc-blocked-section').hidden=!state.blocked.length;
     $('#mc-blocked-list').innerHTML=state.blocked.map(id=>`<div class="mc-blocked-row"><code>${esc(id)}</code><button class="outline-btn" type="button" data-mc-unblock="${esc(id)}">${muiT('mc.allowRediscover')}</button></div>`).join('');

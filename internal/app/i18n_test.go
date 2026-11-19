@@ -650,3 +650,15 @@ func TestTranslatableOptionsCarryTranslationKeys(t *testing.T) {
 		}
 	}
 }
+
+// Russian multi-control error must be translated at the API boundary without
+// changing peer protocol errors or weakening pairing-token validation.
+func TestRussianMultiControlPairingTokenError(t *testing.T) {
+ const original = "Multi-control 配对 token 无效"
+ if got:=translateMessage(original,"ru"); got!="Недействительный токен сопряжения Multi-control" {
+  t.Fatalf("Russian pairing-token error is unclear: %q",got)
+ }
+ if got:=translateMessage(original,"en"); got!="Invalid multi-control pairing token" {
+  t.Fatalf("English API pairing-token error changed: %q",got)
+ }
+}

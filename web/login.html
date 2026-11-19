@@ -389,6 +389,16 @@
   <script defer src="static/liquid-toggle.js" data-ui-only="liquid"></script>
   <script defer src="static/liquid-button.js" data-ui-only="liquid"></script>
 <link rel="stylesheet" href="static/fonts.css" data-ui-only="shadcn"><link rel="stylesheet" href="static/fonts.css" data-ui-only="md3"><link rel="stylesheet" href="static/theme-shadcn.css" data-ui-only="shadcn"><link rel="stylesheet" href="static/theme-md3.css" data-ui-only="md3">
+  <style id="login-button-hover-legibility">
+    /* A light hover surface requires dark text in all visual themes. */
+    html body #login-button:hover:not(:disabled) {
+      background: #f4f4f5 !important;
+      background-color: #f4f4f5 !important;
+      color: #111111 !important;
+      -webkit-text-fill-color: #111111 !important;
+      border-color: #d4d4d8 !important;
+    }
+  </style>
 </head>
 <body>
   <div class="ambient-backdrop" aria-hidden="true">
