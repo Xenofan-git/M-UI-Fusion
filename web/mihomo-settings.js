@@ -7,6 +7,8 @@
   const defaultTestURL='https://www.gstatic.com/generate_204';
   const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
+  const activeGroupResults=new Map();
+  let activeGroupRequest=null;
   let warpData=null,warpBusy=false;
   const clone=value=>JSON.parse(JSON.stringify(value??null));
   const root=$('#mihomo-settings-root');
@@ -26,6 +28,8 @@
     draft={outbounds:clone(state.outbounds||[])||[],routingRules:clone(state.routingRules||[])||[],basics:{...defaultBasics(),...clone(state.mihomoBasics||{}),mode:state.settings?.mode||'rule',logLevel:state.settings?.logLevel||'info'}};
     fillBasicsForm();
     ensureFinalMatch();
+    const persistedGroups=new Set(draft.outbounds.filter(x=>x.kind==='group').map(x=>x.name));
+    for(const key of activeGroupResults.keys())if(!persistedGroups.has(key))activeGroupResults.delete(key);
     render();
   }
   function markDirty(){dirty=true;root.classList.add('mihomo-dirty');syncButtons();render();}
@@ -72,6 +76,59 @@
     return fixed.concat(draft.outbounds.map(item=>({...item,address:outboundAddress(item)})));
   }
   function delayLabel(name){const value=delayResults.get(name);return value==='Testing'?muiT('mh.testing'):value||'';}
+  function groupResultLabel(name){
+    const group=activeGroupResults.get(name);
+    if(!group)return 'Определяется…';
+    if(!group.running)return 'Mihomo недоступен';
+    if(!group.applied)return 'Группа не применена';
+    if(group.current)return 'Текущий: '+group.current;
+    if(group.perConnection)return 'Выбор для каждого соединения';
+    return 'Текущий не определён';
+  }
+  function groupTestNote(name){
+    const result=delayResults.get(name);
+    if(!result)return '';
+    if(result==='Testing')return 'Проверка задержки…';
+    if(/^\d+ ms$/.test(result))return 'Задержка: '+result;
+    return 'Тест задержки не прошёл';
+  }
+  function groupResultTitle(name){
+    const result=delayResults.get(name);
+    return groupResultLabel(name)+(result&&result!=='Testing'&&!/^\d+ ms$/.test(result)?'\nОшибка теста: '+result:'');
+  }
+  // Update visible text nodes without rebuilding the table or losing focus.
+  function paintActiveGroupResults(){
+    $$('[data-active-group]',root).forEach(node=>{
+      const name=node.dataset.activeGroup;
+      node.textContent=groupResultLabel(name);
+      node.title=groupResultTitle(name);
+    });
+    $$('[data-active-group-note]',root).forEach(node=>{
+      const value=groupTestNote(node.dataset.activeGroupNote);
+      node.textContent=value;
+      node.hidden=!value;
+    });
+  }
+  async function refreshActiveGroups(){
+    if(!['balancers','subscriptions'].includes(currentTab)||document.hidden||activeGroupRequest)return;
+    activeGroupRequest=api('/api/mihomo/balancers/current');
+    try{
+      const info=await activeGroupRequest;
+      if(info?.groups&&typeof info.groups==='object'){
+        activeGroupResults.clear();
+        for(const [name,value] of Object.entries(info.groups)){
+          activeGroupResults.set(name,{...value,running:!!info.running});
+        }
+      }
+    }catch{
+      activeGroupResults.clear();
+    }finally{
+      activeGroupRequest=null;
+      paintActiveGroupResults();
+    }
+  }
+  // Mihomo may switch URLTest/Fallback choices without user interaction.
+  setInterval(()=>{if(['balancers','subscriptions'].includes(currentTab))refreshActiveGroups();},9000);
   function outboundSupportsDelay(item){return !['reject','reject-drop'].includes(String(item.type||'').toLowerCase());}
   // Some existing subscription groups use the provider's group name and
   // intentionally have no subscriptionIds field in state.json. Respect both
@@ -99,12 +156,15 @@
       subscribed?isSubscriptionGroup(item):
       item.kind!=='group'
     ),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
-    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
+    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
       const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
-      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td><span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span></td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
+      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td>${item.kind==='group'
+        ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}" title="${esc(groupResultTitle(item.name))}">${esc(groupResultLabel(item.name))}</span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" ${groupTestNote(item.name)?'':'hidden'}>${esc(groupTestNote(item.name))}</small>`
+        :`<span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
     bindOutboundTable();
     $$('[data-test-outbound]',root).forEach(button=>button.onclick=()=>testOutbound(button));
+    if(manual||subscribed)refreshActiveGroups();
   }
   function bindOutboundTable(){
     $$('[data-outbound-edit]',root).forEach(button=>button.onclick=()=>openOutboundModal(button.dataset.outboundEdit));
@@ -569,7 +629,9 @@
     try{
       const result=await api('/api/mihomo/outbound/delay',{method:'POST',body:JSON.stringify({name})});
       delayResults.set(name,result.delay+' ms');
-    }catch(error){delayResults.set(name,error.message);}finally{if(currentTab==='outbounds')renderOutbounds();}
+    }catch(error){delayResults.set(name,error.message);}finally{
+      if(['outbounds','balancers','subscriptions'].includes(currentTab))renderOutbounds();
+    }
   }
 
 

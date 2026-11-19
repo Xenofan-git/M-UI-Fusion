@@ -661,3 +661,22 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 }
 .fbs-add-result small{font-size:10px;flex:none;color:var(--muted)}
 .fbs-add-counter{color:var(--muted);font-size:11px}
+
+/* Mihomo's current outbound, separate from an HTTP delay probe's result. */
+.mihomo-delay-result.mihomo-current-group{
+  max-width:290px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.45;
+  color:var(--text-strong);
+  font-weight:600;
+}
+.mihomo-current-note{
+  display:block;
+  max-width:290px;
+  margin-top:4px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.3;
+}
+.mihomo-current-note[hidden]{display:none!important}

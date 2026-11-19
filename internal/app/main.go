@@ -1042,6 +1042,7 @@ func (a *App) panelRoutes(serveSubscriptions bool) http.Handler {
 	mux.HandleFunc("/api/mihomo/outbound/parse", a.auth(a.handleMihomoOutboundYAML))
 	mux.HandleFunc("/api/mihomo/outbound/delay", a.auth(a.handleMihomoOutboundDelay))
 	mux.HandleFunc("/api/mihomo/balancers/status", a.auth(a.handleMihomoBalancerStatus))
+	mux.HandleFunc("/api/mihomo/balancers/current", a.auth(a.handleMihomoCurrentOutbounds))
 	mux.HandleFunc("/api/mihomo/balancers/probe", a.auth(a.handleMihomoBalancerProbe))
 	mux.HandleFunc("/api/mihomo/warp", a.auth(a.handleWarp))
 	mux.HandleFunc("/api/mihomo/warp/", a.auth(a.handleWarp))
