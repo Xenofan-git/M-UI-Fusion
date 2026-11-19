@@ -723,12 +723,16 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .mihomo-rule-list-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px}
 .mihomo-rule-list-toolbar small{flex:1 1 220px;font-size:12px;line-height:1.4;color:var(--muted)}
 .mihomo-geo-picker{width:min(770px,calc(100vw - 24px))}
-.mihomo-geo-picker-filter{display:flex;gap:10px;align-items:center}
-.mihomo-geo-picker-filter input,.mihomo-geo-picker-filter select{
-  min-width:0;height:38px;padding:7px 10px;border:1px solid var(--stroke);
+.mihomo-geo-picker-filter{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+.mihomo-geo-picker-filter select,.mihomo-geo-picker-filter input{
+  display:block;width:100%;min-width:0;box-sizing:border-box;
+  height:42px;padding:8px 12px;border:1px solid var(--stroke);
   border-radius:var(--radius-sm);background:var(--surface-subtle);color:var(--text)
 }
-.mihomo-geo-picker-filter input{flex:1}
+.mihomo-geo-picker-search-label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:500;color:var(--text)}
+.mihomo-geo-picker-filter input:focus-visible,.mihomo-geo-picker-filter select:focus-visible{
+  outline:2px solid var(--teal,#a78bfa);outline-offset:2px
+}
 .mihomo-geo-picker-count{margin:12px 0;font-size:12px;color:var(--muted)}
 .mihomo-geo-picker-list{max-height:min(480px,53vh);overflow:auto;border:1px solid var(--line);border-radius:10px}
 .mihomo-geo-picker-item{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line)}
@@ -740,6 +744,4 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 @media(max-width:760px){
  .mihomo-rule-list-grid{grid-template-columns:minmax(0,1fr)}
  .mihomo-rule-list-grid textarea{min-height:175px}
- .mihomo-geo-picker-filter{flex-wrap:wrap}
- .mihomo-geo-picker-filter input{flex-basis:100%}
 }
