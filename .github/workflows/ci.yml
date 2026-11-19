@@ -30,6 +30,8 @@ jobs:
         run: node tests/balancer-tab-labels.cjs
       - name: Test routing list editor
         run: node tests/routing-lists.cjs
+      - name: Test routing editor Russian labels
+        run: node tests/routing-labels.cjs
       - name: Run tests
         run: go test -count=1 ./...
       - name: Run Go vet

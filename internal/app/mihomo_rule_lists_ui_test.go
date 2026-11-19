@@ -11,7 +11,7 @@ func TestGeoRoutingRuleEditorPreservesAdvancedRules(t *testing.T) {
  text:=string(js)
  for _,v:=range []string{
   "mihomo-rule-lists","name=\"geoCategories\"","name=\"domainIPs\"",
-  "Выбрать из списка","mihomo-geo-picker-list","loadGeoCategories()",
+  "Выбрать категорию из списка","mihomo-geo-picker-list","loadGeoCategories()",
   "window.MUIRuleLists.compile(", "const decoded=window.MUIRuleLists?.decode(item)",
   "name=\"payload\"","value=\"LIST\"","data-i18n=\"mh.colRuleType\"",
   "data-i18n=\"mh.colOutbound\"",
@@ -49,5 +49,31 @@ func TestGeoCategoryPickerUsesStackedFullWidthSearch(t *testing.T) {
    "display:block;width:100%;min-width:0;box-sizing:border-box;",
  } {
    if !strings.Contains(css,expected) {t.Errorf("missing stacked search style %q",expected)}
+ }
+}
+
+
+func TestRussianRoutingCopyIsHumanReadable(t *testing.T) {
+ js,err:=webFS.ReadFile("web/mihomo-settings.js")
+ if err!=nil {t.Fatal(err)}
+ text:=string(js)
+ for _,want:=range []string{
+  "Выбрать категорию из списка",
+  "Не определять IP-адрес домена через DNS при проверке правила",
+  "data-i18n=" + string(rune(34)) + "mh.noResolveLabel",
+  "name=" + string(rune(34)) + "noResolve",
+ } {
+  if !strings.Contains(text,want) {t.Errorf("routing UI missing %q",want)}
+ }
+ if strings.Contains(text,"data-i18n-multi=" + string(rune(34)) + "mh.noResolveLabel") {
+  t.Error("the no-resolve checkbox must use a separately localized text span")
+ }
+ locale,err:=webFS.ReadFile("web/i18n.js")
+ if err!=nil {t.Fatal(err)}
+ for _,want:=range []string{
+  "'mh.chooseGeoCategories':'Выбрать категорию из списка'",
+  "'mh.noResolveLabel':'Не определять IP-адрес домена через DNS при проверке правила'",
+ } {
+  if !strings.Contains(string(locale),want) {t.Errorf("missing Russian locale string %q",want)}
  }
 }

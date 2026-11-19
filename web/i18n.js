@@ -1944,8 +1944,9 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   Object.assign(DICT.ru, {
     'mh.colRuleType':'Тип правила', 'mh.colOutbound':'Исходящий',
     'mh.colPayload':'Условия', 'mh.domainsAndIP':'Домены и IP',
-    'mh.chooseGeoCategories':'Выбрать из списка',
+    'mh.chooseGeoCategories':'Выбрать категорию из списка',
     'mh.advancedPayload':'Выражение (расширенный режим)',
+    'mh.noResolveLabel':'Не определять IP-адрес домена через DNS при проверке правила',
     'mh.ruleListHelp':'По одному значению в строке. Условия объединяются через ИЛИ и направляются в выбранный исходящий.'
   });
   Object.assign(DICT.en, {
