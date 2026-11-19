@@ -161,7 +161,32 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
   color:var(--text-strong);background:var(--surface-strong);
   font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
-.mihomo-tab-icon{display:inline-flex;font-size:14px;line-height:1}
+.mihomo-tabs .mihomo-tab-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 27px;width:27px;height:27px;line-height:1;
+  border-radius:9px;
+  color:var(--teal,#a78bfa);
+  background:color-mix(in srgb,var(--teal,#a78bfa) 11%,transparent);
+  border:1px solid color-mix(in srgb,var(--teal,#a78bfa) 19%,transparent);
+  transition:background .2s var(--ease),border-color .2s var(--ease),transform .2s var(--ease);
+}
+.mihomo-tabs .mihomo-tab-icon .mihomo-tab-glyph{
+  display:block;width:19px;height:19px;flex:none;overflow:visible;
+  fill:none;stroke:currentColor;
+}
+.mihomo-tabs .mihomo-tab:hover .mihomo-tab-icon{
+  transform:translateY(-1px);
+  background:color-mix(in srgb,var(--teal,#a78bfa) 19%,transparent);
+  border-color:color-mix(in srgb,var(--teal,#a78bfa) 32%,transparent);
+}
+.mihomo-tabs .mihomo-tab.active .mihomo-tab-icon{
+  background:color-mix(in srgb,var(--teal,#a78bfa) 22%,transparent);
+  border-color:color-mix(in srgb,var(--teal,#a78bfa) 40%,transparent);
+}
+@media (prefers-reduced-motion:reduce){
+  .mihomo-tabs .mihomo-tab-icon{transition:none}
+  .mihomo-tabs .mihomo-tab:hover .mihomo-tab-icon{transform:none}
+}
 .mihomo-pane{display:none}
 .mihomo-pane.active{display:block;animation:mui-fade-in .25s var(--ease)}
 
