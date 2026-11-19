@@ -100,6 +100,8 @@ func TestSidebarHeaderThemeMenuAndInboundCaption(t *testing.T) {
  for _,want:=range []string{
   "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png\" alt=\"M-UI Fusion\" width=\"60\" height=\"60\"",
   "id=\"top-theme-menu\"","data-theme-choice=\"dark\"","data-theme-choice=\"ultra\"",
+  "data-i18n=\"nav.light\">Светлая",
+  "data-theme-choice=\"light\"",
   "data-i18n=\"nav.dark\">Тёмная","data-i18n=\"nav.ultraDark\">Очень тёмная",
   "data-i18n=\"nav.inbounds\">Входящие",
   "localStorage.setItem('mui-is-ultra-dark'",

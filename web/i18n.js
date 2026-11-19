@@ -34,6 +34,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'common.refreshTitle': '刷新',
       'common.backTopTitle': '回到顶部',
       'nav.theme': '主题',
+      'nav.light': '浅色',
       'nav.dark': '深色',
       'nav.ultraDark': '极暗',
       'nav.overview': '仪表盘',
@@ -951,6 +952,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'common.refreshTitle': 'Refresh',
       'common.backTopTitle': 'Back to top',
       'nav.theme': 'Theme',
+      'nav.light': 'Light',
       'nav.dark': 'Dark',
       'nav.ultraDark': 'Ultra Dark',
       'nav.overview': 'Overview',
@@ -1867,7 +1869,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     },
     ru: {
       'common.save':'Сохранить','common.cancel':'Отмена','common.import':'Импорт','common.close':'Закрыть','common.create':'Создать','common.delete':'Удалить','common.copy':'Копировать','common.confirm':'Подтвердить','common.enable':'Включить','common.enabled':'Включено','common.never':'Никогда','common.general':'Общие','common.refreshTitle':'Обновить','common.backTopTitle':'Наверх',
-      'nav.theme':'Тема','nav.dark':'Тёмная','nav.ultraDark':'Очень тёмная','nav.overview':'Обзор','nav.inbounds':'Входящие','nav.mihomoSettings':'Настройки Mihomo','nav.panelSettings':'Настройки панели','nav.logOut':'Выйти','nav.collapseTitle':'Свернуть/развернуть меню','nav.menuTitle':'Меню','topbar.refresh':'Обновить',
+      'nav.theme':'Тема','nav.light':'Светлая','nav.dark':'Тёмная','nav.ultraDark':'Очень тёмная','nav.overview':'Обзор','nav.inbounds':'Входящие','nav.mihomoSettings':'Настройки Mihomo','nav.panelSettings':'Настройки панели','nav.logOut':'Выйти','nav.collapseTitle':'Свернуть/развернуть меню','nav.menuTitle':'Меню','topbar.refresh':'Обновить',
       'banner.securityTitle':'Уведомление безопасности','dash.start':'Запустить','dash.stop':'Остановить','dash.restart':'Перезапустить','dash.manage':'Управление','dash.logs':'Журналы','dash.config':'Конфигурация','dash.backup':'Резервная копия','dash.documentation':'Документация','dash.uptime':'Время работы','dash.systemLoad':'Нагрузка системы','dash.usage':'Использование','dash.overallSpeed':'Общая скорость','dash.upload':'Отправка','dash.download':'Загрузка','dash.totalData':'Всего данных','dash.sent':'Отправлено','dash.received':'Получено','dash.ipAddresses':'IP-адреса','dash.connStats':'Статистика соединений','dash.cpuHistory':'История CPU','dash.coreRunning':'Работает','dash.coreStopped':'Остановлено','dash.unknown':'Неизвестно',
       'inbounds.totalTraffic':'Всего отправлено/получено','inbounds.totalUsage':'Общее использование','inbounds.allTimeUsage':'Использование за всё время','inbounds.totalInbounds':'Всего входов','inbounds.clients':'Клиенты','inbounds.add':'Добавить вход','inbounds.generalActions':'Общие действия','inbounds.import':'Импортировать вход','inbounds.exportUrls':'Экспортировать все URL','inbounds.exportSubs':'Экспортировать все подписки','inbounds.testConfig':'Проверить конфигурацию','inbounds.resetInbounds':'Сбросить трафик входов','inbounds.resetClients':'Сбросить трафик клиентов','inbounds.sync':'Синхронизировать вход','inbounds.deleteDepleted':'Удалить исчерпавших клиентов','inbounds.searchPh':'Поиск','inbounds.statusNone':'Нет','inbounds.statusDisabled':'Отключено','inbounds.statusEnded':'Завершено','inbounds.statusOnline':'В сети',
       'conn.eyebrow':'Активные соединения','conn.title':'Активные соединения','conn.closeAll':'Закрыть все соединения','conn.list':'Соединения','conn.autoRefresh':'Обновлять каждые 5 с','logs.eyebrow':'Рабочие журналы','logs.title':'Рабочие журналы','logs.refresh':'Обновить журналы','logs.empty':'Журналов пока нет',
@@ -1877,7 +1879,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     },
     fa: {
       'common.save':'ذخیره','common.cancel':'لغو','common.import':'درون‌ریزی','common.close':'بستن','common.create':'ایجاد','common.delete':'حذف','common.copy':'کپی','common.confirm':'تأیید','common.enable':'فعال‌سازی','common.enabled':'فعال','common.never':'هرگز','common.general':'عمومی','common.refreshTitle':'بازخوانی','common.backTopTitle':'بازگشت به بالا',
-      'nav.theme':'پوسته','nav.dark':'تیره','nav.ultraDark':'تیرهٔ کامل','nav.overview':'نمای کلی','nav.inbounds':'ورودی‌ها','nav.mihomoSettings':'تنظیمات Mihomo','nav.panelSettings':'تنظیمات پنل','nav.logOut':'خروج','nav.collapseTitle':'جمع/باز کردن منو','nav.menuTitle':'منو','topbar.refresh':'بازخوانی',
+      'nav.theme':'پوسته','nav.light':'روشن','nav.dark':'تیره','nav.ultraDark':'تیرهٔ کامل','nav.overview':'نمای کلی','nav.inbounds':'ورودی‌ها','nav.mihomoSettings':'تنظیمات Mihomo','nav.panelSettings':'تنظیمات پنل','nav.logOut':'خروج','nav.collapseTitle':'جمع/باز کردن منو','nav.menuTitle':'منو','topbar.refresh':'بازخوانی',
       'banner.securityTitle':'هشدار امنیتی','dash.start':'شروع','dash.stop':'توقف','dash.restart':'راه‌اندازی مجدد','dash.manage':'مدیریت','dash.logs':'گزارش‌ها','dash.config':'پیکربندی','dash.backup':'پشتیبان‌گیری','dash.documentation':'مستندات','dash.uptime':'مدت فعالیت','dash.systemLoad':'بار سیستم','dash.usage':'مصرف منابع','dash.overallSpeed':'سرعت کلی','dash.upload':'ارسال','dash.download':'دریافت','dash.totalData':'کل داده','dash.sent':'ارسال‌شده','dash.received':'دریافت‌شده','dash.ipAddresses':'نشانی‌های IP','dash.connStats':'آمار اتصال','dash.cpuHistory':'تاریخچه CPU','dash.coreRunning':'در حال اجرا','dash.coreStopped':'متوقف','dash.unknown':'نامشخص',
       'inbounds.totalTraffic':'کل ارسال/دریافت','inbounds.totalUsage':'کل مصرف','inbounds.allTimeUsage':'مصرف از ابتدا','inbounds.totalInbounds':'کل ورودی‌ها','inbounds.clients':'کلاینت‌ها','inbounds.add':'افزودن ورودی','inbounds.generalActions':'عملیات عمومی','inbounds.import':'درون‌ریزی ورودی','inbounds.exportUrls':'خروجی همه URLها','inbounds.exportSubs':'خروجی همه اشتراک‌ها','inbounds.testConfig':'آزمون پیکربندی','inbounds.resetInbounds':'بازنشانی ترافیک ورودی‌ها','inbounds.resetClients':'بازنشانی ترافیک کلاینت‌ها','inbounds.sync':'همگام‌سازی ورودی','inbounds.deleteDepleted':'حذف کلاینت‌های تمام‌شده','inbounds.searchPh':'جستجو','inbounds.statusNone':'هیچ‌کدام','inbounds.statusDisabled':'غیرفعال','inbounds.statusEnded':'پایان‌یافته','inbounds.statusOnline':'آنلاین',
       'conn.eyebrow':'اتصال‌های زنده','conn.title':'اتصال‌های زنده','conn.closeAll':'بستن همه اتصال‌ها','conn.list':'اتصال‌ها','conn.autoRefresh':'بازخوانی هر ۵ ثانیه','logs.eyebrow':'گزارش‌های اجرا','logs.title':'گزارش‌های اجرا','logs.refresh':'بازخوانی گزارش‌ها','logs.empty':'هنوز گزارشی وجود ندارد',

@@ -1030,7 +1030,7 @@
     </aside>
     <div class="drawer-mask" id="drawer-mask"></div>
     <section class="content">
-      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">Обзор</strong></div><div class="top-actions"><div class="top-theme-control" id="top-theme-control"><button class="outline-btn theme-toggle" id="theme-toggle" type="button" aria-haspopup="true" aria-controls="top-theme-menu" aria-expanded="false"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span data-i18n="nav.theme">Тема</span><svg class="sf-symbol theme-menu-chevron" aria-hidden="true"><use href="#sf-down"></use></svg></button><div class="top-theme-menu" id="top-theme-menu" role="menu" aria-label="Тема" hidden><button type="button" role="menuitemradio" data-theme-choice="dark" aria-checked="false"><span data-i18n="nav.dark">Тёмная</span><span class="theme-selected" aria-hidden="true">✓</span></button><button type="button" role="menuitemradio" data-theme-choice="ultra" aria-checked="false"><span data-i18n="nav.ultraDark">Очень тёмная</span><span class="theme-selected" aria-hidden="true">✓</span></button></div></div><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
+      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">Обзор</strong></div><div class="top-actions"><div class="top-theme-control" id="top-theme-control"><button class="outline-btn theme-toggle" id="theme-toggle" type="button" aria-haspopup="true" aria-controls="top-theme-menu" aria-expanded="false"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span data-i18n="nav.theme">Тема</span><svg class="sf-symbol theme-menu-chevron" aria-hidden="true"><use href="#sf-down"></use></svg></button><div class="top-theme-menu" id="top-theme-menu" role="menu" aria-label="Тема" hidden><button type="button" role="menuitemradio" data-theme-choice="light" aria-checked="false"><span data-i18n="nav.light">Светлая</span><span class="theme-selected" aria-hidden="true">✓</span></button><button type="button" role="menuitemradio" data-theme-choice="dark" aria-checked="false"><span data-i18n="nav.dark">Тёмная</span><span class="theme-selected" aria-hidden="true">✓</span></button><button type="button" role="menuitemradio" data-theme-choice="ultra" aria-checked="false"><span data-i18n="nav.ultraDark">Очень тёмная</span><span class="theme-selected" aria-hidden="true">✓</span></button></div></div><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
       <div class="security-banner" id="panel-security-banner" hidden><strong>安全提醒</strong><span>面板当前未配置 HTTPS TLS 证书，建议在面板设置中配置证书和私钥并重启 m-ui。</span><button id="dismiss-security-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <div class="security-banner" id="panel-path-banner" hidden><strong>安全提醒</strong><span data-i18n-html="banner.pathText">面板当前直接挂在根路径 <code>/</code> 上，任何扫到这个端口的脚本都能立刻拿到登录页并开始撞库爆破。请在面板设置中把「面板 URI 路径」改成一个不易猜到的值（例如 <code>/a-users-path/</code>），改完只有带这个路径的地址才能访问面板。</span><button id="dismiss-path-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <main class="main">
@@ -1589,7 +1589,10 @@
       document.body.classList.toggle('dark',isDark);
       if(isUltra)root.setAttribute('data-theme','ultra-dark');else root.removeAttribute('data-theme');
       $$('[data-theme-choice]', $('#top-theme-menu')).forEach(button=>
-        button.setAttribute('aria-checked',String(isDark && (button.dataset.themeChoice==='ultra' ? isUltra : !isUltra)))
+        button.setAttribute('aria-checked',String(
+          button.dataset.themeChoice==='light' ? !isDark :
+          button.dataset.themeChoice==='ultra' ? isUltra : isDark&&!isUltra
+        ))
       );
       localStorage.setItem('mui-theme',isDark?'dark':'light');
       localStorage.setItem('mui-is-ultra-dark',wantUltra?'true':'false');
@@ -1606,7 +1609,7 @@
       const control=$('#top-theme-control');
       control.classList.add('open');$('#top-theme-menu').hidden=false;
       $('#theme-toggle').setAttribute('aria-expanded','true');
-      const selected=$('#top-theme-menu [aria-checked="true"]')||$('#top-theme-menu [data-theme-choice="dark"]');
+      const selected=$('#top-theme-menu [aria-checked="true"]')||$('#top-theme-menu [data-theme-choice="light"]');
       selected?.focus();
     }
     /* ===== 侧边栏：底部 48px 折叠触发条（200px 与 80px 之间）+ 窄屏左侧抽屉（.drawer-handle / .drawer-mask） ===== */
@@ -1626,7 +1629,8 @@
       else closeThemeMenu({focus:true});
     };
     $$('[data-theme-choice]', $('#top-theme-menu')).forEach(button=>button.onclick=()=>{
-      applyTheme(true,button.dataset.themeChoice==='ultra');
+      const choice=button.dataset.themeChoice;
+      applyTheme(choice!=='light',choice==='ultra');
       closeThemeMenu({focus:true});
     });
     document.addEventListener('pointerdown',event=>{
