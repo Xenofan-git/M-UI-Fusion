@@ -4843,7 +4843,7 @@ func TestSettingsPageReplicates3xUiLayout(t *testing.T) {
 		"function renderSettings()", "function syncSettingsButtons()", "function applyRemarkModel(model)",
 		"function syncRemarkModel()", "function remarkLabel(inbound,client)", "function splitPanelListen(value)",
 		"function joinPanelListen(ip,port)", "function inboundPager(current,pages,total)",
-		"async function saveCredentials()", "async function restartPanel()",
+		"async function saveCredentials(event)", "async function restartPanel()",
 		"localStorage.setItem('mui-language'",
 	} {
 		if !strings.Contains(content, needle) {
