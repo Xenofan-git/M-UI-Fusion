@@ -52,7 +52,9 @@ html[data-theme="ultra-dark"] body::before, html.ultra-dark body::before { filte
 }
 .sidebar-header { padding: 2px 10px 22px; gap: 12px; }
 .mac-traffic-lights { display: none; }
-.sidebar-logo { width: 36px; height: 36px; border-radius: 11px; }
+.sidebar-logo { width: 60px; height: 60px; border-radius: 13px; }
+body.sider-collapsed .sidebar-logo { width: 42px; height: 42px; }
+@media (max-width: 768px) { body.sider-collapsed .sidebar-logo { width: 60px; height: 60px; } }
 .sidebar-app-name { font-size: 18px; letter-spacing: -.04em; }
 .sidebar-app-badge { font-size: 10px; }
 .nav { position: relative; display: flex; flex-direction: column; gap: 5px; }

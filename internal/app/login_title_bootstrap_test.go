@@ -92,3 +92,31 @@ func TestLoginPageStableWelcomeAndEnlargedCat(t *testing.T) {
   }
  }
 }
+
+func TestSidebarHeaderThemeMenuAndInboundCaption(t *testing.T) {
+ data,err:=webFS.ReadFile("web/index.html")
+ if err!=nil {t.Fatal(err)}
+ ui:=string(data)
+ for _,want:=range []string{
+  "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png\" alt=\"M-UI Fusion\" width=\"60\" height=\"60\"",
+  "id=\"top-theme-menu\"","data-theme-choice=\"dark\"","data-theme-choice=\"ultra\"",
+  "data-i18n=\"nav.dark\">Тёмная","data-i18n=\"nav.ultraDark\">Очень тёмная",
+  "data-i18n=\"nav.inbounds\">Входящие",
+  "localStorage.setItem('mui-is-ultra-dark'",
+ } {
+  if !strings.Contains(ui,want){t.Errorf("sidebar/header theme UI missing %q",want)}
+ }
+ for _,old:=range []string{"id=\"sidebar-theme-control\"","id=\"sidebar-theme\"","sidebar-dark-toggle","sidebar-ultra-toggle"} {
+  if strings.Contains(ui,old) {t.Errorf("obsolete sidebar theme element remains %q",old)}
+ }
+ translations,err:=webFS.ReadFile("web/i18n.js")
+ if err!=nil {t.Fatal(err)}
+ if !strings.Contains(string(translations),"'nav.inbounds':'Входящие'") {
+   t.Fatal("Russian inbounds menu label has not been renamed")
+ }
+ liquid,err:=webFS.ReadFile("web/liquid-optics.css")
+ if err!=nil {t.Fatal(err)}
+ if !strings.Contains(string(liquid),".sidebar-logo { width: 60px; height: 60px;") {
+   t.Fatal("Liquid theme overrides the enlarged logo")
+ }
+}

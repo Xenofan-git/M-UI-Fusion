@@ -53,7 +53,7 @@
       border-bottom: 1px solid var(--line);
     }
     .sidebar-logo {
-      width: 38px; height: 38px; flex: none;
+      width: 60px; height: 60px; flex: none;
       display: flex; align-items: center; justify-content: center;
       border-radius: 10px;
       background: transparent;
@@ -67,7 +67,7 @@
       object-fit: cover;
       border-radius: inherit;
     }
-    .sidebar-title { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+    .sidebar-title { display: flex; align-items: center; align-content: center; flex-wrap: wrap; min-width: 0; gap: 4px 8px; }
     .sidebar-app-name { font-size: 16px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; }
     .sidebar-app-badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: var(--radius-pill); background: var(--teal-soft); color: var(--teal); }
 
@@ -131,6 +131,7 @@
     /* 侧边栏折叠态 */
     body.sider-collapsed .sidebar { width: 72px; padding: 16px 8px 56px; }
     body.sider-collapsed .sidebar-header { justify-content: center; padding: 8px 0 16px; }
+    body.sider-collapsed .sidebar-logo { width: 42px; height: 42px; }
     body.sider-collapsed .sidebar-title { display: none !important; }
     body.sider-collapsed .sider-trigger {
       left: 30px !important;
@@ -138,8 +139,8 @@
       height: 40px !important;
       border-radius: 50% !important;
     }
-    body.sider-collapsed .nav button, body.sider-collapsed .theme-trigger { justify-content: center; padding: 0; gap: 0; }
-    body.sider-collapsed .nav button span:not(.nav-icon), body.sider-collapsed .theme-chevron, body.sider-collapsed .theme-options { display: none !important; }
+    body.sider-collapsed .nav button { justify-content: center; padding: 0; gap: 0; }
+    body.sider-collapsed .nav button span:not(.nav-icon) { display: none !important; }
     body.sider-collapsed .nav button.active { border-radius: var(--radius-sm); }
 
     .topbar { display: none; height: 48px; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 5; }
@@ -621,26 +622,28 @@
     .metric-value { min-width: 0; color: var(--text-strong); font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .metric-value small { color: var(--muted); font-size: 13px; font-weight: 400; }
 
-    /* ===== 侧栏主题子菜单 ===== */
-    .theme-control { overflow: hidden; }
-    .theme-trigger {
-      display: flex; align-items: center; gap: 10px; width: 100%; height: 38px;
-      padding: 0 12px; border: 0; border-radius: var(--radius-sm);
-      color: var(--text); background: transparent; text-align: left; white-space: nowrap;
-      font-size: 13.5px; font-weight: 450; transition: all .2s var(--ease);
+    /* Header theme choice: same stored Dark/Ultra Dark state, relocated from sidebar. */
+    .top-theme-control { position: relative; display: inline-flex; flex: none; }
+    .theme-menu-chevron { font-size: 11px; transition: transform .2s var(--ease); }
+    .top-theme-control.open .theme-menu-chevron { transform: rotate(180deg); }
+    .top-theme-menu {
+      position: absolute; top: calc(100% + 8px); right: 0; z-index: 130;
+      display: flex; flex-direction: column; gap: 3px; min-width: 188px;
+      padding: 7px; border: 1px solid var(--stroke); border-radius: var(--radius);
+      background: var(--surface-modal); color: var(--text-strong);
+      box-shadow: var(--shadow-pop); backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
     }
-    .theme-trigger:hover { color: var(--text-strong); background: var(--surface-3); }
-    .theme-chevron { display: inline-flex; margin-left: auto; transition: transform .24s var(--ease); }
-    .theme-control.open .theme-chevron { transform: rotate(180deg); }
-    .theme-options { display: none; flex-direction: column; gap: 2px; padding: 4px 0 6px; }
-    .theme-control.open .theme-options { display: flex; animation: collfade .25s var(--ease); }
-    .theme-option-row {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      height: 34px; padding: 0 12px 0 24px; border-radius: var(--radius-sm);
-      color: var(--text); font-size: 13px; white-space: nowrap; transition: background-color .15s;
+    .top-theme-menu[hidden] { display: none !important; }
+    .top-theme-menu button {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; width: 100%; min-height: 38px; padding: 8px 11px;
+      color: var(--text-strong); border: 0; border-radius: var(--radius-sm);
+      background: transparent; text-align: left; font: inherit; cursor: pointer;
     }
-    .theme-option-row:hover { background: var(--surface-3); }
-    .theme-option-row[hidden] { display: none; }
+    .top-theme-menu button:hover, .top-theme-menu button:focus-visible { background: var(--surface-3); }
+    .theme-selected { color: var(--teal); font-weight: 700; visibility: hidden; }
+    .top-theme-menu button[aria-checked="true"] .theme-selected { visibility: visible; }
     .check-box { position: relative; display: inline-block; width: 18px; height: 18px; flex: none; }
     .check-box input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
     .check-box span { position: absolute; inset: 0; border: 1.5px solid var(--stroke-2); border-radius: var(--radius-xs); background: var(--surface); transition: all .2s; }
@@ -931,12 +934,11 @@
       .sidebar.open { transform: none; }
       body.sider-collapsed .sidebar { width: 220px !important; }
       body.sider-collapsed .sidebar-header { justify-content: flex-start; padding: 8px 8px 18px; }
+      body.sider-collapsed .sidebar-logo { width: 60px; height: 60px; }
       body.sider-collapsed .sidebar-title { display: flex !important; }
       body.sider-collapsed .nav { padding: 0; }
-      body.sider-collapsed .nav button, body.sider-collapsed .theme-trigger { justify-content: flex-start; padding: 0 12px; gap: 10px; }
-      body.sider-collapsed .nav button span:not(.nav-icon), body.sider-collapsed .theme-chevron { display: inline-flex; }
-      body.sider-collapsed .theme-options { display: none; }
-      body.sider-collapsed .theme-control.open .theme-options { display: flex; }
+      body.sider-collapsed .nav button { justify-content: flex-start; padding: 0 12px; gap: 10px; }
+      body.sider-collapsed .nav button span:not(.nav-icon) { display: inline-flex; }
       body.sider-collapsed .nav button.active { border-radius: var(--radius-sm); }
       .sider-trigger { display: none; }
       .drawer-handle {
@@ -953,6 +955,7 @@
       .main { margin: 16px 12px; }
       .security-banner { margin: 16px 12px 0; }
       .top-actions .outline-btn { display: none; }
+      .top-actions #theme-toggle { display: inline-flex; }
       .page-head { align-items: flex-start; flex-direction: column; }
       .overview-grid { grid-template-columns: minmax(0, 1fr); }
       .gauges-card { grid-template-columns: 1fr 1fr; padding: 16px; }
@@ -1007,7 +1010,7 @@
           <span class="mac-dot green"></span>
         </div>
         <div class="sidebar-logo">
-          <img class="sidebar-logo-img" src="media/m-ui_logo.png" alt="M-UI Fusion" width="38" height="38">
+          <img class="sidebar-logo-img" src="media/m-ui_logo.png" alt="M-UI Fusion" width="60" height="60">
         </div>
         <div class="sidebar-title">
           <span class="sidebar-app-name">M-UI Fusion</span>
@@ -1015,9 +1018,8 @@
         </div>
       </div>
       <nav class="nav" id="nav">
-        <div class="theme-control" id="sidebar-theme-control"><button class="theme-trigger" id="sidebar-theme" type="button" aria-expanded="false"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg></span><span data-i18n="nav.theme">Тема</span><span class="theme-chevron"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-down"></use></svg></span></button><div class="theme-options"><div class="theme-option-row"><span>Dark</span><label class="switch switch-sm"><input id="sidebar-dark-toggle" type="checkbox"><span></span></label></div><div class="theme-option-row" id="sidebar-ultra-row" hidden><span>Ultra Dark</span><label class="switch switch-sm"><input id="sidebar-ultra-toggle" type="checkbox"><span></span></label></div></div></div>
         <button data-view="dashboard" class="active"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-dashboard"></use></svg></span><span data-i18n="nav.overview">Обзор</span></button>
-        <button data-view="inbounds"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-user"></use></svg></span><span data-i18n="nav.inbounds">Входы</span></button>
+        <button data-view="inbounds"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-user"></use></svg></span><span data-i18n="nav.inbounds">Входящие</span></button>
         <button data-view="subtemplates"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-file-text"></use></svg></span><span data-i18n="nav.subTemplates">Шаблоны подписок</span></button>
         <button data-view="mihomo"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-tool"></use></svg></span><span data-i18n="nav.mihomoSettings">Настройки Mihomo</span></button>
         <button data-view="settings"><span class="nav-icon"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-setting"></use></svg></span><span data-i18n="nav.panelSettings">Настройки панели</span></button>
@@ -1028,7 +1030,7 @@
     </aside>
     <div class="drawer-mask" id="drawer-mask"></div>
     <section class="content">
-      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">Обзор</strong></div><div class="top-actions"><button class="outline-btn theme-toggle" id="theme-toggle"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span data-i18n="nav.theme">Тема</span></button><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
+      <header class="topbar"><div class="crumb">M-UI Fusion <span>/</span> <strong id="crumb">Обзор</strong></div><div class="top-actions"><div class="top-theme-control" id="top-theme-control"><button class="outline-btn theme-toggle" id="theme-toggle" type="button" aria-haspopup="true" aria-controls="top-theme-menu" aria-expanded="false"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-bulb"></use></svg><span data-i18n="nav.theme">Тема</span><svg class="sf-symbol theme-menu-chevron" aria-hidden="true"><use href="#sf-down"></use></svg></button><div class="top-theme-menu" id="top-theme-menu" role="menu" aria-label="Тема" hidden><button type="button" role="menuitemradio" data-theme-choice="dark" aria-checked="false"><span data-i18n="nav.dark">Тёмная</span><span class="theme-selected" aria-hidden="true">✓</span></button><button type="button" role="menuitemradio" data-theme-choice="ultra" aria-checked="false"><span data-i18n="nav.ultraDark">Очень тёмная</span><span class="theme-selected" aria-hidden="true">✓</span></button></div></div><button class="outline-btn" id="refresh"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-sync"></use></svg><span>刷新状态</span></button><button class="icon-btn" id="logout" title="退出登录"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-logout"></use></svg></button></div></header>
       <div class="security-banner" id="panel-security-banner" hidden><strong>安全提醒</strong><span>面板当前未配置 HTTPS TLS 证书，建议在面板设置中配置证书和私钥并重启 m-ui。</span><button id="dismiss-security-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <div class="security-banner" id="panel-path-banner" hidden><strong>安全提醒</strong><span data-i18n-html="banner.pathText">面板当前直接挂在根路径 <code>/</code> 上，任何扫到这个端口的脚本都能立刻拿到登录页并开始撞库爆破。请在面板设置中把「面板 URI 路径」改成一个不易猜到的值（例如 <code>/a-users-path/</code>），改完只有带这个路径的地址才能访问面板。</span><button id="dismiss-path-banner" type="button" title="关闭"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-close"></use></svg></button></div>
       <main class="main">
@@ -1555,14 +1557,27 @@
       root.setAttribute('data-theme-animations','off');
       document.body.classList.toggle('dark',isDark);
       if(isUltra)root.setAttribute('data-theme','ultra-dark');else root.removeAttribute('data-theme');
-      const darkToggle=$('#sidebar-dark-toggle'); if(darkToggle)darkToggle.checked=isDark;
-      const ultraToggle=$('#sidebar-ultra-toggle'); if(ultraToggle)ultraToggle.checked=wantUltra;
-      const ultraRow=$('#sidebar-ultra-row'); if(ultraRow)ultraRow.hidden=!isDark;
+      $$('[data-theme-choice]', $('#top-theme-menu')).forEach(button=>
+        button.setAttribute('aria-checked',String(isDark && (button.dataset.themeChoice==='ultra' ? isUltra : !isUltra)))
+      );
       localStorage.setItem('mui-theme',isDark?'dark':'light');
       localStorage.setItem('mui-is-ultra-dark',wantUltra?'true':'false');
       clearTimeout(applyTheme.timer); applyTheme.timer=setTimeout(()=>root.removeAttribute('data-theme-animations'),80);
     }
-    function toggleTheme(){applyTheme(!document.body.classList.contains('dark'));}
+    function closeThemeMenu({focus=false}={}){
+      const control=$('#top-theme-control');
+      const menu=$('#top-theme-menu');
+      control.classList.remove('open');menu.hidden=true;
+      $('#theme-toggle').setAttribute('aria-expanded','false');
+      if(focus)$('#theme-toggle').focus();
+    }
+    function openThemeMenu(){
+      const control=$('#top-theme-control');
+      control.classList.add('open');$('#top-theme-menu').hidden=false;
+      $('#theme-toggle').setAttribute('aria-expanded','true');
+      const selected=$('#top-theme-menu [aria-checked="true"]')||$('#top-theme-menu [data-theme-choice="dark"]');
+      selected?.focus();
+    }
     /* ===== 侧边栏：底部 48px 折叠触发条（200px 与 80px 之间）+ 窄屏左侧抽屉（.drawer-handle / .drawer-mask） ===== */
     function setSiderCollapsed(collapsed){document.body.classList.toggle('sider-collapsed',collapsed);localStorage.setItem('mui-sider-collapsed',collapsed?'true':'false');const use=$('#sider-trigger-use');if(use)use.setAttribute('href',collapsed?'#sf-right':'#sf-left');syncInkBars();}
     function setDrawerOpen(open){const sidebar=$('#sidebar');if(!sidebar)return;sidebar.classList.toggle('open',open);const mask=$('#drawer-mask');if(mask)mask.classList.toggle('open',open);const use=$('#drawer-handle-use');if(use)use.setAttribute('href',open?'#sf-close':'#sf-menu-fold');const handle=$('#drawer-handle');if(handle)handle.setAttribute('aria-expanded',String(open));}
@@ -1575,9 +1590,23 @@
 
     $$('#nav [data-view]').forEach(button=>button.onclick=()=>setView(button.dataset.view));
     $$('[data-nav]').forEach(button=>button.onclick=()=>setView(button.dataset.nav));
-    $('#sidebar-theme').onclick=()=>{const control=$('#sidebar-theme-control');const open=!control.classList.contains('open');control.classList.toggle('open',open);$('#sidebar-theme').setAttribute('aria-expanded',String(open));}; $('#sidebar-dark-toggle').onchange=event=>applyTheme(event.target.checked); $('#sidebar-ultra-toggle').onchange=event=>applyTheme(true,event.target.checked); $('#theme-toggle').onclick=toggleTheme; $('#sidebar-logout').onclick=logout; $('#logout').onclick=logout; $('#refresh').onclick=refresh;
-    /* 在主题切换控件上 mousedown 关掉过渡、mouseleave/touchend 恢复，避免整页渐变闪屏 */
-    const themeControl=$('#sidebar-theme-control'); themeControl.addEventListener('mousedown',()=>document.documentElement.setAttribute('data-theme-animations','off')); themeControl.addEventListener('mouseleave',()=>document.documentElement.removeAttribute('data-theme-animations')); themeControl.addEventListener('touchend',()=>document.documentElement.removeAttribute('data-theme-animations'));
+    $('#theme-toggle').onclick=()=>{
+      if($('#top-theme-menu').hidden)openThemeMenu();
+      else closeThemeMenu({focus:true});
+    };
+    $$('[data-theme-choice]', $('#top-theme-menu')).forEach(button=>button.onclick=()=>{
+      applyTheme(true,button.dataset.themeChoice==='ultra');
+      closeThemeMenu({focus:true});
+    });
+    document.addEventListener('pointerdown',event=>{
+      if(!$('#top-theme-control').contains(event.target))closeThemeMenu();
+    });
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&!$('#top-theme-menu').hidden){event.preventDefault();closeThemeMenu({focus:true});}
+    });
+    $('#sidebar-logout').onclick=logout;
+    $('#logout').onclick=logout;
+    $('#refresh').onclick=refresh;
     $('#sider-trigger').onclick=()=>setSiderCollapsed(!document.body.classList.contains('sider-collapsed'));
     $('#drawer-handle').onclick=()=>setDrawerOpen(!$('#sidebar').classList.contains('open'));
     $('#cpu-history-open').onclick=openCpuHistory; $('#cpu-history-span').onchange=fetchCpuHistory;
