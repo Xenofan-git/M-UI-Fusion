@@ -76,12 +76,24 @@
     return fixed.concat(draft.outbounds.map(item=>({...item,address:outboundAddress(item)})));
   }
   function delayLabel(name){const value=delayResults.get(name);return value==='Testing'?muiT('mh.testing'):value||'';}
+  // Display only: hide a provider label already identified by the balancer name.
+  // Never change Mihomo's actual selected member or the stored proxy name.
+  function displayedCurrentNode(groupName,current){
+    const value=String(current||''),divider=value.indexOf(' | ');
+    if(divider<1)return value;
+    const provider=value.slice(0,divider).trim().toLowerCase();
+    const group=String(groupName||'').toLowerCase();
+    return provider&&(group===provider||group.endsWith('-'+provider))?value.slice(divider+3):value;
+  }
+  function groupTypeLabel(type,label=type){
+    return type==='url-test'&&window.muiGetLang?.()==='ru'?'URL-тест':label;
+  }
   function groupResultLabel(name){
     const group=activeGroupResults.get(name);
     if(!group)return 'Определяется…';
     if(!group.running)return 'Mihomo недоступен';
     if(!group.applied)return 'Группа не применена';
-    if(group.current)return 'Текущий: '+group.current;
+    if(group.current)return displayedCurrentNode(name,group.current);
     if(group.perConnection)return 'Выбор для каждого соединения';
     return 'Текущий не определён';
   }
@@ -158,7 +170,7 @@
     ),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
     box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
       const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
-      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td>${item.kind==='group'
+      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(item.kind==='group'?groupTypeLabel(type):type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td>${item.kind==='group'
         ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}" title="${esc(groupResultTitle(item.name))}">${esc(groupResultLabel(item.name))}</span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" ${groupTestNote(item.name)?'':'hidden'}>${esc(groupTestNote(item.name))}</small>`
         :`<span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
@@ -334,7 +346,7 @@
   }
   function populateOutboundTypes(form,selected=''){
     const options=form.elements.kind.value==='group'?groupTypes:proxyTypes;
-    form.elements.type.innerHTML=options.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
+    form.elements.type.innerHTML=options.map(([value,label])=>`<option value="${value}">${groupTypeLabel(value,label)}</option>`).join('');
     if(options.some(([value])=>value===selected))form.elements.type.value=selected;
   }
   function syncOutboundTargets(item={}){
@@ -934,7 +946,11 @@
   window.addEventListener('mui-langchange',()=>{
     render();
     for(const field of $$('[data-basics-list]'))renderBasicsTags(field.dataset.basicsList);
-    if($('#mihomo-outbound-modal')?.classList.contains('open'))$('#mihomo-outbound-title').textContent=muiT(editingOutbound?'mh.editOutbound':'mihomo.addOutbound');
+    if($('#mihomo-outbound-modal')?.classList.contains('open')){
+      $('#mihomo-outbound-title').textContent=muiT(editingOutbound?'mh.editOutbound':'mihomo.addOutbound');
+      const form=$('#mihomo-outbound-form');
+      if(form.elements.kind.value==='group')populateOutboundTypes(form,form.elements.type.value);
+    }
     if($('#mihomo-rule-modal')?.classList.contains('open')){$('#mihomo-rule-title').textContent=muiT(editingRule?'mh.editRule':'mh.addRule');syncRuleForm();}
     if($('#warp-modal')?.classList.contains('open'))renderWarpModal();
     if($('#vpngate-modal')?.classList.contains('open'))renderVPNGateModal();

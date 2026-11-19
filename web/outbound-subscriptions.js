@@ -290,7 +290,7 @@
     field(form,'Имя балансировщика','groupName','text',{maxLength:120,placeholder:'Например, Foreign'});
     const typeLabel=make('label','', 'Режим балансировки'),type=make('select');
     type.name='groupType';
-    for(const [id,label] of [['url-test','URL Test — наименьшая задержка'],['fallback','Fallback — по приоритету'],['load-balance','Load Balance'],['select','Select — вручную']]){
+    for(const [id,label] of [['url-test','URL-тест — наименьшая задержка'],['fallback','Fallback — по приоритету'],['load-balance','Load Balance'],['select','Select — вручную']]){
       type.add(new Option(label,id));
     }
     typeLabel.appendChild(type);form.appendChild(typeLabel);

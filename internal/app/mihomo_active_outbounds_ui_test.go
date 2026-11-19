@@ -15,7 +15,7 @@ func TestActiveOutboundColumnKeepsCurrentWhileDelayTestMayFail(t *testing.T) {
 		"/api/mihomo/balancers/current",
 		"groupResultLabel(item.name)",
 		"data-active-group=",
-		"Текущий: ",
+		"displayedCurrentNode(name,group.current)",
 		"Текущий исходящий",
 		"Выбор для каждого соединения",
 		"Тест задержки не прошёл",

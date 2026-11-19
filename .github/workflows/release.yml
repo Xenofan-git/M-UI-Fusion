@@ -49,6 +49,8 @@ jobs:
       - name: Validate web JavaScript
         run: node --check web/mihomo-settings.js
 
+      - name: Test balancer display labels
+        run: node tests/balancer-labels.cjs
       - name: Run tests
         run: go test -count=1 ./...
 
