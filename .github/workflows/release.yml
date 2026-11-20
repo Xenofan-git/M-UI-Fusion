@@ -232,6 +232,12 @@ jobs:
             dist/SHA256SUMS
           )
 
+          # Keep the v1.0.0 historical notes; later tags get dedicated notes.
+          release_notes="docs/releases/${GITHUB_REF_NAME}.md"
+          if [[ ! -f "$release_notes" ]]; then
+            release_notes="docs/RELEASE-NOTES.md"
+          fi
+
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "Release already exists; replacing its release assets."
 
@@ -242,7 +248,7 @@ jobs:
           else
             release_options=(
               --verify-tag
-              --notes-file "docs/RELEASE-NOTES.md"
+              --notes-file "$release_notes"
               --title "M-UI Fusion $(echo "$GITHUB_REF_NAME" | sed s/^v//)"
               --latest
             )

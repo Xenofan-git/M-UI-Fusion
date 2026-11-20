@@ -5,6 +5,15 @@ const notes = fs.readFileSync('docs/RELEASE-NOTES.md', 'utf8');
 const en = fs.readFileSync('docs/INSTALL.en.md', 'utf8');
 const ru = fs.readFileSync('docs/INSTALL.ru.md', 'utf8');
 const original = fs.readFileSync('docs/DEVELOPMENT-HISTORY.md', 'utf8');
+const patchNotes = fs.readFileSync('docs/releases/v1.0.1.md','utf8');
+assert.match(patchNotes, /^# M-UI Fusion 1\.0\.1/m);
+assert.match(patchNotes, /^## English$/m);
+assert.match(patchNotes, /^## Русский$/m);
+assert.match(patchNotes, /AND → Russia/);
+assert.match(patchNotes, /GEOIP → Russia/);
+assert.match(patchNotes, /--update --version v1\.0\.1/);
+assert.match(patchNotes, /не удаляет и не изменяет правила/);
+
 const heading = notes.match(/^# M-UI Fusion (\d+\.\d+\.\d+)/m);
 assert.ok(heading, 'Release notes require a semantic version heading');
 const version = 'v'+heading[1];
