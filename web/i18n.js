@@ -1978,7 +1978,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   });
   Object.assign(DICT.ru,{
     'mh.ruleConditionsTitle':'Условия',
-    'mh.ruleNoConditions':'Условий нет: MATCH направляет весь оставшийся трафик в выбранный исходящий.'
+    'mh.ruleNoConditions':'Условий нет: весь оставшийся трафик направляется в выбранный исходящий.'
   });
   // Tooltip text shown in the Mihomo routing editor and rules table.
   Object.assign(DICT.en, {

@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm');
 const {chromium}=require('playwright-core');
 const js=fs.readFileSync('web/mihomo-settings.js','utf8');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
-const begin=js.indexOf('  function ruleReadableType(');
+const begin=js.indexOf('  const russianRuleTypes={');
 const finish=js.indexOf('  function moveRule(',begin);
 if(begin<0||finish<begin)throw Error('routing helper functions moved');
 const source=js.slice(begin,finish);

@@ -94,7 +94,7 @@ assert.equal(node('Russia','RU Moscow #5'),'RU Moscow #5');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 assert.ok(css.includes('.mihomo-current-country-flag'));
-assert.ok(html.includes('mihomo-settings.js?v=108'));
+assert.ok(html.includes('mihomo-settings.js?v=109'));
 assert.ok(html.includes('mihomo-settings.css?v=108'));
 for(const code of ['lv','ru','fi','de']){
   const svg=fs.readFileSync('web/flags/'+code+'.svg','utf8');

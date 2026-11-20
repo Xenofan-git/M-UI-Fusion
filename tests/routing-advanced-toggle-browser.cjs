@@ -10,9 +10,12 @@ const start=src.indexOf('ruleModal.innerHTML=');
 const stop=src.indexOf(';\n    document.body.appendChild(ruleModal);',start);
 if(start<0||stop<start)throw Error('rule editor HTML not found');
 const markup=vm.runInNewContext(src.slice(start+'ruleModal.innerHTML='.length,stop),{
-  SF:()=>'',ruleTypes:['DOMAIN','GEOIP','IP-CIDR','AND','MATCH','GEOSITE'],
+  SF:()=>'',ruleTypes:['DOMAIN','GEOIP','IP-CIDR','AND','MATCH','GEOSITE','PROCESS-NAME'],
   ruleHelpButton:(kind,type)=>'<button type="button" data-mihomo-rule-type="'+(type||'LIST')+'" class="mihomo-rule-help-trigger">!</button>'
 });
+const labelsStart=src.indexOf('  const russianRuleTypes={');
+const labelsEnd=src.indexOf('  function ruleReadablePayload(',labelsStart);
+const labelFunctions=src.slice(labelsStart,labelsEnd);
 const first=src.indexOf('  function openRuleModal(');
 const last=src.indexOf('  async function saveRuleDraft(',first);
 if(first<0||last<first)throw Error('rule editing functions not found');
@@ -30,10 +33,11 @@ const runtime=[
   "const openModal=id=>{document.getElementById(id).classList.add('open')};",
   "const rulePayloadHint=type=>'Hint '+type;",
   "const loadGeoCategories=()=>Promise.resolve({geosite:['ru'],geoip:['cn']});",
-  "window.muiGetLang=()=> 'ru';",
+  "window.testLang='ru';window.muiGetLang=()=>window.testLang;",
   "window.MUIRuleLists={decode:rule=>rule.list?{geos:'geosite:ru',domains:'vk.com',noResolve:true}:null,displayCategoryName:x=>x};",
+  labelFunctions,
   src.slice(first,last),
-  'window.editTest=openRuleModal;window.syncTest=syncRuleForm;'
+  'window.editTest=openRuleModal;window.syncTest=syncRuleForm;window.refreshTypeLabels=refreshRuleTypeLabels;'
 ].join('\n');
 (async()=>{
   const browser=await chromium.launch({executablePath:process.env.MUI_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
@@ -67,6 +71,11 @@ const runtime=[
       if(await visible(lists)||await visible(matchNote))throw Error('Incorrect GEOIP condition widget');
       if((await page.locator('#mihomo-rule-condition-label').textContent())!=='Страна IP назначения')throw Error('GEOIP condition not explained');
       if(!(await visible(check)))throw Error('GEOIP No-Resolve missing');
+      const geoLabel=await page.locator(type+' option[value="GEOIP"]').textContent();
+      if(geoLabel!=='GEOIP — Страна IP назначения')throw Error('Russian GEOIP type label wrong: '+geoLabel);
+      const processLabel=await page.locator(type+' option[value="PROCESS-NAME"]').textContent();
+      if(processLabel!=='PROCESS-NAME — Имя программы')throw Error('Russian PROCESS-NAME label wrong');
+      if(await page.locator(type).inputValue()!=='GEOIP')throw Error('Localized label changed underlying rule code');
       checks++;
       await summary.click();
       if(await detail.evaluate(e=>e.open))throw Error('No-Resolve section cannot close');
@@ -97,6 +106,14 @@ const runtime=[
       if(!(await visible(type))||!(await visible(target))||!(await visible(matchNote)))throw Error('MATCH missing unified fields');
       if(await visible(value)||await visible(lists)||await visible('#mihomo-rule-advanced'))throw Error('MATCH showing forbidden conditions');
       if(!(await page.locator(type).isDisabled()))throw Error('MATCH rule type must stay locked');
+      if((await page.locator(type+' option[value="MATCH"]').textContent())!=='ВЕСЬ ОСТАЛЬНОЙ ТРАФИК')throw Error('MATCH did not get user-friendly Russian title');
+      if(!(await page.locator('#mihomo-rule-no-conditions').isVisible()))throw Error('MATCH no-conditions notice hidden');
+      await page.evaluate(()=>{window.testLang='en';window.refreshTypeLabels();});
+      if((await page.locator(type+' option[value="MATCH"]').textContent())!=='MATCH')throw Error('English MATCH should keep original code');
+      if((await page.locator(type+' option[value="GEOIP"]').textContent())!=='GEOIP')throw Error('English GEOIP should keep original code');
+      if(await page.locator(type).inputValue()!=='MATCH')throw Error('Language toggle changed stored MATCH type');
+      await page.evaluate(()=>{window.testLang='ru';window.refreshTypeLabels();});
+      if((await page.locator(type+' option[value="MATCH"]').textContent())!=='ВЕСЬ ОСТАЛЬНОЙ ТРАФИК')throw Error('Russian label not restored');
       checks++;
       // New rules get a list editor; switching types changes only the
       // condition widget, never the target/field position.

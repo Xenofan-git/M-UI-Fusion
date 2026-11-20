@@ -11,9 +11,9 @@ const css=read('web/color-skins.css');
 const keys=[
  'static/color-skins.css?v=108',
  'static/mihomo-settings.css?v=108',
- 'static/mihomo-settings.js?v=108',
- 'static/i18n.js?v=108',
- 'static/i18n-locales.js?v=108'
+ 'static/mihomo-settings.js?v=109',
+ 'static/i18n.js?v=109',
+ 'static/i18n-locales.js?v=109'
 ];
 for(const asset of keys)assert.ok(html.includes(asset),'missing cache-busting for '+asset);
 assert.equal((js.match(/data-i18n="mh.applyToDraft">Apply<\/button>/g)||[]).length,2,'rule and outbound editors must show Apply');
