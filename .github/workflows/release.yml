@@ -55,6 +55,8 @@ jobs:
         run: node tests/manual-balancer-defaults.cjs
       - name: Test friendly balancer dependency warning
         run: node tests/balancer-use-warning.cjs
+      - name: Test Russian translation quality and CPU plurals
+        run: node tests/russian-localization-quality.cjs
       - name: Validate bilingual release notes and generic SSH guides
         run: node tests/release-notes-bilingual.cjs
       - name: Test stable login welcome and enlarged logo
