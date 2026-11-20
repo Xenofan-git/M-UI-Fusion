@@ -12,6 +12,7 @@ const expression = source.slice(start+'ruleModal.innerHTML='.length,end);
 const html = vm.runInNewContext(expression, {
   ruleTypes:['DOMAIN','GEOSITE','GEOIP','SRC-GEOIP','IP-CIDR','DST-PORT','AND','MATCH'],
   SF: () => '',
+  ruleHelpButton:(kind,type)=>'<button type="button" data-mihomo-rule-type="'+(type||'LIST')+'" class="mihomo-rule-help-trigger">!</button>',
 });
 const pos = key => html.indexOf('id="'+key+'"');
 assert.ok(pos('mihomo-rule-target-field')>=0);
@@ -35,13 +36,17 @@ assert.ok(html.includes('name="noResolve"'));
 assert.ok(source.includes("typeSelect.disabled=item.type==='MATCH'"));
 assert.ok(source.includes("if(item.type==='MATCH')"));
 assert.ok(source.includes("form.elements.type.value=decoded?'LIST':item.type"));
-assert.ok(source.includes("$('#mihomo-rule-advanced').open=!decoded&&item.type!=='LIST'"));
-assert.ok(source.includes("if(!isList)$('#mihomo-rule-advanced').open=true"));
+assert.ok(source.includes("$('#mihomo-rule-advanced').open=false"));
+assert.ok(!source.includes("if(!isList)$('#mihomo-rule-advanced').open=true"));
+assert.ok(!source.includes("if(!advanced.open&&$('#mihomo-rule-form').elements.type.value!=='LIST')advanced.open=true"));
 assert.ok(source.includes("window.MUIRuleLists.compile("));
 assert.ok(source.includes("if(rule.type==='MATCH'){toast(muiT('mh.matchUndeletable'),true);return;}"));
 assert.ok(source.includes("rule.type==='MATCH'?'disabled':''"));
 assert.ok(css.includes('.mihomo-rule-advanced[open] summary'));
 assert.ok(css.includes('.mihomo-rule-advanced-body{display:grid'));
+assert.ok(css.includes('.mihomo-rule-advanced:not([open]) > .mihomo-rule-advanced-body{display:none}'));
+assert.ok(fs.readFileSync('web/index.html','utf8').includes('static/mihomo-settings.js?v=106'));
+assert.ok(fs.readFileSync('web/index.html','utf8').includes('static/mihomo-settings.css?v=106'));
 
 function translated(lang,key){
   const context={window:{},localStorage:{getItem:()=>lang},

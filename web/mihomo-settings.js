@@ -412,7 +412,7 @@
     return rows;
   }
   function ruleReadableType(rule){
-    if(window.MUIRuleLists?.decode(rule))return window.muiGetLang?.()==='ru'?'Списки':'Lists';
+    if(window.MUIRuleLists?.decode(rule))return window.muiGetLang?.()==='ru'?'СПИСКИ':'LISTS';
     return rule.type;
   }
   function ruleReadablePayload(rule){
@@ -424,12 +424,115 @@
       ?'Категории: '+geo+' · Домены/IP: '+domains
       :'Geo categories: '+geo+' · Domains/IPs: '+domains;
   }
+  // Help in a fixed, shared tooltip to avoid being clipped by table overflow.
+  const ruleHelpDescriptions={
+    LIST:['Списки GeoSite/GeoIP, доменов и IP; совпадения одного условия достаточно.','GeoSite/GeoIP, domain and IP lists. Any one entry can match.'],
+    DOMAIN:['Точное совпадение доменного имени.','Exact domain name match.'],
+    'DOMAIN-SUFFIX':['Домен и все его поддомены.','Domain and its subdomains.'],
+    'DOMAIN-KEYWORD':['Фрагмент в доменном имени.','Keyword inside a domain name.'],
+    'DOMAIN-WILDCARD':['Шаблон домена с символами * и ?.','Domain matching with * and ? wildcards.'],
+    'DOMAIN-REGEX':['Домен по регулярному выражению.','Domain matched by a regular expression.'],
+    GEOSITE:['Домен из указанной категории GeoSite.','Domain belonging to a GeoSite category.'],
+    'IP-CIDR':['IP назначения в заданном диапазоне CIDR.','Destination IP in a CIDR range.'],
+    'IP-CIDR6':['IPv6 назначения в заданном диапазоне CIDR.','Destination IPv6 in a CIDR range.'],
+    'IP-SUFFIX':['Проверяет суффикс IP назначения.','Matches a destination IP suffix.'],
+    'IP-ASN':['Автономная система (ASN) IP назначения.','Autonomous system (ASN) of the destination IP.'],
+    GEOIP:['Страна IP назначения. RU означает Россию; домен иногда требуется разрешить через DNS.','Destination IP country. RU means Russia; a domain may need DNS resolution.'],
+    'SRC-GEOIP':['Страна IP-адреса источника.','Country of the source IP.'],
+    'SRC-IP-ASN':['Автономная система (ASN) IP источника.','ASN of the source IP.'],
+    'SRC-IP-CIDR':['IP источника в диапазоне CIDR.','Source IP in a CIDR range.'],
+    'SRC-IP-SUFFIX':['Суффикс IP источника.','Source IP suffix.'],
+    'DST-PORT':['Порт назначения или диапазон портов.','Destination port or range.'],
+    'SRC-PORT':['Исходный порт или диапазон портов.','Source port or range.'],
+    'IN-PORT':['Порт входящего подключения Mihomo.','Mihomo inbound port.'],
+    'IN-TYPE':['Тип входящего подключения, например SOCKS.','Inbound type, e.g. SOCKS.'],
+    'IN-USER':['Имя пользователя входящего подключения.','Inbound username.'],
+    'IN-NAME':['Имя входящего подключения.','Inbound name.'],
+    'REMATCH-NAME':['Имя, установленное исходящим rematch.','Name set by rematch outbound.'],
+    'PROCESS-PATH':['Путь программы, создавшей соединение.','Path of the application opening the connection.'],
+    'PROCESS-PATH-WILDCARD':['Шаблон пути программы с * и ?.','Process path using * and ? wildcards.'],
+    'PROCESS-PATH-REGEX':['Путь программы по регулярному выражению.','Process path regular expression.'],
+    'PROCESS-NAME':['Имя программы, создавшей соединение.','Process name opening the connection.'],
+    'PROCESS-NAME-WILDCARD':['Шаблон имени программы.','Process name using wildcards.'],
+    'PROCESS-NAME-REGEX':['Имя программы по регулярному выражению.','Process name regular expression.'],
+    UID:['Числовой идентификатор пользователя процесса.','Numeric user ID (UID) of the process.'],
+    NETWORK:['Сетевой протокол TCP или UDP.','Network protocol TCP or UDP.'],
+    DSCP:['Маркировка трафика DSCP.','DSCP traffic marking.'],
+    AND:['Логическое И: необходимы все вложенные условия.','Logical AND: every nested condition must match.'],
+    MATCH:['Весь оставшийся трафик; обычно последнее правило.','Matches all remaining traffic; normally the last rule.']
+  };
+  function ruleHelpButton(kind,type=''){
+    const isType=kind==='type';
+    const label=isType?muiT('mh.ruleTypeHelpTitle')+': '+type:muiT('mh.noResolveHelpTitle');
+    return '<button class="mihomo-rule-help-trigger" type="button" data-mihomo-help="'+kind+'"'+
+      (isType?' data-mihomo-rule-type="'+esc(type)+'"':'')+
+      ' aria-label="'+esc(label)+'" aria-controls="mihomo-rule-help-popup" aria-expanded="false">!</button>';
+  }
+  function ruleHelpText(button){
+    if(button.dataset.mihomoHelp==='no-resolve')return muiT('mh.noResolveHelpText');
+    const type=String(button.dataset.mihomoRuleType||'').toUpperCase();
+    const parts=ruleHelpDescriptions[type];
+    return parts?parts[window.muiGetLang?.()==='ru'?0:1]:muiT('mh.ruleHelpUnknown');
+  }
+  let ruleHelpPopup=null,ruleHelpAnchor=null,ruleHelpPinned=false;
+  function hideRuleHelp(){
+    if(!ruleHelpPopup)return;
+    ruleHelpPopup.hidden=true;
+    ruleHelpAnchor?.setAttribute('aria-expanded','false');
+    ruleHelpAnchor=null;ruleHelpPinned=false;
+  }
+  function showRuleHelp(button,pinned=false){
+    if(!ruleHelpPopup||!button?.isConnected)return;
+    if(ruleHelpAnchor!==button)ruleHelpAnchor?.setAttribute('aria-expanded','false');
+    ruleHelpAnchor=button;ruleHelpPinned=pinned;
+    ruleHelpPopup.textContent=ruleHelpText(button);
+    ruleHelpPopup.hidden=false;
+    button.setAttribute('aria-expanded','true');
+    const anchor=button.getBoundingClientRect(),popup=ruleHelpPopup.getBoundingClientRect();
+    ruleHelpPopup.style.left=Math.max(8,Math.min(window.innerWidth-popup.width-8,anchor.left+anchor.width/2-popup.width/2))+'px';
+    ruleHelpPopup.style.top=(anchor.bottom+popup.height+10<window.innerHeight?anchor.bottom+8:Math.max(8,anchor.top-popup.height-8))+'px';
+  }
+  function setupRuleHelp(){
+    ruleHelpPopup=document.createElement('div');
+    ruleHelpPopup.id='mihomo-rule-help-popup';
+    ruleHelpPopup.className='mihomo-rule-help-popup';
+    ruleHelpPopup.setAttribute('role','tooltip');
+    ruleHelpPopup.hidden=true;
+    document.body.appendChild(ruleHelpPopup);
+    const trigger=target=>target?.closest?.('[data-mihomo-help]');
+    document.addEventListener('pointerover',event=>{const button=trigger(event.target);if(button&&!ruleHelpPinned)showRuleHelp(button);});
+    document.addEventListener('pointerout',event=>{
+      const button=trigger(event.target);
+      if(button&&button===ruleHelpAnchor&&!button.contains(event.relatedTarget)&&!ruleHelpPinned)hideRuleHelp();
+    });
+    document.addEventListener('focusin',event=>{const button=trigger(event.target);if(button&&!ruleHelpPinned)showRuleHelp(button);});
+    document.addEventListener('focusout',event=>{
+      const button=trigger(event.target);
+      if(button&&button===ruleHelpAnchor&&!button.contains(event.relatedTarget)&&!ruleHelpPinned)hideRuleHelp();
+    });
+    document.addEventListener('click',event=>{
+      const button=trigger(event.target);
+      if(!button){if(ruleHelpAnchor)hideRuleHelp();return;}
+      if(button===ruleHelpAnchor&&ruleHelpPinned)hideRuleHelp();else showRuleHelp(button,true);
+    });
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&ruleHelpAnchor){hideRuleHelp();event.stopPropagation();}
+    });
+    document.addEventListener('scroll',()=>{
+      // Keyboard focus may scroll the table into view: reposition rather than
+      // immediately hiding the help that a keyboard user just opened.
+      if(ruleHelpAnchor&&document.activeElement===ruleHelpAnchor)showRuleHelp(ruleHelpAnchor,ruleHelpPinned);
+      else hideRuleHelp();
+    },true);
+    window.addEventListener('resize',hideRuleHelp);
+  }
   function renderRules(){
+    hideRuleHelp();
     const box=$('#mihomo-rule-table');
     ensureFinalMatch();
     const managed=basicsRuleRows();
-    const managedHTML=managed.map((rule,index)=>'<tr><td>'+(index+1)+'</td><td><span class="mihomo-pill">'+esc(rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td><td><span class="mihomo-pill group">Basics</span></td></tr>').join('');
-    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colRuleType')}</th><th>${muiT('mh.colPayload')}</th><th>${muiT('mh.colOutbound')}</th><th>${muiT('mh.colOptions')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${managedHTML}${draft.routingRules.map((rule,index)=>`<tr><td>${managed.length+index+1}</td><td><span class="mihomo-pill">${esc(ruleReadableType(rule))}</span></td><td><div class="mihomo-rule-payload" title="${esc(rule.payload||'')}">${esc(ruleReadablePayload(rule))}</div></td><td class="mihomo-name">${esc(rule.target)}</td><td>${rule.noResolve?'<span class="mihomo-pill group">no-resolve</span>':'—'}</td><td><div class="mihomo-actions"><button class="mihomo-icon" data-rule-up="${esc(rule.id)}" title="${muiT('mh.moveUp')}" ${index===0||rule.type==='MATCH'?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-rule-down="${esc(rule.id)}" title="${muiT('mh.moveDown')}" ${index===draft.routingRules.length-1||draft.routingRules[index+1]?.type==='MATCH'?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-rule-edit="${esc(rule.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-rule-delete="${esc(rule.id)}" title="${muiT('common.delete')}" ${rule.type==='MATCH'?'disabled':''}>${SF('delete')}</button></div></td></tr>`).join('')}</tbody></table></div>`;
+    const managedHTML=managed.map((rule,index)=>'<tr><td>'+(index+1)+'</td><td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(rule.type)+'</span>'+ruleHelpButton('type',rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td><td><span class="mihomo-pill group">Basics</span></td></tr>').join('');
+    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colRuleType')}</th><th>${muiT('mh.colPayload')}</th><th>${muiT('mh.colOutbound')}</th><th>${muiT('mh.colOptions')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${managedHTML}${draft.routingRules.map((rule,index)=>`<tr><td>${managed.length+index+1}</td><td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">${esc(ruleReadableType(rule))}</span>${ruleHelpButton('type',window.MUIRuleLists?.decode(rule)?'LIST':rule.type)}</span></td><td><div class="mihomo-rule-payload" title="${esc(rule.payload||'')}">${esc(ruleReadablePayload(rule))}</div></td><td class="mihomo-name">${esc(rule.target)}</td><td>${rule.noResolve?'<span class="mihomo-rule-type-with-help"><span class="mihomo-pill group">No-Resolve</span>'+ruleHelpButton('no-resolve')+'</span>':'—'}</td><td><div class="mihomo-actions"><button class="mihomo-icon" data-rule-up="${esc(rule.id)}" title="${muiT('mh.moveUp')}" ${index===0||rule.type==='MATCH'?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-rule-down="${esc(rule.id)}" title="${muiT('mh.moveDown')}" ${index===draft.routingRules.length-1||draft.routingRules[index+1]?.type==='MATCH'?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-rule-edit="${esc(rule.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-rule-delete="${esc(rule.id)}" title="${muiT('common.delete')}" ${rule.type==='MATCH'?'disabled':''}>${SF('delete')}</button></div></td></tr>`).join('')}</tbody></table></div>`;
     $$('[data-rule-edit]',root).forEach(button=>button.onclick=()=>openRuleModal(button.dataset.ruleEdit));
     $$('[data-rule-delete]',root).forEach(button=>button.onclick=()=>deleteRule(button.dataset.ruleDelete));
     $$('[data-rule-up]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleUp,-1));
@@ -486,8 +589,8 @@
         <div class="mihomo-rule-list-toolbar"><button type="button" class="mihomo-tool" id="mihomo-geo-picker-open" data-i18n="mh.chooseGeoCategories">Выбрать категорию из списка</button><small data-i18n="mh.ruleListHelp">По одному значению в строке. Условия объединяются через ИЛИ, все направляются в выбранный исходящий.</small></div>
       </div>
       <details class="mihomo-rule-advanced full" id="mihomo-rule-advanced"><summary data-i18n="mh.advancedSettings">Расширенные настройки</summary><div class="mihomo-rule-advanced-body">
-      <label class="mihomo-field full" id="mihomo-rule-type-field"><span data-i18n="mh.colRuleType">Тип правила</span><select name="type"><option value="LIST">Списки категорий, доменов и IP</option>${ruleTypes.filter(type=>type!=='MATCH').map(type=>`<option value="${type}">${type}</option>`).join('')}</select></label>
-      <label class="mihomo-field full" id="mihomo-rule-payload-field"><span data-i18n="mh.advancedPayload">Выражение (расширенный режим)</span><textarea name="payload" rows="6" spellcheck="false"></textarea><small id="mihomo-rule-hint"></small></label><div class="mihomo-field full" id="mihomo-no-resolve-field"><label class="mihomo-check"><input name="noResolve" type="checkbox"><span data-i18n="mh.noResolveLabel">Не определять IP-адрес домена через DNS при проверке правила</span></label></div></div></details></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
+      <label class="mihomo-field full" id="mihomo-rule-type-field"><span class="mihomo-rule-editor-type-label"><span data-i18n="mh.colRuleType">Тип правила</span>${ruleHelpButton('type','LIST')}</span><select name="type"><option value="LIST">СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP</option>${ruleTypes.filter(type=>type!=='MATCH').map(type=>`<option value="${type}">${type}</option>`).join('')}</select></label>
+      <label class="mihomo-field full" id="mihomo-rule-payload-field"><span data-i18n="mh.advancedPayload">Выражение (расширенный режим)</span><textarea name="payload" rows="6" spellcheck="false"></textarea><small id="mihomo-rule-hint"></small></label><div class="mihomo-field full" id="mihomo-no-resolve-field"><div class="mihomo-no-resolve-row"><label class="mihomo-check"><input name="noResolve" type="checkbox"><span data-i18n="mh.noResolveLabel">No-Resolve — Не выполнять DNS-разрешение при проверке правила</span></label>${ruleHelpButton('no-resolve')}</div></div></div></details></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
     document.body.appendChild(ruleModal);
     const geoPicker=document.createElement('div');
     geoPicker.id='mihomo-geo-picker-modal';geoPicker.className='modal-backdrop';
@@ -517,10 +620,6 @@
     $('#mihomo-generate-uuid').onclick=async()=>{try{const value=await api('/api/tools/uuid',{method:'POST'});$('#mihomo-outbound-form').elements.uuid.value=value.uuid;outboundFormChanged=true;}catch(error){toast(error.message,true);}};
     $('#mihomo-rule-form').onsubmit=saveRuleDraft;
     $('#mihomo-rule-form').elements.type.onchange=syncRuleForm;
-    $('#mihomo-rule-advanced').addEventListener('toggle',()=>{
-      const advanced=$('#mihomo-rule-advanced');
-      if(!advanced.open&&$('#mihomo-rule-form').elements.type.value!=='LIST')advanced.open=true;
-    });
   }
 
   function setFormValue(form,name,value){const field=form.elements[name];if(!field)return;if(field.type==='checkbox')field.checked=!!value;else field.value=value??'';}
@@ -883,7 +982,10 @@
     }
     typeSelect.disabled=item.type==='MATCH';
     form.elements.type.value=decoded?'LIST':item.type;
-    $('#mihomo-rule-advanced').open=!decoded&&item.type!=='LIST';
+    // Always start collapsed. The user can open/close the advanced fields
+    // independently of the chosen rule type, including GEOIP and MATCH.
+    $('#mihomo-rule-advanced').open=false;
+    $('#mihomo-rule-type-field [data-mihomo-rule-type]').dataset.mihomoRuleType=form.elements.type.value;
     form.elements.payload.value=item.payload||'';
     form.elements.geoCategories.value=decoded?.geos||'';
     form.elements.domainIPs.value=decoded?.domains||'';
@@ -904,6 +1006,8 @@
     }
   }
   function syncRuleForm(){
+    const typeHelp=$('#mihomo-rule-type-field [data-mihomo-rule-type]');
+    if(typeHelp)typeHelp.dataset.mihomoRuleType=$('#mihomo-rule-form').elements.type.value;
     const form=$('#mihomo-rule-form'),type=form.elements.type.value;
     const isMatch=type==='MATCH',isList=type==='LIST';
     const noResolve=isList||['GEOIP','IP-ASN','IP-CIDR','IP-CIDR6','IP-SUFFIX'].includes(type);
@@ -911,7 +1015,7 @@
     $('#mihomo-rule-payload-field').hidden=isMatch||isList;
     form.elements.payload.required=!isMatch&&!isList;
     $('#mihomo-no-resolve-field').hidden=!noResolve;
-    if(!isList)$('#mihomo-rule-advanced').open=true;
+    // Do not force the <details> element open: users control this accordion.
     if(!noResolve)form.elements.noResolve.checked=false;
     $('#mihomo-rule-hint').textContent=rulePayloadHint(type);
   }
@@ -1289,6 +1393,7 @@
   }
 
   ensureModals();
+  setupRuleHelp();
   $$('.mihomo-tab',root).forEach(button=>button.onclick=()=>setTab(button.dataset.mihomoTab));
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
   $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
@@ -1305,6 +1410,7 @@
   const baseSetView=setView;
   setView=function(name){baseSetView(name);if(name==='mihomo'){render();if(draft.outbounds.some(item=>item.vpngate))refreshVPNGateData();}};
   window.addEventListener('mui-langchange',()=>{
+    hideRuleHelp();
     render();
     for(const field of $$('[data-basics-list]'))renderBasicsTags(field.dataset.basicsList);
     if($('#mihomo-outbound-modal')?.classList.contains('open')){

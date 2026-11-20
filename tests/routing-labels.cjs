@@ -6,11 +6,11 @@ const source = fs.readFileSync('web/mihomo-settings.js', 'utf8');
 const locales = fs.readFileSync('web/i18n-locales.js', 'utf8');
 const i18n = fs.readFileSync('web/i18n.js', 'utf8');
 const newButton = 'Выбрать категорию из списка';
-const noResolve = 'Не определять IP-адрес домена через DNS при проверке правила';
+const noResolve = 'No-Resolve — не выполнять DNS-разрешение при проверке правила';
 
 assert.equal(source.split('data-i18n="mh.chooseGeoCategories">'+newButton).length-1, 2,
   'both category picker button and dialog title must use the new label');
-assert.ok(source.includes('<span data-i18n="mh.noResolveLabel">'+noResolve+'</span>'),
+assert.ok(source.includes('<span data-i18n="mh.noResolveLabel">No-Resolve — Не выполнять DNS-разрешение при проверке правила</span>'),
   'the no-resolve checkbox should have a localized visible text span');
 assert.ok(source.includes('name="noResolve" type="checkbox"'),
   'the existing noResolve checkbox must be preserved');
@@ -36,5 +36,6 @@ assert.equal(getTranslation('ru','mh.chooseGeoCategories'),newButton);
 assert.equal(getTranslation('ru','mh.noResolveLabel'),noResolve);
 assert.equal(getTranslation('en','mh.chooseGeoCategories'),'Choose from list');
 assert.equal(getTranslation('en','mh.noResolveLabel'),
-  'no-resolve (no DNS lookup when matching the destination IP)');
-console.log('PASS: Russian routing button, modal title and checkbox text; English remains unchanged');
+  'No-Resolve — do not perform DNS lookups for this rule');
+assert.ok(source.includes('ruleHelpButton(\'no-resolve\')'),'No-Resolve has an info icon');
+console.log('PASS: localized No-Resolve label, routing button, modal title and info icon');

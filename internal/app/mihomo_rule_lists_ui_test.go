@@ -59,7 +59,7 @@ func TestRussianRoutingCopyIsHumanReadable(t *testing.T) {
  text:=string(js)
  for _,want:=range []string{
   "Выбрать категорию из списка",
-  "Не определять IP-адрес домена через DNS при проверке правила",
+  "No-Resolve — Не выполнять DNS-разрешение при проверке правила",
   "data-i18n=" + string(rune(34)) + "mh.noResolveLabel",
   "name=" + string(rune(34)) + "noResolve",
  } {
@@ -72,7 +72,7 @@ func TestRussianRoutingCopyIsHumanReadable(t *testing.T) {
  if err!=nil {t.Fatal(err)}
  for _,want:=range []string{
   "'mh.chooseGeoCategories':'Выбрать категорию из списка'",
-  "'mh.noResolveLabel':'Не определять IP-адрес домена через DNS при проверке правила'",
+  "'mh.noResolveLabel':'No-Resolve — не выполнять DNS-разрешение при проверке правила'",
  } {
   if !strings.Contains(string(locale),want) {t.Errorf("missing Russian locale string %q",want)}
  }

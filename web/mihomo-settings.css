@@ -738,6 +738,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   outline:2px solid var(--teal,#a78bfa);outline-offset:-3px
 }
 .mihomo-rule-advanced[open] summary{border-bottom:1px solid var(--line)}
+.mihomo-rule-advanced:not([open]) > .mihomo-rule-advanced-body{display:none}
 .mihomo-rule-advanced-body{display:grid;grid-template-columns:minmax(0,1fr);gap:15px;padding:15px}
 .mihomo-rule-advanced-body .mihomo-field{min-width:0}
 
@@ -846,3 +847,35 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   .mui-balancer-use-header h2{font-size:18px}
   .mui-balancer-use-actions button{flex:1 1 auto}
 }
+
+/* Compact help badges in the routing-rule table and editor. The tooltip is
+   mounted on document.body to avoid clipping inside scrollable tables/modals. */
+.mihomo-rule-type-with-help,.mihomo-rule-editor-type-label,.mihomo-no-resolve-row{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;max-width:100%;
+}
+.mihomo-rule-editor-type-label,.mihomo-no-resolve-row{justify-content:flex-start;flex-wrap:wrap;}
+.mihomo-no-resolve-row .mihomo-check{min-width:0;flex:0 1 auto}
+.mihomo-rule-help-trigger{
+  appearance:none;display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;min-width:17px;padding:0;flex:none;
+  border:1px solid var(--line);border-radius:50%;
+  background:var(--surface-subtle);color:var(--text-strong);
+  font:800 11px/1 Arial,sans-serif;cursor:help;
+  box-shadow:none;vertical-align:middle;
+}
+.mihomo-rule-help-trigger:hover,.mihomo-rule-help-trigger:focus-visible,
+.mihomo-rule-help-trigger[aria-expanded="true"]{
+  border-color:var(--accent);background:var(--accent);color:#fff;
+  outline-offset:2px;
+}
+.mihomo-rule-help-popup{
+  position:fixed;z-index:2100;
+  width:min(320px,calc(100vw - 20px));box-sizing:border-box;
+  border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;background:var(--surface-strong,var(--surface));
+  color:var(--text-strong);font-size:13px;line-height:1.5;font-weight:400;
+  text-align:left;white-space:normal;overflow-wrap:anywhere;
+  box-shadow:0 12px 32px rgba(0,0,0,.3);
+  pointer-events:none;
+}
+.mihomo-rule-help-popup[hidden]{display:none!important}

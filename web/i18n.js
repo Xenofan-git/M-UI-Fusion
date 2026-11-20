@@ -1630,7 +1630,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'mh.tuicTokenNote': 'Fill in the token, or use UUID + password.',
       'mh.membersNote': 'Hold Ctrl / Cmd to select several. Members can be proxies, built-in policies or other groups without a dependency loop.',
       'mh.ruleNote': 'Mihomo matches rules from top to bottom; the first hit decides the outbound. MATCH always stays last.',
-      'mh.noResolveLabel': 'no-resolve (no DNS lookup when matching the destination IP)',
+      'mh.noResolveLabel': 'No-Resolve — do not perform DNS lookups for this rule',
       'mh.parseLink': 'Parse Link to YAML',
       'mh.firstMember': 'First member',
       'mh.confirmResetBasics': 'Restore the Basics defaults? Only the current draft changes — outbounds, routing rules and recorded traffic are kept. Save to apply.',
@@ -1968,8 +1968,21 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     'mh.colPayload':'Условия', 'mh.domainsAndIP':'Домены и IP',
     'mh.chooseGeoCategories':'Выбрать категорию из списка',
     'mh.advancedPayload':'Выражение (расширенный режим)', 'mh.advancedSettings':'Расширенные настройки',
-    'mh.noResolveLabel':'Не определять IP-адрес домена через DNS при проверке правила',
+    'mh.noResolveLabel':'No-Resolve — не выполнять DNS-разрешение при проверке правила',
     'mh.ruleListHelp':'По одному значению в строке. Условия объединяются через ИЛИ и направляются в выбранный исходящий.'
+  });
+  // Tooltip text shown in the Mihomo routing editor and rules table.
+  Object.assign(DICT.en, {
+    'mh.noResolveHelpTitle':'About No-Resolve',
+    'mh.ruleTypeHelpTitle':'About rule type',
+    'mh.ruleHelpUnknown':'This rule type uses its configured condition to select an outbound.',
+    'mh.noResolveHelpText':'No-Resolve stops this IP-based rule from requesting a DNS lookup just to check its condition. If the destination IP is already known, matching still works. It does not turn DNS off globally. Without No-Resolve, Mihomo may resolve a domain before testing GEOIP or IP-CIDR.'
+  });
+  Object.assign(DICT.ru, {
+    'mh.noResolveHelpTitle':'Пояснение No-Resolve',
+    'mh.ruleTypeHelpTitle':'Пояснение типа правила',
+    'mh.ruleHelpUnknown':'Тип правила проверяет указанное условие и выбирает исходящий при совпадении.',
+    'mh.noResolveHelpText':'No-Resolve запрещает этому IP-правилу выполнять DNS-запрос только ради проверки условия. Если IP назначения уже известен, правило по-прежнему может сработать. Общий DNS не отключается. Без No-Resolve Mihomo может разрешить домен перед проверкой GEOIP или IP-CIDR.'
   });
   // Russian settings copy reviewed against the actual field purpose.
   Object.assign(DICT.ru, {
