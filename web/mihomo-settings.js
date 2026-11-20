@@ -581,16 +581,32 @@
     </div><div id="outbound-import-error" role="alert" hidden></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" id="outbound-apply" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
     document.body.appendChild(outboundModal);
 
-    const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid"><input name="id" type="hidden"><label class="mihomo-field full" id="mihomo-rule-target-field"><span data-i18n="mh.colOutbound">Исходящий</span><select name="target"></select></label><div class="mihomo-rule-lists full" id="mihomo-rule-lists">
-        <div class="mihomo-rule-list-grid">
-          <label class="mihomo-field"><span>GeoSite/GeoIP</span><textarea name="geoCategories" rows="9" spellcheck="false" placeholder="youtube&#10;category-ru&#10;ru"></textarea></label>
-          <label class="mihomo-field"><span data-i18n="mh.domainsAndIP">Домены и IP</span><textarea name="domainIPs" rows="9" spellcheck="false" placeholder="example.com&#10;full:api.example.com&#10;192.168.1.0/24"></textarea></label>
+    const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid mihomo-unified-rule-editor"><input name="id" type="hidden">
+      <label class="mihomo-field full" id="mihomo-rule-type-field">
+        <span class="mihomo-rule-editor-type-label"><span data-i18n="mh.colRuleType">Тип правила</span>${ruleHelpButton('type','LIST')}</span>
+        <select name="type"><option value="LIST">СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP</option>${ruleTypes.filter(type=>type!=='MATCH').map(type=>`<option value="${type}">${type}</option>`).join('')}</select>
+      </label>
+      <section class="mihomo-rule-conditions full" id="mihomo-rule-conditions" aria-labelledby="mihomo-rule-conditions-title">
+        <div class="mihomo-rule-section-heading" id="mihomo-rule-conditions-title" data-i18n="mh.ruleConditionsTitle">Условия</div>
+        <div class="mihomo-rule-lists full" id="mihomo-rule-lists">
+          <div class="mihomo-rule-list-grid">
+            <label class="mihomo-field"><span>GeoSite/GeoIP</span><textarea name="geoCategories" rows="9" spellcheck="false" placeholder="youtube&#10;category-ru&#10;ru"></textarea></label>
+            <label class="mihomo-field"><span data-i18n="mh.domainsAndIP">Домены и IP</span><textarea name="domainIPs" rows="9" spellcheck="false" placeholder="example.com&#10;full:api.example.com&#10;192.168.1.0/24"></textarea></label>
+          </div>
+          <div class="mihomo-rule-list-toolbar"><button type="button" class="mihomo-tool" id="mihomo-geo-picker-open" data-i18n="mh.chooseGeoCategories">Выбрать категорию из списка</button><small data-i18n="mh.ruleListHelp">По одному значению в строке. Условия объединяются через ИЛИ, все направляются в выбранный исходящий.</small></div>
         </div>
-        <div class="mihomo-rule-list-toolbar"><button type="button" class="mihomo-tool" id="mihomo-geo-picker-open" data-i18n="mh.chooseGeoCategories">Выбрать категорию из списка</button><small data-i18n="mh.ruleListHelp">По одному значению в строке. Условия объединяются через ИЛИ, все направляются в выбранный исходящий.</small></div>
-      </div>
+        <label class="mihomo-field full" id="mihomo-rule-payload-field">
+          <span id="mihomo-rule-condition-label">Условие правила</span>
+          <textarea name="payload" rows="3" spellcheck="false"></textarea>
+          <small id="mihomo-rule-hint"></small>
+        </label>
+        <p class="mihomo-rule-no-conditions" id="mihomo-rule-no-conditions" hidden data-i18n="mh.ruleNoConditions">Условий нет: MATCH направляет весь оставшийся трафик в выбранный исходящий.</p>
+      </section>
+      <label class="mihomo-field full" id="mihomo-rule-target-field"><span data-i18n="mh.colOutbound">Исходящий</span><select name="target"></select></label>
       <details class="mihomo-rule-advanced full" id="mihomo-rule-advanced"><summary data-i18n="mh.advancedSettings">Расширенные настройки</summary><div class="mihomo-rule-advanced-body">
-      <label class="mihomo-field full" id="mihomo-rule-type-field"><span class="mihomo-rule-editor-type-label"><span data-i18n="mh.colRuleType">Тип правила</span>${ruleHelpButton('type','LIST')}</span><select name="type"><option value="LIST">СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP</option>${ruleTypes.filter(type=>type!=='MATCH').map(type=>`<option value="${type}">${type}</option>`).join('')}</select></label>
-      <label class="mihomo-field full" id="mihomo-rule-payload-field"><span data-i18n="mh.advancedPayload">Выражение (расширенный режим)</span><textarea name="payload" rows="6" spellcheck="false"></textarea><small id="mihomo-rule-hint"></small></label><div class="mihomo-field full" id="mihomo-no-resolve-field"><div class="mihomo-no-resolve-row"><label class="mihomo-check"><input name="noResolve" type="checkbox"><span data-i18n="mh.noResolveLabel">No-Resolve — Не выполнять DNS-разрешение при проверке правила</span></label>${ruleHelpButton('no-resolve')}</div></div></div></details></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
+        <div class="mihomo-field full" id="mihomo-no-resolve-field"><div class="mihomo-no-resolve-row"><label class="mihomo-check"><input name="noResolve" type="checkbox"><span data-i18n="mh.noResolveLabel">No-Resolve — Не выполнять DNS-разрешение при проверке правила</span></label>${ruleHelpButton('no-resolve')}</div></div>
+      </div></details>
+    </div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
     document.body.appendChild(ruleModal);
     const geoPicker=document.createElement('div');
     geoPicker.id='mihomo-geo-picker-modal';geoPicker.className='modal-backdrop';
@@ -982,9 +998,10 @@
     }
     typeSelect.disabled=item.type==='MATCH';
     form.elements.type.value=decoded?'LIST':item.type;
-    // Always start collapsed. The user can open/close the advanced fields
-    // independently of the chosen rule type, including GEOIP and MATCH.
-    $('#mihomo-rule-advanced').open=false;
+    // The same type -> conditions -> outbound layout is visible for every
+    // rule, including existing AND -> DIRECT and GEOIP -> Russia.
+    // Advanced options only contain type-specific flags such as No-Resolve.
+    $('#mihomo-rule-advanced').open=!!id&&!!item.noResolve;
     $('#mihomo-rule-type-field [data-mihomo-rule-type]').dataset.mihomoRuleType=form.elements.type.value;
     form.elements.payload.value=item.payload||'';
     form.elements.geoCategories.value=decoded?.geos||'';
@@ -1005,6 +1022,19 @@
       }).catch(()=>{});
     }
   }
+  function ruleConditionLabel(type){
+    const ru=window.muiGetLang?.()==='ru';
+    if(type==='GEOIP')return ru?'Страна IP назначения':'Destination IP country';
+    if(type==='SRC-GEOIP')return ru?'Страна IP источника':'Source IP country';
+    if(type==='GEOSITE')return ru?'Категория сайтов GeoSite':'GeoSite category';
+    if(type==='IP-ASN'||type==='SRC-IP-ASN')return ru?'Номер автономной системы (ASN)':'Autonomous system (ASN)';
+    if(type.includes('IP-'))return ru?'IP-адрес / диапазон':'IP address / range';
+    if(type.startsWith('DOMAIN'))return ru?'Домен / шаблон':'Domain / pattern';
+    if(type.endsWith('PORT'))return ru?'Порт / диапазон':'Port / range';
+    if(type==='NETWORK')return ru?'Протокол (TCP / UDP)':'Protocol (TCP / UDP)';
+    if(type==='AND')return ru?'Логическое условие AND':'Logical AND expression';
+    return ru?'Условие правила':'Rule condition';
+  }
   function syncRuleForm(){
     const typeHelp=$('#mihomo-rule-type-field [data-mihomo-rule-type]');
     if(typeHelp)typeHelp.dataset.mihomoRuleType=$('#mihomo-rule-form').elements.type.value;
@@ -1013,20 +1043,28 @@
     const noResolve=isList||['GEOIP','IP-ASN','IP-CIDR','IP-CIDR6','IP-SUFFIX'].includes(type);
     $('#mihomo-rule-lists').hidden=!isList;
     $('#mihomo-rule-payload-field').hidden=isMatch||isList;
+    $('#mihomo-rule-no-conditions').hidden=!isMatch;
     form.elements.payload.required=!isMatch&&!isList;
+    $('#mihomo-rule-condition-label').textContent=ruleConditionLabel(type);
+    $('#mihomo-rule-advanced').hidden=!noResolve;
     $('#mihomo-no-resolve-field').hidden=!noResolve;
-    // Do not force the <details> element open: users control this accordion.
-    if(!noResolve)form.elements.noResolve.checked=false;
+    // Do not clear a temporarily hidden checkbox: switching rule types in
+    // the unsaved form should not destroy the user's pending selection.
     $('#mihomo-rule-hint').textContent=rulePayloadHint(type);
   }
   async function saveRuleDraft(event){
     event.preventDefault();
     const form=event.currentTarget,type=form.elements.type.value;
+    const original=draft.routingRules.find(rule=>rule.id===form.elements.id.value);
+    const permitsNoResolve=type==='LIST'||['GEOIP','IP-ASN','IP-CIDR','IP-CIDR6','IP-SUFFIX'].includes(type);
     const item={
       id:form.elements.id.value||freshID('rule'),type,
       payload:type==='MATCH'?'':form.elements.payload.value.trim(),
       target:form.elements.target.value,
-      noResolve:type==='MATCH'?false:form.elements.noResolve.checked
+      // Hidden options must never silently overwrite a saved rule. If the
+      // user changed to an unrelated type, do not carry the old IP flag over.
+      noResolve:type==='MATCH'?false:permitsNoResolve?form.elements.noResolve.checked:
+        original?.type===type?!!original.noResolve:false
     };
     if(type==='LIST'){
       try{
@@ -1411,6 +1449,8 @@
   setView=function(name){baseSetView(name);if(name==='mihomo'){render();if(draft.outbounds.some(item=>item.vpngate))refreshVPNGateData();}};
   window.addEventListener('mui-langchange',()=>{
     hideRuleHelp();
+    const cond=$('#mihomo-rule-condition-label');
+    if(cond)cond.textContent=ruleConditionLabel($('#mihomo-rule-form').elements.type.value);
     render();
     for(const field of $$('[data-basics-list]'))renderBasicsTags(field.dataset.basicsList);
     if($('#mihomo-outbound-modal')?.classList.contains('open')){

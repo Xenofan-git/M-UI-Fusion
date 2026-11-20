@@ -1971,6 +1971,15 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     'mh.noResolveLabel':'No-Resolve — не выполнять DNS-разрешение при проверке правила',
     'mh.ruleListHelp':'По одному значению в строке. Условия объединяются через ИЛИ и направляются в выбранный исходящий.'
   });
+  // Unified rule editor: always-visible type, conditions and outbound.
+  Object.assign(DICT.en,{
+    'mh.ruleConditionsTitle':'Conditions',
+    'mh.ruleNoConditions':'No conditions: MATCH sends all remaining traffic to the chosen outbound.'
+  });
+  Object.assign(DICT.ru,{
+    'mh.ruleConditionsTitle':'Условия',
+    'mh.ruleNoConditions':'Условий нет: MATCH направляет весь оставшийся трафик в выбранный исходящий.'
+  });
   // Tooltip text shown in the Mihomo routing editor and rules table.
   Object.assign(DICT.en, {
     'mh.noResolveHelpTitle':'About No-Resolve',

@@ -879,3 +879,51 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   pointer-events:none;
 }
 .mihomo-rule-help-popup[hidden]{display:none!important}
+
+/* One consistent editor for every Mihomo routing rule: type, conditions,
+   outbound and optional No-Resolve. DIRECT is an outbound, not a rule type. */
+#mihomo-rule-modal .mihomo-unified-rule-editor{
+  grid-template-columns:minmax(0,1fr);
+  gap:16px;
+}
+#mihomo-rule-modal .mihomo-rule-conditions{
+  grid-column:1/-1;
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:12px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface-subtle);
+}
+#mihomo-rule-modal .mihomo-rule-section-heading{
+  font-size:13px;
+  font-weight:650;
+  color:var(--text-strong);
+}
+#mihomo-rule-modal #mihomo-rule-payload-field[hidden],
+#mihomo-rule-modal #mihomo-rule-lists[hidden],
+#mihomo-rule-modal #mihomo-rule-no-conditions[hidden],
+#mihomo-rule-modal #mihomo-rule-advanced[hidden]{
+  display:none!important;
+}
+#mihomo-rule-modal #mihomo-rule-payload-field textarea{
+  min-height:86px;
+  max-height:min(40vh,400px);
+  font-family:var(--font-mono);
+  line-height:1.55;
+}
+#mihomo-rule-modal .mihomo-rule-no-conditions{
+  margin:0;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--text-strong);
+  font-size:13px;
+  line-height:1.5;
+}
+#mihomo-rule-modal .mihomo-rule-lists{
+  padding:0;
+  min-width:0;
+}
