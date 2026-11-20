@@ -13,8 +13,8 @@ import (
 )
 
 func TestSeparateTransparentCatAndFaviconAcrossPanel(t *testing.T) {
-	const favicon = "rel=\"icon\" type=\"image/png\" sizes=\"64x64\" href=\"media/m-ui_favicon.png?v=15\""
-	const touchIcon = "rel=\"apple-touch-icon\" href=\"media/m-ui_logo.png?v=15\""
+	const favicon = "rel=\"icon\" type=\"image/png\" sizes=\"64x64\" href=\"media/m-ui_favicon.png?v=16\""
+	const touchIcon = "rel=\"apple-touch-icon\" href=\"media/m-ui_logo.png?v=16\""
 	for _, filename := range []string{"web/index.html", "web/login.html", "web/subscription.html"} {
 		data, err := webFS.ReadFile(filename)
 		if err != nil {
@@ -53,8 +53,8 @@ func TestSeparateTransparentCatAndFaviconAcrossPanel(t *testing.T) {
 		size int
 	}
 	assets := []asset{
-		{"m-ui_logo.png", logo, "46ca7281db066a017568f67e074d8f30d78ca2ad91780f44d5da3f6eb398da05", 192},
-		{"m-ui_favicon.png", faviconData, "cfab3bd2c2abdf5d3baee96447ad6de28aeffab58c615fe426e6416f6079b3ae", 64},
+		{"m-ui_logo.png", logo, "c17360f82d2fe649a2ef3719019567b0961da58800ba6ca71332639eb175c6ff", 192},
+		{"m-ui_favicon.png", faviconData, "47204047e1193d2edd22ba2d7944438e40f53793a9ca14566dc62ee644de62f1", 64},
 	}
 	manager := &CoreManager{state: State{Settings: Settings{PanelPath: "/panel/"}}}
 	handler := (&App{manager: manager, session: "admin-session"}).panelRoutes(false)
@@ -82,7 +82,7 @@ func TestSeparateTransparentCatAndFaviconAcrossPanel(t *testing.T) {
 			if centerAlpha == 0 {
 				t.Fatal("center of mascot should not be transparent")
 			}
-			req := httptest.NewRequest(http.MethodGet, "/panel/media/"+asset.name+"?v=15", nil)
+			req := httptest.NewRequest(http.MethodGet, "/panel/media/"+asset.name+"?v=16", nil)
 			rec := httptest.NewRecorder()
 			handler.ServeHTTP(rec, req)
 			if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/png" || !bytes.Equal(rec.Body.Bytes(), asset.body) {

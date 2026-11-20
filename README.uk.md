@@ -79,7 +79,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/i
 Інсталятор обирає вільний п'ятизначний порт панелі та генерує шлях панелі з 16 символів, ім'я користувача з 14 символів і пароль із 16 символів. Адреса та облікові дані виводяться один раз наприкінці встановлення. Їх можна задати явно:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 --no-ssl \
   --port 34567
 ```
 

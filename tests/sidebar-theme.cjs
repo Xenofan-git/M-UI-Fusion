@@ -6,7 +6,7 @@ const liquid=fs.readFileSync('web/liquid-optics.css','utf8');
 const locales=fs.readFileSync('web/i18n-locales.js','utf8');
 const i18n=fs.readFileSync('web/i18n.js','utf8');
 assert.equal((html.match(/class="sidebar-logo-img"/g)||[]).length,1);
-assert.ok(html.includes('class="sidebar-logo-img" src="media/m-ui_logo.png?v=15" alt="M-UI Fusion" width="60" height="60"'));
+assert.ok(html.includes('class="sidebar-logo-img" src="media/m-ui_logo.png?v=16" alt="M-UI Fusion" width="60" height="60"'));
 assert.match(html,/\.sidebar-logo \{\s*width: 60px; height: 60px;/);
 assert.ok(liquid.includes('.sidebar-logo { width: 60px; height: 60px;'));
 assert.ok(html.includes('body.sider-collapsed .sidebar-logo { width: 42px; height: 42px; }'));

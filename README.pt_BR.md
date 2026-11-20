@@ -79,7 +79,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/i
 O instalador escolhe uma porta livre de cinco dígitos e gera um caminho de painel de 16 caracteres, um usuário de 14 caracteres e uma senha de 16 caracteres. No final, mostra uma única vez a URL de acesso e as credenciais. Você também pode defini-los:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 --no-ssl \
   --port 34567
 ```
 

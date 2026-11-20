@@ -1,10 +1,15 @@
-# M-UI Fusion 1.0.0 — First Official Release / Первый официальный выпуск
+# M-UI Fusion 1.0.1 — Emerald Mascot Update / Изумрудный котик
 
 **English first · Русская версия ниже.**
 
-An enhanced fork of [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3), powered by [Mihomo](https://github.com/MetaCubeX/mihomo). This is our **first official release**; earlier Fusion development builds are no longer published.
+An enhanced fork of [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3), powered by [Mihomo](https://github.com/MetaCubeX/mihomo). Version 1.0.0 was our first official release; **v1.0.1 is a compatible visual update**.
 
 ## English
+
+### What's new in v1.0.1
+- **Emerald mascot (#009B77):** replaced the turquoise cat with the user's selected final emerald version in the login screen, navigation/sidebar, Apple touch icon, and browser favicon. Removed background and vertical stripes; preserved clear eyes, mouth, shape and neon outline.
+- Two separately resized transparent PNGs (192×192 panel / 64×64 favicon), with cache-busting asset URLs. No changes to Mihomo, authentication, subscriptions, routing, or network settings. The installed configuration is preserved when updating.
+
 
 ### Changes compared with the original m-ui v0.3.3
 
@@ -55,7 +60,7 @@ The script selects the matching Linux release, checks its archive using the publ
 
 ~~~bash
 sudo bash /tmp/m-ui-fusion-install.sh \
-  --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
+  --version v1.0.1 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ~~~
 
 Choose another free port if 34567 is already in use. **Save the generated panel URL path, username and password.** No NanoPi-specific paths, IPs or keys are used. This mode keeps the HTTP panel bound to the device loopback rather than exposing it publicly.
@@ -101,7 +106,7 @@ sudo systemctl start m-ui
 Then upgrade (reuse the downloaded installer; never use --no-backup unless you explicitly accept the risk):
 
 ~~~bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.0
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.1
 sudo /usr/local/m-ui/m-ui version
 sudo m-ui status
 ~~~
@@ -114,7 +119,12 @@ The installer preserves existing state and the installed Mihomo binary unless --
 
 ## Русский
 
-**M-UI Fusion 1.0.0** — первый официальный выпуск самостоятельного расширения [оригинального m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3) на базе Mihomo. Промежуточные версии Fusion больше не публикуются.
+### Что нового в v1.0.1
+- **Изумрудный котик (#009B77):** последний утверждённый вариант установлен для входа, бокового меню, значка Apple Touch и favicon. Чёрный фон и вертикальные полосы удалены, форма, глаза, рот и неоновая обводка сохранены.
+- Прозрачные изображения для панели 192×192 и favicon 64×64, обновлён параметр кэширования. Mihomo, авторизация, подписки, маршрутизация и настройки сети не менялись; при обновлении текущая конфигурация сохраняется.
+
+
+**M-UI Fusion 1.0.1** — обновление оформления самостоятельного расширения [оригинального m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3) на базе Mihomo. Первый официальный выпуск — v1.0.0. Версия 1.0.1 содержит визуальное обновление без изменения маршрутизации.
 
 ### Что добавлено и изменено по сравнению с исходником
 
@@ -165,7 +175,7 @@ less /tmp/m-ui-fusion-install.sh
 
 ~~~bash
 sudo bash /tmp/m-ui-fusion-install.sh \
-  --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
+  --version v1.0.1 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ~~~
 
 Если порт 34567 занят, выберите другой свободный. **Запишите путь панели, логин и пароль, которые выведет установщик.** Привязки к NanoPi, определённым IP-адресам или ключам нет. При таком варианте HTTP-панель слушает только локальный интерфейс устройства.
@@ -211,7 +221,7 @@ sudo systemctl start m-ui
 Затем обновите панель (не применяйте --no-backup без необходимости):
 
 ~~~bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.0
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.1
 sudo /usr/local/m-ui/m-ui version
 sudo m-ui status
 ~~~

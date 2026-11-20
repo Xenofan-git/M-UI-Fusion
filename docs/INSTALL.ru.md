@@ -60,7 +60,7 @@ curl -fL --retry 3 \
   -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
 less /tmp/m-ui-fusion-install.sh  # просмотр по желанию; выход клавишей q
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ```
 
 Установщик определяет архитектуру Linux-сервера, скачивает подходящий релиз и проверяет `SHA256SUMS`, затем устанавливает ядро Mihomo, службу `m-ui` (systemd/OpenRC) и генерирует **уникальные** имя пользователя, пароль, адрес и путь панели. Сохраните их в безопасном месте. **Если не задать параметр --listen-ip**, панель по умолчанию слушает все интерфейсы: **не открывайте её порт в интернет без TLS, авторизации и ограничений доступа**. При необходимости можно ограничить привязку интерфейсом сервера через `--listen-ip SERVER_LOCAL_IP` (замените `SERVER_LOCAL_IP` фактическим локальным IP сервера).
@@ -111,7 +111,7 @@ curl -fL --retry 3 \
   https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh \
   -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.0
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.1
 ```
 
 Установщик сохраняет существующие `state.json`, `config.yaml`, входящие подключения, правила, подписки и балансировщики, пытается создать собственный снимок данных (ошибку снимка выводит как предупреждение) и оставляет установленное ядро Mihomo, если не указан `--update-mihomo`. В дальнейшем после установки нашего менеджера можно использовать `sudo m-ui update --version ТЕГ`; менеджер этого форка получает установщик из `Xenofan-git/M-UI-Fusion`.
