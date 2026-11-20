@@ -18,6 +18,13 @@
     Object.prototype.hasOwnProperty.call(builtinOutboundRu,name)
     ? name+' ('+builtinOutboundRu[name]+')' : name;
   const defaultTestURL='https://www.gstatic.com/generate_204';
+  // Defaults apply only when CREATING a manual (Outbounds) balancer.
+  // Existing balancers and subscription balancers retain their stored values.
+  const newManualBalancerDefaults=()=>({
+    kind:'group',type:'url-test',testUrl:defaultTestURL,
+    interval:180,timeout:8000,tolerance:100,disableUdp:false,
+    subscriptionIds:[],excludedSubscriptionMembers:[]
+  });
   const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
   const activeGroupResults=new Map();
@@ -30,6 +37,9 @@
 
   let draft={outbounds:[],routingRules:[],basics:defaultBasics()},dirty=false,currentTab='basics',editingOutbound='',editingRule='',outboundMode='form',outboundBusy=false,editingOriginal=null;
   let balancerSubscriptions=[];
+  // The shared editor is used by two mutually exclusive balancer tabs.
+  // Only the subscription tab may expose/bind subscription sources.
+  let editingSubscriptionGroup=false;
   let outboundFormChanged=false,outboundYAMLCached=false;
 
   function freshID(prefix){return prefix+'-'+crypto.randomUUID().replaceAll('-','').slice(0,12);}
@@ -74,6 +84,7 @@
       for(const source of [...(Array.isArray(sources)?sources:[]),...balancerSubscriptions]){
         if(source.group===item.name&&source.id)subscribed.add(source.id);
       }
+      if(!isSubscriptionGroup(item))return String((item.proxies||[]).length)+' исходящих';
       const count=subscribed.size;
       return String((item.proxies||[]).length)+' узлов · '+count+' '+(count===1?'подписка':count>1&&count<5?'подписки':'подписок');
     }
@@ -309,7 +320,7 @@
       <div class="mihomo-field full" data-kind="proxy" data-types="openvpn"><span>OpenVPN</span><div class="mihomo-form-grid"><label class="mihomo-field"><span>Protocol</span><select name="openVpnProto"><option value="udp">udp</option><option value="tcp">tcp</option></select></label><label class="mihomo-field"><span>Device</span><select name="openVpnDev"><option value="tun">tun</option></select></label><label class="mihomo-field"><span>Cipher</span><select name="openVpnCipher"><option>AES-128-GCM</option><option>AES-192-GCM</option><option>AES-256-GCM</option><option>AES-128-CBC</option><option>AES-192-CBC</option><option>AES-256-CBC</option><option>CHACHA20-POLY1305</option></select></label><label class="mihomo-field"><span>Auth</span><select name="openVpnAuth"><option>SHA256</option><option>MD5</option><option>SHA1</option><option>SHA384</option><option>SHA512</option></select></label><label class="mihomo-field"><span>Data Ciphers</span><input name="openVpnDataCiphers" placeholder="AES-256-GCM,AES-128-GCM"></label><label class="mihomo-field"><span>Fallback Cipher</span><input name="openVpnDataCipherFallback"></label><label class="mihomo-field"><span>Comp LZO</span><select name="openVpnCompLzo"><option value="">none</option><option>yes</option><option>no</option><option>adaptive</option></select></label><label class="mihomo-field"><span>Key Direction</span><select name="openVpnKeyDirection"><option value="">bidirectional</option><option>0</option><option>1</option></select></label><label class="mihomo-field full"><span>CA PEM</span><textarea name="openVpnCa" rows="3"></textarea></label><label class="mihomo-field full"><span>Client Cert PEM</span><textarea name="openVpnCert" rows="3"></textarea></label><label class="mihomo-field full"><span>Client Key PEM</span><textarea name="openVpnKey" rows="3"></textarea></label><label class="mihomo-field full"><span>TLS Auth PEM</span><textarea name="openVpnTlsAuth" rows="3"></textarea></label><label class="mihomo-field full"><span>TLS Crypt PEM</span><textarea name="openVpnTlsCrypt" rows="3"></textarea></label><label class="mihomo-field full"><span>TLS Crypt v2 PEM</span><textarea name="openVpnTlsCryptV2" rows="3"></textarea></label><label class="mihomo-field"><span>Ping (s)</span><input name="openVpnPing" type="number" min="0"></label><label class="mihomo-field"><span>Ping Restart (s)</span><input name="openVpnPingRestart" type="number" min="0"></label><label class="mihomo-field"><span>Handshake Timeout (s)</span><input name="openVpnHandshakeTimeout" type="number" min="0"></label><label class="mihomo-field"><span>MTU</span><input name="openVpnMtu" type="number" min="0"></label><label class="mihomo-field"><span>DNS</span><input name="openVpnDns" placeholder="1.1.1.1,8.8.8.8"></label><label class="mihomo-check"><input name="openVpnRemoteDnsResolve" type="checkbox">Remote DNS Resolve</label></div></div>
       <div class="mihomo-field full" data-kind="proxy"><span>Common Options</span><div class="mihomo-checks"><label class="mihomo-check" data-types="ss,snell,socks5,vmess,vless,trojan,wireguard"><input name="udp" type="checkbox">UDP</label><label class="mihomo-check"><input name="tfo" type="checkbox">TCP Fast Open</label><label class="mihomo-check"><input name="mptcp" type="checkbox">MPTCP</label><label class="mihomo-check" data-types="socks5,http,vmess,vless,trojan,hysteria2,tuic"><input name="skipCertVerify" type="checkbox">Skip Certificate Verify</label></div></div>
       <label class="mihomo-field full mihomo-subscription-field" data-kind="group"><span>Подписки (все узлы автоматически)</span><select name="subscriptionIds" multiple size="4"></select><small>Можно выбрать несколько подписок. Все новые узлы автоматически добавляются в балансировщик при синхронизации.</small></label>
-      <label class="mihomo-field full" data-kind="group"><span>Members</span><select name="proxies" multiple></select><small data-i18n="mh.membersNote">按 Ctrl / Cmd 多选；成员可以是代理、内置策略或其他无循环依赖的策略组。</small></label><label class="mihomo-field" data-kind="group" data-group-health><span>Test URL</span><input name="testUrl" value="${defaultTestURL}"></label><label class="mihomo-field" data-kind="group" data-group-health><span>Interval (seconds)</span><input name="interval" type="number" min="0" value="300"></label><label class="mihomo-field" data-kind="group" data-group-health><span>Timeout (ms)</span><input name="timeout" type="number" min="0" placeholder="5000"></label><label class="mihomo-field" data-kind="group" data-group-type="url-test"><span>Tolerance (ms)</span><input name="tolerance" type="number" min="0"></label><label class="mihomo-field" data-kind="group" data-group-type="load-balance"><span>Strategy</span><select name="strategy"><option value="consistent-hashing">consistent-hashing</option><option value="round-robin">round-robin</option><option value="sticky-sessions">sticky-sessions</option></select></label><label class="mihomo-field" data-kind="group" data-group-type="select"><span>Default Selected</span><select name="defaultSelected"></select></label><div class="mihomo-field" data-kind="group"><span>Group Options</span><label class="mihomo-check"><input name="disableUdp" type="checkbox">Disable UDP</label></div>
+      <label class="mihomo-field full" data-kind="group"><span>Members</span><select name="proxies" multiple></select><small data-i18n="mh.membersNote">按 Ctrl / Cmd 多选；成员可以是代理、内置策略或其他无循环依赖的策略组。</small></label><label class="mihomo-field" data-kind="group" data-group-health><span>Test URL</span><input name="testUrl" value="${defaultTestURL}"></label><label class="mihomo-field" data-kind="group" data-group-health><span>Interval (seconds)</span><input name="interval" type="number" min="0" value="180"></label><label class="mihomo-field" data-kind="group" data-group-health><span>Timeout (ms)</span><input name="timeout" type="number" min="0" value="8000"></label><label class="mihomo-field" data-kind="group" data-group-type="url-test"><span>Tolerance (ms)</span><input name="tolerance" type="number" min="0" value="100"></label><label class="mihomo-field" data-kind="group" data-group-type="load-balance"><span>Strategy</span><select name="strategy"><option value="consistent-hashing">consistent-hashing</option><option value="round-robin">round-robin</option><option value="sticky-sessions">sticky-sessions</option></select></label><label class="mihomo-field" data-kind="group" data-group-type="select"><span>Default Selected</span><select name="defaultSelected"></select></label><div class="mihomo-field" data-kind="group"><span>Group Options</span><label class="mihomo-check"><input name="disableUdp" type="checkbox">Disable UDP</label></div>
     </div></div><div id="outbound-yaml-panel" role="tabpanel" aria-labelledby="outbound-yaml-tab" hidden>
       <div class="outbound-link-row"><label for="outbound-share-link">Link</label><input id="outbound-share-link" type="text" autocomplete="off" spellcheck="false" placeholder="vmess:// / vless:// / trojan:// / ss:// / hysteria2://"><button type="button" id="outbound-parse-link" title="Parse Link to YAML" aria-label="Parse Link to YAML" data-i18n-title="mh.parseLink" data-i18n-aria="mh.parseLink">${SF('edit')}</button></div>
       <div class="outbound-yaml-editor"><pre id="outbound-yaml-lines" aria-hidden="true">1</pre><textarea id="outbound-yaml" aria-label="Outbound YAML" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea></div>
@@ -380,21 +391,28 @@
     form.elements.snellVersion.value=String(item.snellVersion||1);
     for(const option of form.elements.proxies.options)option.selected=(item.proxies||[]).includes(option.value);
     syncBalancerSubscriptionOptions(item);
-    syncBalancerSubscriptionMembers();
+    if(editingSubscriptionGroup)syncBalancerSubscriptionMembers();
     syncOutboundForm();syncGroupDefaultOptions(item.defaultSelected||'');
     attachSubscriptionServerEditor();
     $('#outbound-yaml').value=yamlDraft;$('#outbound-share-link').value=linkDraft;syncYAMLLines();
   }
   async function openOutboundModal(id='',requestedKind='proxy'){
     const requestedItem=draft.outbounds.find(item=>item.id===id);
-    if((requestedItem?.kind||requestedKind)==='group'){
+    // Normal balancers select individual Outbounds and must not fetch,
+    // display or attach a subscription, even when a source exists globally.
+    editingSubscriptionGroup=(requestedItem?.kind||requestedKind)==='group'
+      &&currentTab==='subscriptions';
+    balancerSubscriptions=[];
+    if(editingSubscriptionGroup){
       try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
       catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
     }
     if(draft.outbounds.find(item=>item.id===id)?.vpngate){await openVPNGateModal(id);return;}
     window.MUIBalancerServers?.teardown();
     ensureModals();editingOutbound=id;
-    editingOriginal=clone(draft.outbounds.find(candidate=>candidate.id===id)||{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'});
+    editingOriginal=clone(requestedItem||(requestedKind==='group'&&!editingSubscriptionGroup
+      ?{...newManualBalancerDefaults(),port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,strategy:'consistent-hashing'}
+      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'}));
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
     outboundFormChanged=false;outboundYAMLCached=false;
     setOutboundMode('form');
@@ -425,7 +443,7 @@
     const selectedIDs=Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value);
     const group={...clone(editingOriginal||{}),
       name:form.elements.name.value.trim()||editingOriginal?.name||'',
-      subscriptionIds:selectedIDs};
+      subscriptionIds:editingSubscriptionGroup?selectedIDs:[]};
     const active=handler.attach({
       form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,
       // Existing groups can be probed; new or renamed unsaved groups cannot.
@@ -447,6 +465,7 @@
     const select=$('#mihomo-outbound-form').elements.subscriptionIds;
     if(!select)return;
     select.replaceChildren();
+    if(!editingSubscriptionGroup)return;
     for(const source of balancerSubscriptions){
       const option=new Option(source.name+' ('+String(source.nodeCount||0)+')',source.id);
       option.selected=(item.subscriptionIds||[]).includes(source.id)||source.group===item.name;
@@ -455,7 +474,7 @@
   }
   function syncBalancerSubscriptionMembers(){
     const form=$('#mihomo-outbound-form');
-    if(form.elements.kind.value!=='group')return;
+    if(!editingSubscriptionGroup||form.elements.kind.value!=='group')return;
     const ids=new Set(Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value));
     const previouslyAttached=new Set((editingOriginal?.subscriptionIds||[]));
     for(const source of balancerSubscriptions)if(source.group===editingOriginal?.name)previouslyAttached.add(source.id);
@@ -474,7 +493,10 @@
     if(nameCaption)nameCaption.textContent=kind==='group'?'Название балансировщика':'Name';
     const allowed=kind==='group'?groupTypes:proxyTypes;if(!allowed.some(([value])=>value===previous))populateOutboundTypes(form);
     const type=form.elements.type.value,network=form.elements.network.value;
-    $$('[data-kind]',form).forEach(field=>field.hidden=field.dataset.kind!==kind);
+    $$('[data-kind]',form).forEach(field=>{
+      field.hidden=field.dataset.kind!==kind||
+        (field.classList.contains('mihomo-subscription-field')&&!editingSubscriptionGroup);
+    });
     $$('[data-types]',form).forEach(field=>field.hidden=kind!=='proxy'||!field.dataset.types.split(',').includes(type));
     $$('[data-network]',form).forEach(field=>field.hidden=kind!=='proxy'||!['vmess','vless','trojan'].includes(type)||field.dataset.network!==network);
     $$('[data-group-health]',form).forEach(field=>field.hidden=kind!=='group'||type==='select');
@@ -505,10 +527,12 @@
     const form=$('#mihomo-outbound-form'),kind=form.elements.kind.value,type=form.elements.type.value;
     const csv=value=>String(value||'').split(',').map(part=>part.trim()).filter(Boolean);
     const csvInts=value=>csv(value).map(part=>Number(part)).filter(Number.isFinite);
-    const item={...clone(editingOriginal||{}),id:form.elements.id.value||freshID('outbound'),kind,subscriptionIds:kind==='group'?Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value):[],name:form.elements.name.value.trim(),type,server:type==='direct'?'':form.elements.server.value.trim(),port:type==='direct'?0:Number(form.elements.port.value)||0,username:form.elements.username.value.trim(),password:form.elements.password.value,snellPsk:form.elements.snellPsk.value,snellVersion:Number(form.elements.snellVersion.value)||1,snellReuse:form.elements.snellReuse.checked,snellObfsMode:form.elements.snellObfsMode.value,snellObfsHost:form.elements.snellObfsHost.value.trim(),uuid:form.elements.uuid.value.trim(),alterId:Number(form.elements.alterId.value)||0,cipher:type==='vmess'?form.elements.vmessCipher.value:form.elements.cipher.value,udp:form.elements.udp.checked,tls:form.elements.tls.value==='true',skipCertVerify:form.elements.skipCertVerify.checked,sni:form.elements.sni.value.trim(),alpn:form.elements.alpn.value.trim(),network:form.elements.network.value,wsPath:form.elements.wsPath.value.trim(),wsHost:form.elements.wsHost.value.trim(),grpcServiceName:form.elements.grpcServiceName.value.trim(),flow:form.elements.flow.value.trim(),encryption:form.elements.encryption.value.trim(),clientFingerprint:form.elements.clientFingerprint.value.trim(),ipVersion:form.elements.ipVersion.value,dialerProxy:form.elements.dialerProxy.value,interfaceName:form.elements.interfaceName.value.trim(),routingMark:Number(form.elements.routingMark.value)||0,tfo:form.elements.tfo.checked,mptcp:form.elements.mptcp.checked,wireGuardIp:form.elements.wireGuardIp.value.trim(),wireGuardIpv6:form.elements.wireGuardIpv6.value.trim(),wireGuardPrivateKey:form.elements.wireGuardPrivateKey.value.trim(),wireGuardPublicKey:form.elements.wireGuardPublicKey.value.trim(),wireGuardPreSharedKey:form.elements.wireGuardPreSharedKey.value.trim(),wireGuardReserved:csvInts(form.elements.wireGuardReserved.value),wireGuardPersistentKeepalive:Number(form.elements.wireGuardPersistentKeepalive.value)||0,wireGuardMtu:Number(form.elements.wireGuardMtu.value)||0,wireGuardWorkers:Number(form.elements.wireGuardWorkers.value)||0,wireGuardDns:csv(form.elements.wireGuardDns.value),wireGuardRemoteDnsResolve:form.elements.wireGuardRemoteDnsResolve.checked,wireGuardRefreshServerIpInterval:Number(form.elements.wireGuardRefreshServerIpInterval.value)||0,openVpnProto:form.elements.openVpnProto.value,openVpnDev:form.elements.openVpnDev.value,openVpnCipher:form.elements.openVpnCipher.value,openVpnDataCiphers:csv(form.elements.openVpnDataCiphers.value),openVpnDataCipherFallback:form.elements.openVpnDataCipherFallback.value.trim(),openVpnAuth:form.elements.openVpnAuth.value,openVpnCompLzo:form.elements.openVpnCompLzo.value,openVpnCa:form.elements.openVpnCa.value.trim(),openVpnCert:form.elements.openVpnCert.value.trim(),openVpnKey:form.elements.openVpnKey.value.trim(),openVpnTlsAuth:form.elements.openVpnTlsAuth.value.trim(),openVpnKeyDirection:form.elements.openVpnKeyDirection.value,openVpnTlsCrypt:form.elements.openVpnTlsCrypt.value.trim(),openVpnTlsCryptV2:form.elements.openVpnTlsCryptV2.value.trim(),openVpnPing:Number(form.elements.openVpnPing.value)||0,openVpnPingRestart:Number(form.elements.openVpnPingRestart.value)||0,openVpnHandshakeTimeout:Number(form.elements.openVpnHandshakeTimeout.value)||0,openVpnMtu:Number(form.elements.openVpnMtu.value)||0,openVpnDns:csv(form.elements.openVpnDns.value),openVpnRemoteDnsResolve:form.elements.openVpnRemoteDnsResolve.checked,up:form.elements.up.value.trim(),down:form.elements.down.value.trim(),obfs:form.elements.obfs.value,obfsPassword:form.elements.obfsPassword.value,token:form.elements.token.value.trim(),congestionController:form.elements.congestionController.value,udpRelayMode:form.elements.udpRelayMode.value,proxies:orderedMembers(form),testUrl:form.elements.testUrl.value.trim(),interval:Number(form.elements.interval.value)||0,timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,strategy:form.elements.strategy.value,defaultSelected:form.elements.defaultSelected.value,disableUdp:form.elements.disableUdp.checked};
+    const item={...clone(editingOriginal||{}),id:form.elements.id.value||freshID('outbound'),kind,subscriptionIds:kind==='group'&&editingSubscriptionGroup?Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value):[],name:form.elements.name.value.trim(),type,server:type==='direct'?'':form.elements.server.value.trim(),port:type==='direct'?0:Number(form.elements.port.value)||0,username:form.elements.username.value.trim(),password:form.elements.password.value,snellPsk:form.elements.snellPsk.value,snellVersion:Number(form.elements.snellVersion.value)||1,snellReuse:form.elements.snellReuse.checked,snellObfsMode:form.elements.snellObfsMode.value,snellObfsHost:form.elements.snellObfsHost.value.trim(),uuid:form.elements.uuid.value.trim(),alterId:Number(form.elements.alterId.value)||0,cipher:type==='vmess'?form.elements.vmessCipher.value:form.elements.cipher.value,udp:form.elements.udp.checked,tls:form.elements.tls.value==='true',skipCertVerify:form.elements.skipCertVerify.checked,sni:form.elements.sni.value.trim(),alpn:form.elements.alpn.value.trim(),network:form.elements.network.value,wsPath:form.elements.wsPath.value.trim(),wsHost:form.elements.wsHost.value.trim(),grpcServiceName:form.elements.grpcServiceName.value.trim(),flow:form.elements.flow.value.trim(),encryption:form.elements.encryption.value.trim(),clientFingerprint:form.elements.clientFingerprint.value.trim(),ipVersion:form.elements.ipVersion.value,dialerProxy:form.elements.dialerProxy.value,interfaceName:form.elements.interfaceName.value.trim(),routingMark:Number(form.elements.routingMark.value)||0,tfo:form.elements.tfo.checked,mptcp:form.elements.mptcp.checked,wireGuardIp:form.elements.wireGuardIp.value.trim(),wireGuardIpv6:form.elements.wireGuardIpv6.value.trim(),wireGuardPrivateKey:form.elements.wireGuardPrivateKey.value.trim(),wireGuardPublicKey:form.elements.wireGuardPublicKey.value.trim(),wireGuardPreSharedKey:form.elements.wireGuardPreSharedKey.value.trim(),wireGuardReserved:csvInts(form.elements.wireGuardReserved.value),wireGuardPersistentKeepalive:Number(form.elements.wireGuardPersistentKeepalive.value)||0,wireGuardMtu:Number(form.elements.wireGuardMtu.value)||0,wireGuardWorkers:Number(form.elements.wireGuardWorkers.value)||0,wireGuardDns:csv(form.elements.wireGuardDns.value),wireGuardRemoteDnsResolve:form.elements.wireGuardRemoteDnsResolve.checked,wireGuardRefreshServerIpInterval:Number(form.elements.wireGuardRefreshServerIpInterval.value)||0,openVpnProto:form.elements.openVpnProto.value,openVpnDev:form.elements.openVpnDev.value,openVpnCipher:form.elements.openVpnCipher.value,openVpnDataCiphers:csv(form.elements.openVpnDataCiphers.value),openVpnDataCipherFallback:form.elements.openVpnDataCipherFallback.value.trim(),openVpnAuth:form.elements.openVpnAuth.value,openVpnCompLzo:form.elements.openVpnCompLzo.value,openVpnCa:form.elements.openVpnCa.value.trim(),openVpnCert:form.elements.openVpnCert.value.trim(),openVpnKey:form.elements.openVpnKey.value.trim(),openVpnTlsAuth:form.elements.openVpnTlsAuth.value.trim(),openVpnKeyDirection:form.elements.openVpnKeyDirection.value,openVpnTlsCrypt:form.elements.openVpnTlsCrypt.value.trim(),openVpnTlsCryptV2:form.elements.openVpnTlsCryptV2.value.trim(),openVpnPing:Number(form.elements.openVpnPing.value)||0,openVpnPingRestart:Number(form.elements.openVpnPingRestart.value)||0,openVpnHandshakeTimeout:Number(form.elements.openVpnHandshakeTimeout.value)||0,openVpnMtu:Number(form.elements.openVpnMtu.value)||0,openVpnDns:csv(form.elements.openVpnDns.value),openVpnRemoteDnsResolve:form.elements.openVpnRemoteDnsResolve.checked,up:form.elements.up.value.trim(),down:form.elements.down.value.trim(),obfs:form.elements.obfs.value,obfsPassword:form.elements.obfsPassword.value,token:form.elements.token.value.trim(),congestionController:form.elements.congestionController.value,udpRelayMode:form.elements.udpRelayMode.value,proxies:orderedMembers(form),testUrl:form.elements.testUrl.value.trim(),interval:Number(form.elements.interval.value)||0,timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,strategy:form.elements.strategy.value,defaultSelected:form.elements.defaultSelected.value,disableUdp:form.elements.disableUdp.checked};
     if(kind==='group'){
       const exclusions=window.MUIBalancerServers?.getExcluded();
-      if(exclusions!==null&&exclusions!==undefined)item.excludedSubscriptionMembers=exclusions;
+      if(editingSubscriptionGroup){
+        if(exclusions!==null&&exclusions!==undefined)item.excludedSubscriptionMembers=exclusions;
+      }else item.excludedSubscriptionMembers=[];
       // Preserve advanced native YAML knobs while keeping form-edited group
       // members, strategy and health settings in sync with that native YAML.
       if(item.native){
@@ -596,12 +620,13 @@
         const exported=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify({outbound:readOutboundForm()})});yaml=exported.yaml;
       }
       const response=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify(importRequest({yaml}))});
-      const groupSubscriptionIDs=editingOriginal?.kind==='group'||$('#mihomo-outbound-form').elements.kind.value==='group'
+      const groupSubscriptionIDs=editingSubscriptionGroup
         ?Array.from($('#mihomo-outbound-form').elements.subscriptionIds.selectedOptions,option=>option.value):[];
       if(response.outbounds.length===1 && response.outbounds[0].kind==='group'){
         response.outbounds[0].subscriptionIds=groupSubscriptionIDs;
         const exclusions=window.MUIBalancerServers?.getExcluded();
-        response.outbounds[0].excludedSubscriptionMembers=exclusions??editingOriginal?.excludedSubscriptionMembers??[];
+        response.outbounds[0].excludedSubscriptionMembers=editingSubscriptionGroup
+          ?exclusions??editingOriginal?.excludedSubscriptionMembers??[]:[];
       }
       const next=clone(draft),index=next.outbounds.findIndex(item=>item.id===editingOutbound);
       if(index>=0){
