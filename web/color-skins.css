@@ -491,3 +491,35 @@ html body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary > .sf-sy
   fill: none;
   stroke: currentColor;
 }
+
+
+/* v1.0.8 — Mihomo modal primary actions.
+   The modal sits outside the Mihomo settings root. Theme/Liquid rules could
+   leave a dark/translucent fill with a dark, unreadable label on hover.
+   Force the actual painted button surface AND foreground together. This is
+   strictly scoped to the Mihomo outbound and rule editor modal footers
+   (plus similar Mihomo dialogs), leaving all engine/configuration untouched. */
+html body :is(#mihomo-rule-modal,#mihomo-outbound-modal,#vpngate-modal) .modal-footer button.primary-btn:not(:disabled) {
+  --lb-fill: var(--skin-accent, #009B77) !important;
+  --lb-text: var(--skin-accentFg, #071c18) !important;
+  background: var(--skin-accent, #009B77) !important;
+  background-image: none !important;
+  border: 1px solid var(--skin-accent, #009B77) !important;
+  color: var(--skin-accentFg, #071c18) !important;
+  -webkit-text-fill-color: var(--skin-accentFg, #071c18) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+html body :is(#mihomo-rule-modal,#mihomo-outbound-modal,#vpngate-modal) .modal-footer button.primary-btn:is(:hover,:focus-visible,:active):not(:disabled) {
+  --lb-fill: var(--skin-accentHover, #20b88d) !important;
+  --lb-text: var(--skin-accentFg, #071c18) !important;
+  background: var(--skin-accentHover, #20b88d) !important;
+  background-image: none !important;
+  border-color: var(--skin-accentHover, #20b88d) !important;
+  color: var(--skin-accentFg, #071c18) !important;
+  -webkit-text-fill-color: var(--skin-accentFg, #071c18) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}

@@ -578,7 +578,7 @@
     </div></div><div id="outbound-yaml-panel" role="tabpanel" aria-labelledby="outbound-yaml-tab" hidden>
       <div class="outbound-link-row"><label for="outbound-share-link">Link</label><input id="outbound-share-link" type="text" autocomplete="off" spellcheck="false" placeholder="vmess:// / vless:// / trojan:// / ss:// / hysteria2://"><button type="button" id="outbound-parse-link" title="Parse Link to YAML" aria-label="Parse Link to YAML" data-i18n-title="mh.parseLink" data-i18n-aria="mh.parseLink">${SF('edit')}</button></div>
       <div class="outbound-yaml-editor"><pre id="outbound-yaml-lines" aria-hidden="true">1</pre><textarea id="outbound-yaml" aria-label="Outbound YAML" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"></textarea></div>
-    </div><div id="outbound-import-error" role="alert" hidden></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" id="outbound-apply" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
+    </div><div id="outbound-import-error" role="alert" hidden></div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" id="outbound-apply" data-i18n="mh.applyToDraft">Apply</button></footer></form></section>`;
     document.body.appendChild(outboundModal);
 
     const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid mihomo-unified-rule-editor"><input name="id" type="hidden">
@@ -606,7 +606,7 @@
       <details class="mihomo-rule-advanced full" id="mihomo-rule-advanced"><summary data-i18n="mh.advancedSettings">Расширенные настройки</summary><div class="mihomo-rule-advanced-body">
         <div class="mihomo-field full" id="mihomo-no-resolve-field"><div class="mihomo-no-resolve-row"><label class="mihomo-check"><input name="noResolve" type="checkbox"><span data-i18n="mh.noResolveLabel">No-Resolve — Не выполнять DNS-разрешение при проверке правила</span></label>${ruleHelpButton('no-resolve')}</div></div>
       </div></details>
-    </div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply to Draft</button></footer></form></section>`;
+    </div></div><footer class="modal-footer"><button type="button" class="outline-btn" data-mihomo-close data-i18n="common.cancel">Cancel</button><button type="submit" class="primary-btn" data-i18n="mh.applyToDraft">Apply</button></footer></form></section>`;
     document.body.appendChild(ruleModal);
     const geoPicker=document.createElement('div');
     geoPicker.id='mihomo-geo-picker-modal';geoPicker.className='modal-backdrop';
