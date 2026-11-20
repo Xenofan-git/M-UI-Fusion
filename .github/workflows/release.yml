@@ -260,8 +260,9 @@ jobs:
           set -euo pipefail
           gh release view v1.0.0 >/dev/null
           echo 'First official release verified: v1.0.0'
+          # An empty legacy list is the desired state. Do not fail under pipefail.
           gh release list --limit 100 --json tagName --jq '.[].tagName' |
-            grep -E '^v0[.]3[.]3-(fusion|sniffer)[.][0-9]+$' |
+            { grep -E '^v0[.]3[.]3-(fusion|sniffer)[.][0-9]+$' || true; } |
             while IFS= read -r tag; do
               echo "Deleting obsolete GitHub Release and tag: $tag"
               gh release delete "$tag" --cleanup-tag --yes
