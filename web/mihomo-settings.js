@@ -110,17 +110,28 @@
     const group=String(groupName||'').toLowerCase();
     return provider&&(group===provider||group.endsWith('-'+provider))?value.slice(divider+3):value;
   }
-  // Presentation-only: derive an emoji flag from the leading two-letter
-  // country code without renaming the actual Mihomo node.
-  function currentNodeWithFlag(groupName,current){
-    const label=displayedCurrentNode(groupName,current);
-    if(/[\u{1F1E6}-\u{1F1FF}]{2}/u.test(label))return label;
-    const match=label.match(/^(?:(?:INT|FOREIGN)\s*[|/]\s*)?(?:\[([A-Za-z]{2})\]|([A-Za-z]{2}))(?=\s|[|/•·\-]|$)/);
-    if(!match)return label;
-    const code=(match[1]||match[2]).toUpperCase();
-    const country=code==='UK'?'GB':code;
-    const flag=String.fromCodePoint(...[...country].map(c=>0x1F1E6+c.charCodeAt(0)-65));
-    return flag+' '+label;
+  // UI-only: use the same local SVG country flags as the subscription
+  // node list. Regional-indicator emoji show as plain LV/RU letters on
+  // Windows without a color flag font. Never rename the Mihomo member.
+  function currentNodeMeta(groupName,current){
+    const original=displayedCurrentNode(groupName,current);
+    const flags=window.MUICountryFlags;
+    const emoji=original.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
+    // Provider + ISO code: "INT | lv ...", "RU | ru ...",
+    // "quatro-vpn | se ..." — also support standalone [JP] or DE.
+    let label=original.replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu,' ').trim();
+    const match=label.match(/^(?:([^|/]+)\s*[|/]\s*)?(?:\[([A-Za-z]{2})\]|([A-Za-z]{2}))(?=\s|[|/•·\-]|$)/);
+    const prefixCode=(match?.[2]||match?.[3]||'').toUpperCase();
+    const isoCode=prefixCode==='UK'?'GB':prefixCode;
+    let country=flags?.byCode?.get(isoCode);
+    if(!country&&emoji)country=flags?.read?.(emoji[0]);
+    if(!country)country=flags?.read?.(original);
+    if(match&&country?.code===isoCode){
+      // Remove the provider and country code ONLY for a recognized ISO code.
+      label=label.slice(match[0].length).replace(/^\s*[|/•·\-]\s*/,'').trim();
+    }
+    if(!label&&country)label=country.ru||country.english||country.code;
+    return {label:label||original,code:country?.code||'',original};
   }
   function groupTypeLabel(type,label=type){
     return type==='url-test'&&window.muiGetLang?.()==='ru'?'URL-тест':label;
@@ -130,7 +141,7 @@
     if(!group)return 'Определяется…';
     if(!group.running)return 'Mihomo недоступен';
     if(!group.applied)return 'Группа не применена';
-    if(group.current)return currentNodeWithFlag(name,group.current);
+    if(group.current)return currentNodeMeta(name,group.current).label;
     if(group.perConnection)return 'Выбор для каждого соединения';
     return 'Текущий не определён';
   }
@@ -145,12 +156,37 @@
     const result=delayResults.get(name);
     return groupResultLabel(name)+(result&&result!=='Testing'&&!/^\d+ ms$/.test(result)?'\nОшибка теста: '+result:'');
   }
+  // Build flag + label as separate DOM nodes so names remain escaped and
+  // the local vector image is available even on older Windows browsers.
+  function paintCurrentGroupNode(node,name){
+    const group=activeGroupResults.get(name);
+    if(!group?.running||!group.applied||!group.current){
+      node.textContent=groupResultLabel(name);
+      node.title=groupResultTitle(name);
+      return;
+    }
+    const meta=currentNodeMeta(name,group.current);
+    const icon=window.MUICountryFlags?.createIcon?.(meta.code);
+    if(icon){
+      icon.classList.add('mihomo-current-country-flag');
+      icon.setAttribute('aria-label',meta.code);
+      icon.alt=meta.code;
+      const label=document.createElement('span');
+      label.className='mihomo-current-country-label';
+      label.textContent=meta.label;
+      node.replaceChildren(icon,label);
+    }else{
+      node.textContent=meta.label;
+    }
+    // Preserve the original name for inspection without changing any backend
+    // data, and keep the existing delay-test tooltip.
+    node.title=meta.original+(groupTestNote(name)?'\n'+groupTestNote(name):'');
+  }
   // Update visible text nodes without rebuilding the table or losing focus.
   function paintActiveGroupResults(){
     $$('[data-active-group]',root).forEach(node=>{
       const name=node.dataset.activeGroup;
-      node.textContent=groupResultLabel(name);
-      node.title=groupResultTitle(name);
+      paintCurrentGroupNode(node,name);
     });
     $$('[data-active-group-note]',root).forEach(node=>{
       const value=groupTestNote(node.dataset.activeGroupNote);
@@ -213,7 +249,10 @@
     }).join('')}</tbody></table></div>`;
     bindOutboundTable();
     $$('[data-test-outbound]',root).forEach(button=>button.onclick=()=>testOutbound(button));
-    if(manual||subscribed)refreshActiveGroups();
+    if(manual||subscribed){
+      paintActiveGroupResults();
+      refreshActiveGroups();
+    }
   }
   function bindOutboundTable(){
     $$('[data-outbound-edit]',root).forEach(button=>button.onclick=()=>openOutboundModal(button.dataset.outboundEdit));

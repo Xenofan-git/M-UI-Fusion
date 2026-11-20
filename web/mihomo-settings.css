@@ -703,6 +703,18 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   color:var(--text-strong);
   font-weight:600;
 }
+.mihomo-current-group{
+  display:inline-flex;align-items:center;gap:8px;
+}
+.mihomo-current-group .mihomo-current-country-flag{
+  display:inline-block;flex:none;width:26px;height:19px;
+  object-fit:cover;border-radius:2px;
+  border:1px solid rgba(148,163,184,.25);
+  box-sizing:border-box;vertical-align:middle;
+}
+.mihomo-current-group .mihomo-current-country-label{
+  min-width:0;overflow-wrap:anywhere;
+}
 .mihomo-current-note{
   display:block;
   max-width:290px;
