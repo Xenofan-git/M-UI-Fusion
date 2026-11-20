@@ -239,7 +239,7 @@ jobs:
             release_options=(
               --verify-tag
               --notes-file "docs/RELEASE-NOTES.md"
-              --title "M-UI Fusion ${GITHUB_REF_NAME}"
+              --title "M-UI Fusion $(echo "$GITHUB_REF_NAME" | sed s/^v//)"
               --latest
             )
 
@@ -248,6 +248,28 @@ jobs:
               "${release_files[@]}" \
               "${release_options[@]}"
           fi
+
+      - name: Retire pre-1.0 GitHub Releases and tags
+        if: github.ref_name == 'v1.0.0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v1.0.0 >/dev/null
+          echo 'First official release verified: v1.0.0'
+          gh release list --limit 100 --json tagName --jq '.[].tagName' |
+            grep -E '^v0[.]3[.]3-(fusion|sniffer)[.][0-9]+$' |
+            while IFS= read -r tag; do
+              echo "Deleting obsolete GitHub Release and tag: $tag"
+              gh release delete "$tag" --cleanup-tag --yes
+            done
+          remaining="$(gh release list --limit 100 --json tagName --jq '.[].tagName')"
+          if [[ "$remaining" != "v1.0.0" ]]; then
+            echo "Unexpected release inventory after cleanup: $remaining"
+            exit 1
+          fi
+          echo "GitHub Releases cleanup verified: only v1.0.0 remains"
 
   docker:
     name: Publish Docker image

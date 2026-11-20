@@ -79,7 +79,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/i
 Yükleyici boş bir beş haneli panel portu seçer; 16 karakterlik bir panel yolu, 14 karakterlik bir kullanıcı adı ve 16 karakterlik bir parola oluşturur. Erişim adresi ve kimlik bilgileri sonunda yalnızca bir kez gösterilir. Bunları kendiniz de belirleyebilirsiniz:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v0.3.3-sniffer.2 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl \
   --port 34567
 ```
 
