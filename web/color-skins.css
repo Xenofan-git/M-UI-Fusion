@@ -232,6 +232,20 @@ html[data-color-skin][data-ui-theme="liquid"] body::before {
 }
 
 
+/* The three requested dark skins should not box-in text labels in Mihomo
+   outbound/balancer/routing tables. Keep other skin styles, status pills,
+   and every actual control untouched. Layout-specific rules use !important
+   on .mihomo-pill and inherit ID specificity through :is(). Use the
+   real Mihomo root ID to take precedence over those layout rules. */
+html:is([data-color-skin="graphite"],[data-color-skin="emerald"],[data-color-skin="aurora"]) body #mihomo-settings-root .mihomo-table .mihomo-pill {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--skin-text) !important;
+  padding: 0 !important;
+}
+
 /* Accessible six-option menu with four color swatches; scroll on small screens. */
 .top-theme-menu { min-width: 240px; max-height: min(65vh, 470px); overflow-y: auto; }
 .theme-menu-divider { height: 1px; margin: 5px 4px 6px; background: var(--line); flex: none; }

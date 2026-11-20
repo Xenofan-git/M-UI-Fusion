@@ -1924,7 +1924,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   // Human-reviewed names of the two distinct balancer tabs. The underlying
   // data-mihomo-tab identifiers and proxy/subscription routing are unchanged.
   var BALANCER_TAB_LABELS = {
-    'ru': ['Балансировщики-исходящие', 'Балансировщики-Подписки'],
+    'ru': ['Балансировщики из Исходящих', 'Балансировщики из Подписок'],
     'en': ['Outbound Balancers', 'Subscription Balancers'],
     'zh-CN': ['出站均衡器', '订阅均衡器'],
     'zh-TW': ['出站平衡器', '訂閱平衡器'],

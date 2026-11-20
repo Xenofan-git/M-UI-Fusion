@@ -38,6 +38,8 @@ jobs:
         run: node tests/color-skins.cjs
       - name: Test balancer tab labels and locales
         run: node tests/balancer-tab-labels.cjs
+      - name: Test Mihomo badges in named skins
+        run: node tests/mihomo-skin-pills.cjs
       - name: Test routing list editor
         run: node tests/routing-lists.cjs
       - name: Test routing editor Russian labels

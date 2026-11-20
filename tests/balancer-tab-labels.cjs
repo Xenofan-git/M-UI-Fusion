@@ -7,7 +7,7 @@ const css = fs.readFileSync('web/mihomo-settings.css', 'utf8');
 const locales = fs.readFileSync('web/i18n-locales.js', 'utf8');
 const core = fs.readFileSync('web/i18n.js', 'utf8');
 const expected = {
-  ru: ['Балансировщики-исходящие', 'Балансировщики-Подписки'],
+  ru: ['Балансировщики из Исходящих', 'Балансировщики из Подписок'],
   en: ['Outbound Balancers', 'Subscription Balancers'],
   'zh-CN': ['出站均衡器', '订阅均衡器'],
   'zh-TW': ['出站平衡器', '訂閱平衡器'],

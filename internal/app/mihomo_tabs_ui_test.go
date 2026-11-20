@@ -49,8 +49,8 @@ func TestMihomoManualAndSubscribedBalancerTabsRemainSeparated(t *testing.T) {
 	// Labels are localized text only: the tab identifiers remain stable.
 	for _, expected := range []string{
 		`data-i18n="mihomo.tabOutbounds">Исходящие</span>`,
-		`data-i18n="mihomo.tabManualBalancers">Балансировщики-исходящие</span>`,
-		`data-i18n="mihomo.tabSubscriptionBalancers">Балансировщики-Подписки</span>`,
+		`data-i18n="mihomo.tabManualBalancers">Балансировщики из Исходящих</span>`,
+		`data-i18n="mihomo.tabSubscriptionBalancers">Балансировщики из Подписок</span>`,
 	} {
 		if !strings.Contains(html, expected) {
 			t.Errorf("missing descriptive Russian balancer tab label: %s", expected)
