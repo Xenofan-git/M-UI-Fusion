@@ -8,7 +8,7 @@ const index=fs.readFileSync('web/index.html','utf8');
 const login=fs.readFileSync('web/login.html','utf8');
 const extra=fs.readFileSync('web/i18n-locales.js','utf8');
 const base=fs.readFileSync('web/i18n.js','utf8');
-const skins=['graphite','midnight','ivory','emerald','aurora'];
+const skins=['graphite','ivory','emerald','aurora'];
 
 function rgb(hex){
  assert.match(hex,/^#[0-9a-f]{6}$/);
@@ -41,7 +41,7 @@ for(const skin of skins){
  assert.ok(index.includes('data-skin-choice="'+skin+'"'),'skin missing from main theme menu');
  assert.ok(login.includes('<option value="'+skin+'">'),'skin missing from login dropdown');
 }
-assert.equal(skins.filter(s=>s!=='ivory').length,4);
+assert.equal(skins.filter(s=>s!=='ivory').length,3);
 for(const page of [index,login]){
  assert.ok(page.includes('static/color-skins.css')&&page.includes('static/color-skins.js'));
  assert.ok(page.indexOf('static/color-skins.js')<page.indexOf('static/liquid-glass.css'));
@@ -49,7 +49,11 @@ for(const page of [index,login]){
 }
 assert.ok(index.includes('role="menuitemradio" data-theme-choice="light"'));
 assert.ok(index.includes('role="menuitemradio" data-theme-choice="dark"'));
-assert.ok(index.includes('role="menuitemradio" data-theme-choice="ultra"'));
+assert.ok(!index.includes('role="menuitemradio" data-theme-choice="ultra"'));
+assert.ok(!index.includes('data-skin-choice="midnight"'));
+assert.ok(!login.includes('id="ultra-dark"'));
+assert.ok(!login.includes('<option value="midnight">'));
+assert.ok(!css.includes('html[data-color-skin="midnight"]'));
 assert.match(css,/html\[data-ui-theme="shadcn"\]\[data-color-skin\] body/);
 assert.match(css,/html\[data-ui-theme="md3"\]\[data-color-skin\] body/);
 assert.match(css,/html\[data-color-skin\]\[data-ui-theme="liquid"\] body::before/);
@@ -90,6 +94,13 @@ data['mui-color-skin']='emerald';
 delete attributes['data-color-skin'];
 vm.runInContext(moduleCode,context);
 assert.equal(attributes['data-color-skin'],'emerald','saved skin restores before paint');
+data['mui-color-skin']='midnight';
+delete attributes['data-color-skin'];
+vm.runInContext(moduleCode,context);
+assert.equal('mui-color-skin' in data,false,'discontinued skin cleared');
+assert.equal('data-color-skin' in attributes,false,'discontinued skin not rendered');
+assert.equal(data['mui-theme'],'dark','discontinued skin falls back to dark');
+
 
 const localeContext={window:{},localStorage:{getItem:()=> 'ru'},
  document:{readyState:'loading',documentElement:{getAttribute:()=> 'ru'},addEventListener(){}}};
@@ -97,7 +108,6 @@ vm.createContext(localeContext);
 vm.runInContext(extra,localeContext);
 vm.runInContext(base,localeContext);
 assert.equal(localeContext.window.muiT('nav.skin.graphite'),'Графитовая');
-assert.equal(localeContext.window.muiT('nav.skin.midnight'),'Полуночная');
 assert.equal(localeContext.window.muiT('nav.skin.ivory'),'Слоновая кость');
 assert.equal(localeContext.window.muiT('nav.skin.emerald'),'Изумрудная');
 assert.equal(localeContext.window.muiT('nav.skin.aurora'),'Аврора');
@@ -108,4 +118,4 @@ for(const lang of ['zh-TW','tr','ru','fa','vi','es','ja','uk','pt-BR']){
  }
  assert.ok(map['nav.colorSkins']?.trim(),lang+' missing color label');
 }
-console.log('PASS: 5 accessible color skins, 3 layouts, login and panel, storage, 11 locales');
+console.log('PASS: 4 accessible color skins, 3 layouts, login and panel, storage, 11 locales');

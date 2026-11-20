@@ -99,16 +99,16 @@ func TestSidebarHeaderThemeMenuAndInboundCaption(t *testing.T) {
  ui:=string(data)
  for _,want:=range []string{
   "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png\" alt=\"M-UI Fusion\" width=\"60\" height=\"60\"",
-  "id=\"top-theme-menu\"","data-theme-choice=\"dark\"","data-theme-choice=\"ultra\"",
+  "id=\"top-theme-menu\"","data-theme-choice=\"dark\"",
   "data-i18n=\"nav.light\">Светлая",
   "data-theme-choice=\"light\"",
-  "data-i18n=\"nav.dark\">Тёмная","data-i18n=\"nav.ultraDark\">Очень тёмная",
+  "data-i18n=\"nav.dark\">Тёмная",
   "data-i18n=\"nav.inbounds\">Входящие",
   "localStorage.setItem('mui-is-ultra-dark'",
  } {
   if !strings.Contains(ui,want){t.Errorf("sidebar/header theme UI missing %q",want)}
  }
- for _,old:=range []string{"id=\"sidebar-theme-control\"","id=\"sidebar-theme\"","sidebar-dark-toggle","sidebar-ultra-toggle"} {
+ for _,old:=range []string{"id=\"sidebar-theme-control\"","id=\"sidebar-theme\"","sidebar-dark-toggle","sidebar-ultra-toggle","data-theme-choice=\"ultra\"","data-skin-choice=\"midnight\""} {
   if strings.Contains(ui,old) {t.Errorf("obsolete sidebar theme element remains %q",old)}
  }
  translations,err:=webFS.ReadFile("web/i18n.js")

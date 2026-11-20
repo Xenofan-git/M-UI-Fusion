@@ -21,9 +21,9 @@ assert.ok(html.includes('aria-controls="top-theme-menu" aria-expanded="false"'))
 assert.ok(html.includes('data-theme-choice="light" aria-checked="false"'));
 assert.ok(html.includes('data-i18n="nav.light">Светлая</span>'));
 assert.ok(html.includes('data-theme-choice="dark" aria-checked="false"'));
-assert.ok(html.includes('data-theme-choice="ultra" aria-checked="false"'));
+assert.ok(!html.includes('data-theme-choice="ultra"'));
 assert.ok(html.includes('data-i18n="nav.dark">Тёмная</span>'));
-assert.ok(html.includes('data-i18n="nav.ultraDark">Очень тёмная</span>'));
+assert.ok(!html.includes('data-i18n="nav.ultraDark">Очень тёмная</span>'));
 assert.ok(html.includes('.top-theme-menu[hidden] { display: none !important; }'));
 assert.ok(html.includes('.top-actions #theme-toggle { display: inline-flex; }'));
 assert.ok(html.includes('data-i18n="nav.inbounds">Входящие</span>'));
@@ -50,10 +50,10 @@ const mk=(choice)=>({
   setAttribute(k,v){this.attributes[k]=v},
   focus(){this.focused=true}
 });
-const light=mk('light'),dark=mk('dark'),ultra=mk('ultra'),trigger=mk();
-const skinNames=['graphite','midnight','ivory','emerald','aurora'];
+const light=mk('light'),dark=mk('dark'),trigger=mk();
+const skinNames=['graphite','ivory','emerald','aurora'];
 const skins=skinNames.map(choice=>({...mk(choice),dataset:{skinChoice:choice}}));
-const choices=[light,dark,ultra,...skins];
+const choices=[light,dark,...skins];
 const menu={hidden:true,querySelector(sel){
   if(sel.includes('aria-checked'))return choices.find(b=>b.attributes['aria-checked']==='true');
   return light;
@@ -72,7 +72,7 @@ const state={
   '$':sel=>sel==='#top-theme-menu [aria-checked="true"]'
     ? choices.find(button=>button.attributes['aria-checked']==='true')
     : sel==='#top-theme-menu [data-theme-choice="light"]' ? light : nodes[sel],
-  '$$':sel=>sel==='[data-theme-choice]'?[light,dark,ultra]:sel==='[data-skin-choice]'?skins:[],
+  '$$':sel=>sel==='[data-theme-choice]'?[light,dark]:sel==='[data-skin-choice]'?skins:[],
   setTimeout:()=>1,clearTimeout:()=>{},console
 };
 vm.createContext(state);
@@ -83,16 +83,14 @@ assert.equal(stored['mui-theme'],'dark');
 assert.equal(stored['mui-is-ultra-dark'],'false');
 assert.equal(light.attributes['aria-checked'],'false');
 assert.equal(dark.attributes['aria-checked'],'true');
-assert.equal(ultra.attributes['aria-checked'],'false');
 trigger.onclick();
 assert.equal(menu.hidden,false);
 assert.equal(trigger.attributes['aria-expanded'],'true');
-ultra.onclick();
-assert.equal(attrs['data-theme'],'ultra-dark');
-assert.equal(stored['mui-is-ultra-dark'],'true');
-assert.equal(menu.hidden,true);
-trigger.onclick();
-assert.equal(ultra.focused,true);
+// Migrated legacy Ultra Dark preference is normalized and cannot reappear.
+stored['mui-is-ultra-dark']='true';
+vm.runInContext("applyTheme(localStorage.getItem('mui-theme')==='dark')",state);
+assert.equal(stored['mui-is-ultra-dark'],'false');
+assert.equal('data-theme' in attrs,false);
 callbacks.keydown({key:'Escape',preventDefault(){}});
 assert.equal(menu.hidden,true);
 trigger.onclick();
@@ -110,20 +108,18 @@ assert.equal(stored['mui-is-ultra-dark'],'false');
 assert.equal('data-theme' in attrs,false);
 assert.equal(light.attributes['aria-checked'],'true');
 assert.equal(dark.attributes['aria-checked'],'false');
-assert.equal(ultra.attributes['aria-checked'],'false');
 trigger.onclick();
 assert.equal(light.focused,true);
 assert.equal(menu.hidden,false);
 // Simulated reload restores the stored light mode and its selected checkmark.
-vm.runInContext("applyTheme(localStorage.getItem('mui-theme')==='dark',localStorage.getItem('mui-is-ultra-dark')==='true')",state);
+vm.runInContext("applyTheme(localStorage.getItem('mui-theme')==='dark')",state);
 assert.equal(light.attributes['aria-checked'],'true');
 dark.onclick();
 assert.equal(bodyClasses.has('dark'),true);
 assert.equal(dark.attributes['aria-checked'],'true');
-console.log('PASS: light/dark/ultra themes, saved selection, reload, outside click/Escape and inbound label');
+console.log('PASS: light/dark themes, saved selection, reload, outside click/Escape and inbound label');
 
-// The five named skins work as a separate UI-only layer, and the original
-// Light/Dark/Ultra Dark preferences remain intact until explicitly changed.
+// The four named skins work separately from the stored Light/Dark preference.
 const savedBefore=stored['mui-theme'];
 for(const [index,name] of skinNames.entries()){
   trigger.onclick();
@@ -141,4 +137,4 @@ light.onclick();
 assert.equal(attrs['data-color-skin'],undefined);
 assert.equal(stored['mui-color-skin'],undefined);
 assert.equal(light.attributes['aria-checked'],'true');
-console.log('PASS: five additional named color skins and legacy preferences');
+console.log('PASS: four remaining color skins and legacy preferences');

@@ -21,25 +21,6 @@ html[data-color-skin="graphite"] {
   color-scheme: dark;
 }
 
-html[data-color-skin="midnight"] {
-  --skin-bg: #09162a;
-  --skin-card: #10233c;
-  --skin-soft: #182e49;
-  --skin-hover: #213954;
-  --skin-active: #2a4562;
-  --skin-sidebar: #0c1d34;
-  --skin-modal: #152a46;
-  --skin-line: #284661;
-  --skin-text: #ebf4ff;
-  --skin-muted: #adc4dc;
-  --skin-accent: #6dbefa;
-  --skin-accentHover: #9dd8ff;
-  --skin-accentFg: #08233c;
-  --skin-glow: #0b294e;
-  --skin-focus: #6dbefa;
-  color-scheme: dark;
-}
-
 html[data-color-skin="ivory"] {
   --skin-bg: #f5f0e6;
   --skin-card: #fffaf0;
@@ -224,9 +205,6 @@ html[data-color-skin] select:focus-visible {
 html[data-color-skin="graphite"] .card, html[data-color-skin="graphite"] .overview-card {
   box-shadow: none; /* Matte graphite */
 }
-html[data-color-skin="midnight"] .sidebar {
-  box-shadow: 0 10px 30px rgb(0 0 0 / .22);
-}
 html[data-color-skin="ivory"] .card, html[data-color-skin="ivory"] .overview-card {
   box-shadow: 0 4px 24px rgb(115 85 48 / .07);
 }
@@ -254,7 +232,7 @@ html[data-color-skin][data-ui-theme="liquid"] body::before {
 }
 
 
-/* Accessible eight-option menu with five color swatches; scroll on small screens. */
+/* Accessible six-option menu with four color swatches; scroll on small screens. */
 .top-theme-menu { min-width: 240px; max-height: min(65vh, 470px); overflow-y: auto; }
 .theme-menu-divider { height: 1px; margin: 5px 4px 6px; background: var(--line); flex: none; }
 .theme-menu-section-label { padding: 5px 10px 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
@@ -262,7 +240,6 @@ html[data-color-skin][data-ui-theme="liquid"] body::before {
 .top-theme-menu button[data-skin-choice] .theme-selected { margin-left: auto; }
 .skin-swatch { display: inline-block; flex: 0 0 17px; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--line); }
 .skin-swatch-graphite { background: linear-gradient(135deg, #131518 48%, #9dc3d5 48%); }
-.skin-swatch-midnight { background: linear-gradient(135deg, #09162a 48%, #6dbefa 48%); }
 .skin-swatch-ivory { background: linear-gradient(135deg, #fffaf0 48%, #925c2c 48%); }
 .skin-swatch-emerald { background: linear-gradient(135deg, #071c18 48%, #65ddb0 48%); }
 .skin-swatch-aurora { background: linear-gradient(135deg, #17112b 46%, #c7a8ff 52%, #73b7fa 94%); }

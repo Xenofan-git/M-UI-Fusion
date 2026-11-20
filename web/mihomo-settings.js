@@ -99,6 +99,18 @@
     const group=String(groupName||'').toLowerCase();
     return provider&&(group===provider||group.endsWith('-'+provider))?value.slice(divider+3):value;
   }
+  // Presentation-only: derive an emoji flag from the leading two-letter
+  // country code without renaming the actual Mihomo node.
+  function currentNodeWithFlag(groupName,current){
+    const label=displayedCurrentNode(groupName,current);
+    if(/[\u{1F1E6}-\u{1F1FF}]{2}/u.test(label))return label;
+    const match=label.match(/^(?:(?:INT|FOREIGN)\s*[|/]\s*)?(?:\[([A-Za-z]{2})\]|([A-Za-z]{2}))(?=\s|[|/•·\-]|$)/);
+    if(!match)return label;
+    const code=(match[1]||match[2]).toUpperCase();
+    const country=code==='UK'?'GB':code;
+    const flag=String.fromCodePoint(...[...country].map(c=>0x1F1E6+c.charCodeAt(0)-65));
+    return flag+' '+label;
+  }
   function groupTypeLabel(type,label=type){
     return type==='url-test'&&window.muiGetLang?.()==='ru'?'URL-тест':label;
   }
@@ -107,7 +119,7 @@
     if(!group)return 'Определяется…';
     if(!group.running)return 'Mihomo недоступен';
     if(!group.applied)return 'Группа не применена';
-    if(group.current)return displayedCurrentNode(name,group.current);
+    if(group.current)return currentNodeWithFlag(name,group.current);
     if(group.perConnection)return 'Выбор для каждого соединения';
     return 'Текущий не определён';
   }

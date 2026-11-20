@@ -253,7 +253,7 @@ func TestNamedColorSkinsLoadWithEveryUITheme(t *testing.T) {
  if err!=nil{t.Fatal(err)}
  script,err:=os.ReadFile("web/color-skins.js")
  if err!=nil{t.Fatal(err)}
- for _,name:=range []string{"graphite","midnight","ivory","emerald","aurora"} {
+ for _,name:=range []string{"graphite","ivory","emerald","aurora"} {
   if !strings.Contains(string(styles),"data-color-skin=\""+name+"\"") {
     t.Errorf("missing CSS palette %s",name)
   }
