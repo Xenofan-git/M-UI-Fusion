@@ -67,7 +67,7 @@ func TestLoginPageStableWelcomeAndEnlargedCat(t *testing.T) {
   "document.querySelector('.headline').textContent = text.title;",
   "width: 96px;",
   "height: 96px;",
-  "<img src=\"media/m-ui_logo.png\" alt=\"M-UI Fusion\" width=\"96\" height=\"96\">",
+  "<img src=\"media/m-ui_logo.png?v=13\" alt=\"M-UI Fusion\" width=\"96\" height=\"96\">",
   "ru: { pageTitle:'M-UI Fusion | Вход', title:'Добро пожаловать'",
   "en: { pageTitle:'M-UI Fusion | Log In', title:'Welcome'",
  } {
@@ -98,7 +98,7 @@ func TestSidebarHeaderThemeMenuAndInboundCaption(t *testing.T) {
  if err!=nil {t.Fatal(err)}
  ui:=string(data)
  for _,want:=range []string{
-  "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png\" alt=\"M-UI Fusion\" width=\"60\" height=\"60\"",
+  "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png?v=13\" alt=\"M-UI Fusion\" width=\"60\" height=\"60\"",
   "id=\"top-theme-menu\"","data-theme-choice=\"dark\"",
   "data-i18n=\"nav.light\">Светлая",
   "data-theme-choice=\"light\"",

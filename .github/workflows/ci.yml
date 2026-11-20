@@ -30,6 +30,8 @@ jobs:
         run: node tests/login-welcome.cjs
       - name: Test sidebar logo and header theme selector
         run: node tests/sidebar-theme.cjs
+      - name: Verify transparent cat logo in favicon and panel
+        run: node tests/transparent-cat-logo.cjs
       - name: Test Russian panel settings and admin credentials form
         run: node tests/panel-settings-ru.cjs
       - name: Test Mihomo Basics RU localization, login hover and peer errors

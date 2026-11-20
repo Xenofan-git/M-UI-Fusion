@@ -7,8 +7,8 @@
     // Safety fallback: do not leave the panel blank if an i18n asset fails.
     setTimeout(() => document.documentElement.removeAttribute('data-l10n-pending'), 3000);
   </script>
-  <link rel="icon" type="image/png" sizes="1024x1024" href="media/m-ui_logo.png?v=12">
-  <link rel="apple-touch-icon" href="media/m-ui_logo.png?v=12">
+  <link rel="icon" type="image/png" sizes="192x192" href="media/m-ui_logo.png?v=13">
+  <link rel="apple-touch-icon" href="media/m-ui_logo.png?v=13">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>M-UI Fusion | Вход</title>
@@ -220,13 +220,13 @@
       justify-content: center;
       border-radius: 18px;
       background: transparent;
-      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.28));
+      filter: none;
       margin-bottom: 12px;
       transition: transform .3s var(--ease);
       overflow: hidden;
     }
     .brand-icon:hover { transform: scale(1.05); }
-    .brand-icon img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+    .brand-icon img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 0; }
 
     /* macOS 偏好设置齿轮按钮 */
     .settings-button {
@@ -431,7 +431,7 @@
 
     <div class="brand-emblem">
       <div class="brand-icon">
-        <img src="media/m-ui_logo.png" alt="M-UI Fusion" width="96" height="96">
+        <img src="media/m-ui_logo.png?v=13" alt="M-UI Fusion" width="96" height="96">
       </div>
     </div>
 

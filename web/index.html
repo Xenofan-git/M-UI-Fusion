@@ -7,8 +7,8 @@
     // Safety fallback: do not leave the panel blank if an i18n asset fails.
     setTimeout(() => document.documentElement.removeAttribute('data-l10n-pending'), 3000);
   </script>
-  <link rel="icon" type="image/png" sizes="1024x1024" href="media/m-ui_logo.png?v=12">
-  <link rel="apple-touch-icon" href="media/m-ui_logo.png?v=12">
+  <link rel="icon" type="image/png" sizes="192x192" href="media/m-ui_logo.png?v=13">
+  <link rel="apple-touch-icon" href="media/m-ui_logo.png?v=13">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>M-UI Fusion | Mihomo Control Panel</title>
   <script src="static/color-skins.js"></script>
@@ -59,14 +59,14 @@
       border-radius: 10px;
       background: transparent;
       overflow: hidden;
-      filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.22));
+      filter: none;
     }
     .sidebar-logo img,
     .sidebar-logo-img {
       width: 100%; height: 100%;
       display: block;
-      object-fit: cover;
-      border-radius: inherit;
+      object-fit: contain;
+      border-radius: 0;
     }
     .sidebar-title { display: flex; align-items: center; align-content: center; flex-wrap: wrap; min-width: 0; gap: 4px 8px; }
     .sidebar-app-name { font-size: 16px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; }
@@ -1013,7 +1013,7 @@
           <span class="mac-dot green"></span>
         </div>
         <div class="sidebar-logo">
-          <img class="sidebar-logo-img" src="media/m-ui_logo.png" alt="M-UI Fusion" width="60" height="60">
+          <img class="sidebar-logo-img" src="media/m-ui_logo.png?v=13" alt="M-UI Fusion" width="60" height="60">
         </div>
         <div class="sidebar-title">
           <span class="sidebar-app-name">M-UI Fusion</span>
