@@ -11,7 +11,7 @@
 > It adds **native Mihomo Sniffer** controls under **Mihomo Settings → Basics → Sniffer**, including HTTP, TLS, QUIC, DNS mapping, pure-IP parsing, and destination-override settings.
 > These settings are saved in `state.json` and written directly to generated `config.yaml`; an external watchdog/patching service is **not** required. See [Sniffer documentation](docs/sniffer.md).
 >
-> **Install or update this fork:** See the [SSH install and upgrade guide (Russian)](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-Fusion/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
+> **Install or update this fork:** See the [SSH install and upgrade guide (English)](docs/INSTALL.en.md) / [Russian](docs/INSTALL.ru.md), download a [verified release](https://github.com/Xenofan-git/M-UI-Fusion/releases), or build from source. The fork's installer now downloads **our release** and verifies SHA-256; back up the live binary and state before updating.
 
 **Separate Balancers tab:** Outbounds shows proxy nodes only. **Balancers** is available only within **Mihomo Settings → Balancers**, with manual group creation and a subscription-based group wizard and automatic node reconciliation. [Balancer guide (Russian)](docs/BALANCERS.ru.md).
 
@@ -36,7 +36,7 @@ Then **on the Linux server** download, syntax-check, and run the M-UI Fusion ins
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ```
 
 For an existing installation, first back up the binary and state, then use:
@@ -47,7 +47,7 @@ sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
 
-M-UI Fusion is not tied to a specific device. The installer detects the Linux architecture (including AMD64 and ARM64) and chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, and upgrade steps:** [SSH guide in Russian](docs/INSTALL.ru.md).
+M-UI Fusion is not tied to a specific device. The installer detects the Linux architecture (including AMD64 and ARM64) and chooses unique credentials and a panel URL. Restrict access to trusted networks; `--no-ssl` is suitable only for protected LAN/VPN access. **Full backup, rollback, SSH tunnel and upgrade steps:** [English](docs/INSTALL.en.md) / [Russian](docs/INSTALL.ru.md).
 
 ## Build this fork
 

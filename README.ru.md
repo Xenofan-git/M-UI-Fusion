@@ -36,7 +36,7 @@ ssh USER@TAILSCALE_IP
 ```bash
 curl -fL --retry 3 https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/install.sh -o /tmp/m-ui-fusion-install.sh
 bash -n /tmp/m-ui-fusion-install.sh
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ```
 
 Если m-ui уже установлена, сначала сделайте резервную копию и используйте **обновление с сохранением настроек**:
@@ -47,7 +47,7 @@ sudo systemctl is-active m-ui
 sudo /usr/local/m-ui/m-ui version
 ```
 
-M-UI Fusion не привязан к определённой модели устройства: установщик выбирает бинарник под архитектуру сервера автоматически. Полная инструкция с командой резервного копирования и отката: **[docs/INSTALL.ru.md](docs/INSTALL.ru.md)**. Не публикуйте порт панели в интернет без HTTPS и защиты доступа.
+M-UI Fusion не привязан к определённой модели устройства: установщик выбирает бинарник под архитектуру сервера автоматически. Полная инструкция с командой резервного копирования и отката: **[Русская инструкция](docs/INSTALL.ru.md) / [English guide](docs/INSTALL.en.md)**. Не публикуйте порт панели в интернет без HTTPS и защиты доступа.
 
 ---
 
