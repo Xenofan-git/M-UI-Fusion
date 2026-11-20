@@ -257,3 +257,162 @@ html:is([data-color-skin="graphite"],[data-color-skin="emerald"],[data-color-ski
 .skin-swatch-ivory { background: linear-gradient(135deg, #fffaf0 48%, #925c2c 48%); }
 .skin-swatch-emerald { background: linear-gradient(135deg, #071c18 48%, #65ddb0 48%); }
 .skin-swatch-aurora { background: linear-gradient(135deg, #17112b 46%, #c7a8ff 52%, #73b7fa 94%); }
+
+/* M-UI Fusion: consistent hover contrast across UI layouts and color skins.
+   Original shadcn/MD3 dark body rules have higher specificity than the
+   named-skin variable mapping above. A skin must win both before and during
+   hover, without altering semantic danger/success colors. */
+html[data-ui-theme="shadcn"][data-color-skin] body.dark {
+  --sc-bg: var(--skin-bg);
+  --sc-sidebar: var(--skin-sidebar);
+  --sc-card: var(--skin-card);
+  --sc-muted: var(--skin-soft);
+  --sc-accent: var(--skin-hover);
+  --sc-border: var(--skin-line);
+  --sc-input: var(--skin-line);
+  --sc-ring: var(--skin-focus);
+  --sc-fg: var(--skin-text);
+  --sc-muted-fg: var(--skin-muted);
+  --sc-primary: var(--skin-accent);
+  --sc-primary-fg: var(--skin-accentFg);
+}
+html[data-ui-theme="md3"][data-color-skin] body.dark {
+  --m3-surface: var(--skin-bg);
+  --m3-surface-lowest: var(--skin-bg);
+  --m3-surface-low: var(--skin-card);
+  --m3-surface-container: var(--skin-soft);
+  --m3-surface-high: var(--skin-hover);
+  --m3-surface-highest: var(--skin-active);
+  --m3-on-surface: var(--skin-text);
+  --m3-on-surface-variant: var(--skin-muted);
+  --m3-outline: var(--skin-line);
+  --m3-outline-variant: var(--skin-line);
+  --m3-primary: var(--skin-accent);
+  --m3-on-primary: var(--skin-accentFg);
+  --m3-primary-container: var(--skin-active);
+  --m3-on-primary-container: var(--skin-text);
+  --m3-secondary-container: var(--skin-soft);
+  --m3-on-secondary-container: var(--skin-text);
+  --m3-inverse-surface: var(--skin-text);
+  --m3-inverse-on-surface: var(--skin-bg);
+  --m3-inverse-primary: var(--skin-accent);
+}
+
+/* Solid accent actions: never swap to dark/original theme colors on hover.
+   IDs in :is() deliberately out-rank Material 3's #add-inbound override
+   and the dedicated #outsub-submit button. */
+html[data-color-skin] body :is(
+  .primary-btn, .mihomo-primary, .login-button, #add-inbound,
+  #outsub-submit, .glass-button.primary, .swift-btn.primary
+):hover:not(:disabled) {
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+  border-color: var(--skin-accentHover) !important;
+}
+html[data-ui-theme="shadcn"][data-color-skin] body :is(
+  .primary-btn, .mihomo-primary, .login-button, #add-inbound,
+  #outsub-submit, .glass-button.primary, .swift-btn.primary
+):hover:not(:disabled),
+html[data-ui-theme="md3"][data-color-skin] body :is(
+  .primary-btn, .mihomo-primary, .login-button, #add-inbound,
+  #outsub-submit, .glass-button.primary, .swift-btn.primary
+):hover:not(:disabled) {
+  background: var(--skin-accentHover) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+
+/* Liquid Glass uses layered gradients instead of background-color.
+   Keep its optical material, but use the selected accent for every
+   primary button and a readable surface for floating icon buttons. */
+html[data-ui-theme="liquid"][data-color-skin] body :is(
+  .primary-btn, .mihomo-primary, .login-button, #add-inbound,
+  #outsub-submit, .glass-button.primary, .swift-btn.primary
+) {
+  --lb-fill: var(--skin-accent);
+  --lb-text: var(--skin-accentFg);
+}
+html[data-ui-theme="liquid"][data-color-skin] body :is(
+  .primary-btn, .mihomo-primary, .login-button, #add-inbound,
+  #outsub-submit, .glass-button.primary, .swift-btn.primary
+):hover:not(:disabled) {
+  --lb-fill: var(--skin-accentHover) !important;
+  --lb-text: var(--skin-accentFg) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+html[data-ui-theme="liquid"][data-color-skin] body :is(
+  .icon-btn, .modal-close, .mihomo-icon, .sider-trigger,
+  .back-top, .top-actions .outline-btn, .circle-action
+):not(.lg-surface) {
+  --lb-fill: var(--skin-soft);
+  --lb-text: var(--skin-text);
+}
+html[data-ui-theme="liquid"][data-color-skin] body :is(
+  .icon-btn, .modal-close, .mihomo-icon, .sider-trigger,
+  .back-top, .top-actions .outline-btn, .circle-action
+):not(.lg-surface):hover:not(:disabled) {
+  --lb-fill: var(--skin-hover);
+  --lb-text: var(--skin-text);
+}
+
+/* Outlined and icon actions have a subtle, tonal hover rather than a
+   potentially near-black theme-default patch. This does not affect
+   selected menu items, destructive actions or the text-only Mihomo pills. */
+html[data-color-skin] body :is(
+  .outline-btn, .small-btn, .mihomo-tool, .overview-action,
+  .icon-btn, .input-tool, .modal-close, .mihomo-icon
+):hover:not(:disabled):not(.danger-icon, .danger) {
+  color: var(--skin-text) !important;
+  -webkit-text-fill-color: var(--skin-text) !important;
+}
+
+/* The subscription editor has its own ID-specific white/dark hover styles,
+   which outrank generic .primary-btn rules and Liquid Glass color tokens. */
+html[data-ui-theme="shadcn"][data-color-skin] body .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled),
+html[data-ui-theme="md3"][data-color-skin] body .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled) {
+  background: var(--skin-accentHover) !important;
+  border-color: var(--skin-accentHover) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+html[data-ui-theme="liquid"][data-color-skin] body .outsub-dialog #outsub-submit:is(:hover,:focus-visible):not(:disabled) {
+  --lb-fill: var(--skin-accentHover) !important;
+  --lb-text: var(--skin-accentFg) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+
+/* Subscription-balancer action also has a dedicated ID-specific hover
+   in mihomo-settings.css. Keep it in the selected palette, not shadcn
+   grayscale or the hard-coded Liquid blue. */
+html:is([data-ui-theme="shadcn"],[data-ui-theme="md3"])[data-color-skin] body .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover,:focus-visible):not(:disabled) {
+  background: var(--skin-accentHover) !important;
+  border-color: var(--skin-accentHover) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+html[data-ui-theme="liquid"][data-color-skin] body .mihomo-toolbar #mihomo-add-sub-balancer:is(:hover,:focus-visible):not(:disabled) {
+  --lb-fill: var(--skin-accentHover) !important;
+  --lb-text: var(--skin-accentFg) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+
+/* The original #add-inbound rule forces white SVG/text independently of
+   its bright skin background. Adapt both label and icon to the accent
+   foreground, so the entire button stays legible on hover. */
+html[data-ui-theme="liquid"][data-color-skin] body #add-inbound:is(:hover,:focus-visible):not(:disabled) {
+  --lb-fill: var(--skin-accentHover) !important;
+  --lb-text: var(--skin-accentFg) !important;
+  color: var(--skin-accentFg) !important;
+  fill: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+html[data-color-skin] body :is(
+  #add-inbound, #outsub-submit, #mihomo-add-sub-balancer,
+  .primary-btn, .mihomo-primary
+):is(:hover,:focus-visible):not(:disabled) :is(svg,.sf-symbol) {
+  color: var(--skin-accentFg) !important;
+  stroke: currentColor;
+}

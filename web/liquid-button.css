@@ -141,3 +141,14 @@ html body button.mihomo-icon.danger {
 :is(html body.dark, html[data-theme="dark"] body) button.mihomo-icon.danger {
   --lb-text: #ff453a;
 }
+
+/* The original surface hover selector above is more specific than the
+   generic dark-mode fill. Keep white icons readable on dark glass by
+   using a translucent dark-mode tint, not the light-mode white plate. */
+:is(html body.dark, html[data-theme="dark"] body) :is(
+  .icon-btn, .modal-close, .circle-action, .sider-trigger,
+  .back-top, .mihomo-icon, .top-actions .outline-btn
+):not(.lg-surface):hover:not(:disabled) {
+  --lb-fill: rgb(255 255 255 / 0.14);
+  --lb-text: #f5f5f7;
+}
