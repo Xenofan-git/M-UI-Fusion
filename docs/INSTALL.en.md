@@ -60,7 +60,7 @@ This example keeps the administration interface on device loopback; it will not 
 
 ~~~bash
 sudo bash /tmp/m-ui-fusion-install.sh \
-  --version v1.0.1 --listen-ip 127.0.0.1 --port 34567 --no-ssl
+  --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ~~~
 
 Select another unused port if 34567 is taken. The installer also supports a random port (omit --port). It generates a unique panel path, username and password and prints them **at the end**. Save the full URL/path and credentials to a secure place. The program files are installed under /usr/local/m-ui and the state under /usr/local/m-ui/data.
@@ -89,11 +89,11 @@ Other installer options (use only as needed):
 
 ~~~bash
 # Choose your own panel port and local IP during first install:
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 \
   --port 34567 --listen-ip SERVER_LAN_IP --no-ssl
 
 # Install and request a domain certificate, where DNS/ACME are prepared:
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 \
   --ssl-domain panel.example.com
 ~~~
 
@@ -119,7 +119,7 @@ sudo rc-service m-ui status
 sudo rc-update show
 ~~~
 
-Expected panel version: **v1.0.1**. The service should be running. The installed proxy inbounds are configured separately in Mihomo Settings; simply installing the panel does **not** create an open proxy port. Check the relevant firewall configuration before connecting client devices.
+Expected panel version: **v1.0.0**. The service should be running. The installed proxy inbounds are configured separately in Mihomo Settings; simply installing the panel does **not** create an open proxy port. Check the relevant firewall configuration before connecting client devices.
 
 ## 7. Updating an existing m-ui or M-UI Fusion installation
 
@@ -145,7 +145,7 @@ For OpenRC substitute sudo rc-service m-ui stop/start. Store the printed backup 
 With the installer already downloaded (or download a fresh copy using step 3):
 
 ~~~bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.1
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.0
 sudo /usr/local/m-ui/m-ui version
 sudo m-ui status
 ~~~
@@ -176,4 +176,4 @@ For OpenRC use rc-service stop/start instead. Never restore a backup from a diff
 - If installation fails, check the SSH session output, GitHub availability and the active init system. Use **sudo m-ui logs** or **sudo journalctl -u m-ui -n 80 --no-pager**.
 - If the panel does not open, verify the installed **listen IP**, actual port, generated URL path, browser URL, SSH port forwarding and firewall. Do not guess a port or publicly open the firewall as a first diagnostic step.
 - For offline or protected-network deployment, review the installer help for local-binary options; do not bypass checksum verification of a downloaded release.
-- [Official v1.0.1 release](https://github.com/Xenofan-git/M-UI-Fusion/releases/tag/v1.0.1) · [Russian guide](INSTALL.ru.md) · [Native Sniffer](sniffer.md) · [Balancer guide](BALANCERS.ru.md) · [Routing categories](ROUTING-LISTS.ru.md) · [Original m-ui](https://github.com/RomanovCaesar/m-ui).
+- [Official v1.0.0 release](https://github.com/Xenofan-git/M-UI-Fusion/releases/tag/v1.0.0) · [Russian guide](INSTALL.ru.md) · [Native Sniffer](sniffer.md) · [Balancer guide](BALANCERS.ru.md) · [Routing categories](ROUTING-LISTS.ru.md) · [Original m-ui](https://github.com/RomanovCaesar/m-ui).

@@ -81,7 +81,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/i
 نصب‌کننده یک پورت پنج‌رقمی آزاد انتخاب می‌کند و یک مسیر پنل ۱۶ نویسه‌ای، یک نام کاربری ۱۴ نویسه‌ای و یک رمز عبور ۱۶ نویسه‌ای می‌سازد. نشانی دسترسی و اطلاعات ورود فقط یک بار در پایان نمایش داده می‌شود. می‌توانید آن‌ها را خودتان هم تعیین کنید:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl \
   --port 34567
 ```
 

@@ -58,16 +58,16 @@ func TestLoginPageTitleIsLocalizedBeforeClientJavascript(t *testing.T) {
 
 // The welcome heading is a single localized element, not a timed carousel.
 // Its logo should remain clearly visible under all UI theme overrides.
-func TestLoginPageStableWelcomeAndEnlargedCat(t *testing.T) {
+func TestLoginPageStableWelcomeAndScaledCat(t *testing.T) {
  page, err := webFS.ReadFile("web/login.html")
  if err != nil { t.Fatal(err) }
  html := string(page)
  for _, expected := range []string{
   "<h1 class=\"headline\" data-word=\"title\">Добро пожаловать</h1>",
   "document.querySelector('.headline').textContent = text.title;",
-  "width: 96px;",
-  "height: 96px;",
-  "<img src=\"media/m-ui_logo.png?v=16\" alt=\"M-UI Fusion\" width=\"96\" height=\"96\">",
+  "width: 77px;",
+  "height: 77px;",
+  "<img src=\"media/m-ui_logo.png?v=16\" alt=\"M-UI Fusion\" width=\"77\" height=\"77\">",
   "ru: { pageTitle:'M-UI Fusion | Вход', title:'Добро пожаловать'",
   "en: { pageTitle:'M-UI Fusion | Log In', title:'Welcome'",
  } {
@@ -87,7 +87,7 @@ func TestLoginPageStableWelcomeAndEnlargedCat(t *testing.T) {
  for _, filename := range []string{"web/theme-shadcn.css","web/theme-md3.css"} {
   data,err:=webFS.ReadFile(filename)
   if err!=nil {t.Fatal(err)}
-  if !strings.Contains(string(data), "body .brand-icon { filter: none !important; width: 96px !important; height: 96px !important; }") {
+  if !strings.Contains(string(data), "body .brand-icon { filter: none !important; width: 77px !important; height: 77px !important; }") {
    t.Errorf("%s: theme forces a small cat logo",filename)
   }
  }
@@ -98,7 +98,7 @@ func TestSidebarHeaderThemeMenuAndInboundCaption(t *testing.T) {
  if err!=nil {t.Fatal(err)}
  ui:=string(data)
  for _,want:=range []string{
-  "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png?v=16\" alt=\"M-UI Fusion\" width=\"60\" height=\"60\"",
+  "class=\"sidebar-logo-img\" src=\"media/m-ui_logo.png?v=16\" alt=\"M-UI Fusion\" width=\"48\" height=\"48\"",
   "id=\"top-theme-menu\"","data-theme-choice=\"dark\"",
   "data-i18n=\"nav.light\">Светлая",
   "data-theme-choice=\"light\"",
@@ -118,7 +118,7 @@ func TestSidebarHeaderThemeMenuAndInboundCaption(t *testing.T) {
  }
  liquid,err:=webFS.ReadFile("web/liquid-optics.css")
  if err!=nil {t.Fatal(err)}
- if !strings.Contains(string(liquid),".sidebar-logo { width: 60px; height: 60px;") {
+ if !strings.Contains(string(liquid),".sidebar-logo { width: 48px; height: 48px;") {
    t.Fatal("Liquid theme overrides the enlarged logo")
  }
 }

@@ -484,7 +484,7 @@ html[data-ui-theme="shadcn"] body .login-card {
   box-shadow: var(--shadow) !important;
   padding: 2rem 2rem 1.75rem !important;
 }
-html[data-ui-theme="shadcn"] body .brand-icon { filter: none !important; width: 96px !important; height: 96px !important; }
+html[data-ui-theme="shadcn"] body .brand-icon { filter: none !important; width: 77px !important; height: 77px !important; }
 html[data-ui-theme="shadcn"] body .headline { font-size: 20px !important; font-weight: 600; letter-spacing: -0.01em; }
 html[data-ui-theme="shadcn"] body .input-wrap .sf-symbol { color: var(--sc-muted-fg) !important; }
 html[data-ui-theme="shadcn"] body .login-button { height: 40px !important; border-radius: var(--radius) !important; font-size: 14px !important; font-weight: 500 !important; }

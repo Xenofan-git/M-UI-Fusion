@@ -65,7 +65,7 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           mkdir -p dist
-          go build -trimpath -ldflags='-s -w -X main.version=v1.0.1-ci' -o dist/m-ui-linux-arm64-fusion .
+          go build -trimpath -ldflags='-s -w -X main.version=v1.0.0-ci' -o dist/m-ui-linux-arm64-fusion .
           sha256sum dist/m-ui-linux-arm64-fusion > dist/SHA256SUMS
       - name: Upload ARM64 test build
         uses: actions/upload-artifact@v4

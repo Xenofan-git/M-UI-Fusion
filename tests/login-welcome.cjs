@@ -8,11 +8,11 @@ assert.ok(html.includes("document.querySelector('.headline').textContent = text.
 assert.ok(!html.includes('rotateHeadline('));
 assert.ok(!html.includes('words-wrapper'));
 assert.ok(!html.includes('data-word="hello"'));
-assert.match(html,/width: 96px;\s*height: 96px;/);
-assert.ok(html.includes('alt="M-UI Fusion" width="96" height="96"'));
+assert.match(html,/width: 77px;\s*height: 77px;/);
+assert.ok(html.includes('alt="M-UI Fusion" width="77" height="77"'));
 assert.ok(html.includes("ru: { pageTitle:'M-UI Fusion | Вход', title:'Добро пожаловать'"));
 assert.ok(html.includes("en: { pageTitle:'M-UI Fusion | Log In', title:'Welcome'"));
 for(const theme of themes){
- assert.ok(theme.includes('body .brand-icon { filter: none !important; width: 96px !important; height: 96px !important; }'));
+ assert.ok(theme.includes('body .brand-icon { filter: none !important; width: 77px !important; height: 77px !important; }'));
 }
-console.log('PASS: single static localized welcome and 96px cat icon in all UI themes');
+console.log('PASS: single static localized welcome and 77px cat icon in all UI themes');

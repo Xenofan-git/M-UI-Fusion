@@ -28,8 +28,8 @@ for (const file of ['web/index.html','web/login.html','web/subscription.html']) 
 }
 const login=fs.readFileSync('web/login.html','utf8');
 const index=fs.readFileSync('web/index.html','utf8');
-assert.ok(login.includes('img src="media/m-ui_logo.png?v=16" alt="M-UI Fusion" width="96" height="96"'));
-assert.ok(index.includes('class="sidebar-logo-img" src="media/m-ui_logo.png?v=16" alt="M-UI Fusion" width="60" height="60"'));
+assert.ok(login.includes('img src="media/m-ui_logo.png?v=16" alt="M-UI Fusion" width="77" height="77"'));
+assert.ok(index.includes('class="sidebar-logo-img" src="media/m-ui_logo.png?v=16" alt="M-UI Fusion" width="48" height="48"'));
 assert.ok(login.includes('object-fit: contain;'));
 assert.ok(index.includes('object-fit: contain;'));
 console.log('PASS: same approved cat in UI and favicon, transparent and separately sized');

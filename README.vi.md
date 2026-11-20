@@ -79,7 +79,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/i
 Trình cài đặt chọn một cổng trống có năm chữ số, tạo đường dẫn bảng điều khiển 16 ký tự, tên người dùng 14 ký tự và mật khẩu 16 ký tự. Địa chỉ truy cập và thông tin đăng nhập chỉ được in một lần khi kết thúc. Bạn cũng có thể tự chỉ định:
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl \
   --port 34567
 ```
 

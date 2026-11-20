@@ -79,7 +79,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Xenofan-git/M-UI-Fusion/main/i
 インストーラーは未使用の 5 桁のパネルポートを選び、16 文字のパネルパス、14 文字のユーザー名、16 文字のパスワードを生成します。アクセス URL と認証情報は最後に一度だけ表示されます。明示的に指定することもできます：
 
 ```bash
-sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.1 --no-ssl \
+sudo bash /tmp/m-ui-fusion-install.sh --version v1.0.0 --no-ssl \
   --port 34567
 ```
 

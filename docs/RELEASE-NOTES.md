@@ -1,14 +1,14 @@
-# M-UI Fusion 1.0.1 — Emerald Mascot Update / Изумрудный котик
+# M-UI Fusion 1.0.0 — First Official Release / Первый официальный выпуск
 
 **English first · Русская версия ниже.**
 
-An enhanced fork of [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3), powered by [Mihomo](https://github.com/MetaCubeX/mihomo). Version 1.0.0 was our first official release; **v1.0.1 is a compatible visual update**.
+An enhanced fork of [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3), powered by [Mihomo](https://github.com/MetaCubeX/mihomo). **v1.0.0 is the first official release**. It includes the approved emerald cat and reduced logo sizes.
 
 ## English
 
-### What's new in v1.0.1
+### Final visual refinements included in v1.0.0
 - **Emerald mascot (#009B77):** replaced the turquoise cat with the user's selected final emerald version in the login screen, navigation/sidebar, Apple touch icon, and browser favicon. Removed background and vertical stripes; preserved clear eyes, mouth, shape and neon outline.
-- Two separately resized transparent PNGs (192×192 panel / 64×64 favicon), with cache-busting asset URLs. No changes to Mihomo, authentication, subscriptions, routing, or network settings. The installed configuration is preserved when updating.
+- The panel uses transparent 192×192 PNG and favicon uses 64×64 PNG. Display sizes reduced by 20% (login: 96→77 px, sidebar: 60→48 px, collapsed sidebar: 42→34 px); underlying artwork, favicon and cache URLs are unchanged. No changes to Mihomo, authentication, subscriptions, routing or network settings.
 
 
 ### Changes compared with the original m-ui v0.3.3
@@ -16,7 +16,7 @@ An enhanced fork of [RomanovCaesar/m-ui v0.3.3](https://github.com/RomanovCaesar
 1. **Native Mihomo Sniffer.** Added HTTP/TLS/QUIC sniffing controls (DNS mapping, pure-IP parsing, destination override) in Mihomo Basics. These settings are stored in panel state and rendered into Mihomo YAML without a separate config-patching service.
 2. **Outbound subscriptions and two kinds of balancers.** Added provider-node imports, manual/scheduled updates, filters and status probes. **Balancers from Subscriptions** update members automatically; **Balancers from Outbounds** contain only manually selected outbounds. The editor displays current node, search, ping and latency. New manual URL-test groups default to https://www.gstatic.com/generate_204, 180-second interval, 8000-ms timeout, 100-ms tolerance, UDP enabled; all are editable.
 3. **Simpler routing editor.** Separate multiline fields for GeoSite/GeoIP categories and domains/IPs, searchable installed-category picker, and preservation of advanced rule types and existing AND/GEOIP/MATCH routing order.
-4. **UI and localization.** Improved Russian translations, login and navigation, balancer separation, Light/Graphite/Ivory/Emerald/Aurora color choices on top of the original shadcn, Material 3 and Liquid Glass layouts, plus a transparent turquoise cat logo and favicon.
+4. **UI and localization.** Improved Russian translations, login and navigation, balancer separation, Light/Graphite/Ivory/Emerald/Aurora color choices on top of the original shadcn, Material 3 and Liquid Glass layouts, plus a transparent emerald cat logo and favicon.
 5. **Distribution.** Fork-specific installer, SHA-256 verification of downloaded release archives, update backups, CI tests, Linux builds including ARM64, amd64 Docker image, and conventional version numbering starting at 1.0.0.
 
 **Inherited, not newly invented:** the original m-ui dashboard, Mihomo inbound protocols/clients, YAML configuration, basic outbounds/routing, 3x-ui/Xray import, subscription profiles, Multi-control and 11-language base UI.
@@ -60,7 +60,7 @@ The script selects the matching Linux release, checks its archive using the publ
 
 ~~~bash
 sudo bash /tmp/m-ui-fusion-install.sh \
-  --version v1.0.1 --listen-ip 127.0.0.1 --port 34567 --no-ssl
+  --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ~~~
 
 Choose another free port if 34567 is already in use. **Save the generated panel URL path, username and password.** No NanoPi-specific paths, IPs or keys are used. This mode keeps the HTTP panel bound to the device loopback rather than exposing it publicly.
@@ -106,7 +106,7 @@ sudo systemctl start m-ui
 Then upgrade (reuse the downloaded installer; never use --no-backup unless you explicitly accept the risk):
 
 ~~~bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.1
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.0
 sudo /usr/local/m-ui/m-ui version
 sudo m-ui status
 ~~~
@@ -119,19 +119,19 @@ The installer preserves existing state and the installed Mihomo binary unless --
 
 ## Русский
 
-### Что нового в v1.0.1
+### Последние изменения оформления, включённые в v1.0.0
 - **Изумрудный котик (#009B77):** последний утверждённый вариант установлен для входа, бокового меню, значка Apple Touch и favicon. Чёрный фон и вертикальные полосы удалены, форма, глаза, рот и неоновая обводка сохранены.
-- Прозрачные изображения для панели 192×192 и favicon 64×64, обновлён параметр кэширования. Mihomo, авторизация, подписки, маршрутизация и настройки сети не менялись; при обновлении текущая конфигурация сохраняется.
+- Прозрачные PNG для панели (192×192) и favicon (64×64). Размер изображения при отображении уменьшен на 20%: вход 96→77 px, боковое меню 60→48 px, свёрнутое меню 42→34 px. Сам рисунок, favicon и ссылки кэша не изменены. Mihomo, авторизация, подписки, маршрутизация и сетевые настройки не затронуты.
 
 
-**M-UI Fusion 1.0.1** — обновление оформления самостоятельного расширения [оригинального m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3) на базе Mihomo. Первый официальный выпуск — v1.0.0. Версия 1.0.1 содержит визуальное обновление без изменения маршрутизации.
+**M-UI Fusion 1.0.0** — первый официальный выпуск самостоятельного расширения [оригинального m-ui v0.3.3](https://github.com/RomanovCaesar/m-ui/releases/tag/v0.3.3) на базе Mihomo. Все последние изменения оформления включены непосредственно в 1.0.0. Маршрутизация не менялась.
 
 ### Что добавлено и изменено по сравнению с исходником
 
 1. **Встроенный Sniffer Mihomo.** Добавлены параметры HTTP/TLS/QUIC, DNS Mapping, Parse Pure IP и Override Destination в основных настройках Mihomo. Параметры хранятся в состоянии панели и записываются в YAML без дополнительной фоновой службы.
 2. **Подписки исходящих и два вида балансировщиков.** Добавлены импорт узлов провайдеров, ручное/плановое обновление, фильтры, проверка состояния. **«Балансировщики из Подписок»** автоматически получают узлы; **«Балансировщики из Исходящих»** собираются вручную без подписок. В редакторе появились текущий узел, поиск, пинг и задержка. Новая обычная группа URL-тест по умолчанию: https://www.gstatic.com/generate_204, интервал 180 секунд, тайм-аут 8000 мс, допуск 100 мс, UDP включён; параметры редактируются.
 3. **Упрощённые правила маршрутизации.** Два отдельных списка для категорий GeoSite/GeoIP и доменов/IP, поиск по установленным категориям; сохранены расширенные типы правил и приоритет существующих AND/GEOIP/MATCH.
-4. **Интерфейс и переводы.** Исправлен русский текст, улучшены вход, меню и вкладки; добавлены светлая, графитовая, «Слоновая кость», изумрудная и «Аврора» при сохранении исходных стилей shadcn, Material 3 и Liquid Glass; обновлён прозрачный бирюзовый котик и favicon.
+4. **Интерфейс и переводы.** Исправлен русский текст, улучшены вход, меню и вкладки; добавлены светлая, графитовая, «Слоновая кость», изумрудная и «Аврора» при сохранении исходных стилей shadcn, Material 3 и Liquid Glass; обновлён прозрачный изумрудный котик и favicon.
 5. **Публикация и установка.** Собственный установщик форка, проверка SHA-256 архивов, резервные копии при обновлении, CI-тесты, Linux-сборки (включая ARM64), Docker AMD64 и официальная нумерация с 1.0.0.
 
 **Унаследовано от исходного m-ui (не наши новые функции):** Dashboard, входящие и клиенты Mihomo, генерация YAML, основные исходящие и маршрутизация, импорт 3x-ui/Xray, клиентские профили подписок, Multi-control и базовый интерфейс на 11 языках.
@@ -175,7 +175,7 @@ less /tmp/m-ui-fusion-install.sh
 
 ~~~bash
 sudo bash /tmp/m-ui-fusion-install.sh \
-  --version v1.0.1 --listen-ip 127.0.0.1 --port 34567 --no-ssl
+  --version v1.0.0 --listen-ip 127.0.0.1 --port 34567 --no-ssl
 ~~~
 
 Если порт 34567 занят, выберите другой свободный. **Запишите путь панели, логин и пароль, которые выведет установщик.** Привязки к NanoPi, определённым IP-адресам или ключам нет. При таком варианте HTTP-панель слушает только локальный интерфейс устройства.
@@ -221,7 +221,7 @@ sudo systemctl start m-ui
 Затем обновите панель (не применяйте --no-backup без необходимости):
 
 ~~~bash
-sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.1
+sudo bash /tmp/m-ui-fusion-install.sh --update --version v1.0.0
 sudo /usr/local/m-ui/m-ui version
 sudo m-ui status
 ~~~
