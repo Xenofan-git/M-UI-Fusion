@@ -44,6 +44,7 @@ func TestManualBalancerEditorUsesSharedServerTable(t *testing.T) {
 	if !strings.Contains(string(parent), "persistedName:editingOriginal?.id?editingOriginal.name:''") {
 		t.Error("unsaved manual balancers must not query persisted runtime groups")
 	}
+}
 
 func TestManualBalancerDefaultsAndSubscriptionUISeparation(t *testing.T) {
     js, err := webFS.ReadFile("web/mihomo-settings.js")
