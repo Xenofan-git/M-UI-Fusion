@@ -59,6 +59,8 @@ jobs:
         run: node tests/russian-localization-quality.cjs
       - name: Test button hover colors and contrast across layout themes
         run: node tests/button-hover-colors.cjs
+      - name: Verify exact Mihomo toolbar buttons and legacy-browser hover fallback
+        run: node tests/mihomo-toolbar-hover.cjs
       - name: Validate bilingual release notes and generic SSH guides
         run: node tests/release-notes-bilingual.cjs
       - name: Test stable login welcome and enlarged logo

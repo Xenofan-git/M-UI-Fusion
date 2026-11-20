@@ -416,3 +416,78 @@ html[data-color-skin] body :is(
   color: var(--skin-accentFg) !important;
   stroke: currentColor;
 }
+
+/* v1.0.4: Mihomo toolbar primary actions — old-browser-safe contrast.
+   The Routing Rules and manual Balancers buttons were absent from previous
+   hover tests. Give ALL toolbar primary actions explicit opaque backgrounds
+   and matching foregrounds. No color-mix(), layered calc() gradients or
+   dependency on a Liquid Glass pseudo-element is required.
+   This fixes missing fill / dark text after hover in older Chromium browsers. */
+html[data-ui-theme="shadcn"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary {
+  background: var(--sc-primary, #18181b) !important;
+  border-color: var(--sc-primary, #18181b) !important;
+  color: var(--sc-primary-fg, #fafafa) !important;
+  -webkit-text-fill-color: var(--sc-primary-fg, #fafafa) !important;
+}
+html[data-ui-theme="shadcn"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:hover:not(:disabled),
+html[data-ui-theme="shadcn"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:focus-visible:not(:disabled) {
+  background: var(--sc-primary, #18181b) !important;
+  border-color: var(--sc-primary, #18181b) !important;
+  color: var(--sc-primary-fg, #fafafa) !important;
+  -webkit-text-fill-color: var(--sc-primary-fg, #fafafa) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+html[data-ui-theme="md3"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary {
+  background: var(--m3-primary, #6750a4) !important;
+  border-color: var(--m3-primary, #6750a4) !important;
+  color: var(--m3-on-primary, #ffffff) !important;
+  -webkit-text-fill-color: var(--m3-on-primary, #ffffff) !important;
+}
+html[data-ui-theme="md3"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:hover:not(:disabled),
+html[data-ui-theme="md3"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:focus-visible:not(:disabled) {
+  background: var(--m3-primary, #6750a4) !important;
+  border-color: var(--m3-primary, #6750a4) !important;
+  color: var(--m3-on-primary, #ffffff) !important;
+  -webkit-text-fill-color: var(--m3-on-primary, #ffffff) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+html[data-ui-theme="liquid"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary {
+  background: #0059b8 !important;
+  border-color: #0059b8 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+html[data-ui-theme="liquid"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:hover:not(:disabled),
+html[data-ui-theme="liquid"] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:focus-visible:not(:disabled) {
+  background: var(--teal-2, #0062cc) !important;
+  border-color: var(--teal-2, #0062cc) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+/* Named palettes take precedence for both rest and hover, including
+   dark mode; the foreground is paired with the SAME fill token. */
+html[data-color-skin] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary {
+  background: var(--skin-accent) !important;
+  border-color: var(--skin-accent) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+}
+html[data-color-skin] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:hover:not(:disabled),
+html[data-color-skin] body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary:focus-visible:not(:disabled) {
+  background: var(--skin-accentHover) !important;
+  border-color: var(--skin-accentHover) !important;
+  color: var(--skin-accentFg) !important;
+  -webkit-text-fill-color: var(--skin-accentFg) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+html body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary > svg,
+html body #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary > .sf-symbol {
+  color: inherit !important;
+  fill: none;
+  stroke: currentColor;
+}
