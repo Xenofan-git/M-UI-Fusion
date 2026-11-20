@@ -761,3 +761,76 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
  .mihomo-rule-list-grid{grid-template-columns:minmax(0,1fr)}
  .mihomo-rule-list-grid textarea{min-height:175px}
 }
+
+/* Central non-destructive warning when routing rules use a balancer. */
+.mui-balancer-use-backdrop .mui-balancer-use-panel{
+  width:min(550px,calc(100vw - 32px));
+  max-height:calc(100dvh - 40px);
+  overflow:auto;
+  border-radius:20px;
+}
+.mui-balancer-use-header{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:25px 28px 9px;
+}
+.mui-balancer-use-icon{
+  display:grid;
+  place-items:center;
+  width:48px;
+  height:48px;
+  flex:none;
+  border-radius:50%;
+  color:#fff;
+  background:linear-gradient(160deg,#ffb24e,#ec6535);
+  box-shadow:0 7px 22px rgba(238,110,54,.23);
+  font-size:31px;
+  font-weight:700;
+  line-height:1;
+}
+.mui-balancer-use-header h2{
+  margin:0;
+  color:var(--text-strong);
+  font-size:20px;
+  font-weight:650;
+  line-height:1.3;
+}
+.mui-balancer-use-content{
+  padding:12px 28px 12px;
+  color:var(--text);
+  font-size:15px;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+}
+.mui-balancer-use-content p{margin:0 0 15px}
+.mui-balancer-use-content .mui-balancer-use-advice{margin-bottom:3px}
+.mui-balancer-use-rules{
+  margin:0 0 17px;
+  padding:13px 16px 13px 34px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface-subtle);
+  font-weight:600;
+}
+.mui-balancer-use-rules li+li{margin-top:7px}
+.mui-balancer-use-actions{
+  display:flex;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:10px;
+  padding:12px 28px 25px;
+}
+.mui-balancer-use-actions button{min-height:40px}
+.mihomo-table tr.mihomo-dependent-rule>td{
+  background:var(--tag-orange-bg);
+  box-shadow:inset 0 1px var(--tag-orange-border),inset 0 -1px var(--tag-orange-border);
+}
+@media(max-width:540px){
+  .mui-balancer-use-header{padding:20px 20px 8px;gap:12px}
+  .mui-balancer-use-content{padding:10px 20px}
+  .mui-balancer-use-actions{padding:12px 20px 20px}
+  .mui-balancer-use-icon{width:42px;height:42px;font-size:28px}
+  .mui-balancer-use-header h2{font-size:18px}
+  .mui-balancer-use-actions button{flex:1 1 auto}
+}

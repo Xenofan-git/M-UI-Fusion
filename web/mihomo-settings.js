@@ -243,10 +243,122 @@
     if(currentWarpOutbound()?.name===name&&(draft.basics.warpDomains||[]).length)result.push('Basics / WARP Routing');
     return result;
   }
+  // A balancer cannot be deleted while routing rules still target it.
+  // Display ALL referenced rules without changing configuration on dismissal.
+  function showBalancerDependencyWarning(item,rules){
+    const previousFocus=document.activeElement;
+    const backdrop=document.createElement('div');
+    backdrop.id='mihomo-balancer-use-warning';
+    backdrop.className='modal-backdrop mui-dialog mui-balancer-use-backdrop open';
+    const panel=document.createElement('section');
+    panel.className='modal-panel narrow mui-dialog-panel mui-balancer-use-panel';
+    panel.setAttribute('role','alertdialog');
+    panel.setAttribute('aria-modal','true');
+    panel.setAttribute('aria-labelledby','mihomo-balancer-use-title');
+    panel.setAttribute('aria-describedby','mihomo-balancer-use-message');
+
+    const header=document.createElement('header');
+    header.className='mui-balancer-use-header';
+    const icon=document.createElement('span');
+    icon.className='mui-balancer-use-icon';
+    icon.textContent='!';
+    icon.setAttribute('aria-hidden','true');
+    const title=document.createElement('h2');
+    title.id='mihomo-balancer-use-title';
+    title.textContent=muiT('mh.balancerInUseTitle');
+    header.append(icon,title);
+    const body=document.createElement('div');
+    body.className='modal-content mui-balancer-use-content';
+    body.id='mihomo-balancer-use-message';
+    const intro=document.createElement('p');
+    intro.className='mui-balancer-use-intro';
+    const description=document.createElement('p');
+    description.className='mui-balancer-use-advice';
+
+    if(rules.length===1){
+      const label=rules[0].type+' → '+rules[0].target;
+      intro.textContent=muiT('mh.balancerUsedSingle',{name:item.name,rule:label});
+      description.textContent=muiT('mh.balancerResolveSingle',{name:item.name,rule:label});
+      body.append(intro,description);
+    }else{
+      intro.textContent=muiT('mh.balancerUsedMultiple',{name:item.name});
+      const list=document.createElement('ul');
+      list.className='mui-balancer-use-rules';
+      for(const rule of rules){
+        const entry=document.createElement('li');
+        entry.textContent=rule.type+' → '+rule.target;
+        list.appendChild(entry);
+      }
+      description.textContent=muiT('mh.balancerResolveMultiple',{name:item.name});
+      body.append(intro,list,description);
+    }
+    const footer=document.createElement('footer');
+    footer.className='modal-footer mui-balancer-use-actions';
+    const dismiss=document.createElement('button');
+    dismiss.type='button';
+    dismiss.className='outline-btn';
+    dismiss.textContent=muiT('mh.balancerUnderstood');
+    const navigate=document.createElement('button');
+    navigate.type='button';
+    navigate.className='primary-btn';
+    navigate.textContent=muiT('mh.balancerGoToRules');
+    footer.append(dismiss,navigate);
+    panel.append(header,body,footer);
+    backdrop.appendChild(panel);
+
+    const finish=(goToRules=false)=>{
+      document.removeEventListener('keydown',onKey,true);
+      backdrop.remove();
+      if(goToRules){
+        setTab('routing');
+        const tbody=$('#mihomo-rule-table tbody');
+        const rowNodes=tbody?Array.from(tbody.children):[];
+        const managedCount=basicsRuleRows().length;
+        let first=null;
+        for(const rule of rules){
+          const index=draft.routingRules.findIndex(candidate=>candidate.id===rule.id);
+          const row=index>=0?rowNodes[index+managedCount]:null;
+          if(row){row.classList.add('mihomo-dependent-rule');first ||= row;}
+        }
+        if(first){
+          first.scrollIntoView({block:'center',behavior:'smooth'});
+          first.querySelector('[data-rule-edit]')?.focus({preventScroll:true});
+        }
+      }else if(previousFocus&&document.contains(previousFocus)){
+        previousFocus.focus?.({preventScroll:true});
+      }
+    };
+    const onKey=event=>{
+      if(event.key==='Escape'){
+        event.preventDefault();event.stopPropagation();finish();
+      }else if(event.key==='Tab'){
+        event.preventDefault();
+        const controls=[dismiss,navigate];
+        const index=controls.indexOf(document.activeElement);
+        controls[(index+(event.shiftKey?controls.length-1:1)+controls.length)%controls.length].focus();
+        // The two controls form a closed focus loop.
+      }
+    };
+    dismiss.onclick=()=>finish();
+    navigate.onclick=()=>finish(true);
+    backdrop.addEventListener('mousedown',event=>{if(event.target===backdrop)finish();});
+    document.addEventListener('keydown',onKey,true);
+    document.body.appendChild(backdrop);
+    requestAnimationFrame(()=>dismiss.focus());
+  }
+
   async function deleteOutbound(id){
     const item=draft.outbounds.find(candidate=>candidate.id===id);if(!item)return;
     const dependencies=outboundDependencies(item.name);
-    if(dependencies.length){toast(muiT('mh.cannotDelete',{deps:dependencies.join(muiT('common.listSep')),name:item.name}),true);return;}
+    if(dependencies.length){
+      const rules=draft.routingRules.filter(rule=>rule.target===item.name);
+      if(item.kind==='group'&&rules.length&&rules.length===dependencies.length){
+        showBalancerDependencyWarning(item,rules);
+      }else{
+        toast(muiT('mh.cannotDelete',{deps:dependencies.join(muiT('common.listSep')),name:item.name}),true);
+      }
+      return;
+    }
     if(!await muiConfirm(muiT('mh.confirmDeleteOutbound',{name:item.name}),{danger:true}))return;
     draft.outbounds=draft.outbounds.filter(candidate=>candidate.id!==id);markDirty();
   }
