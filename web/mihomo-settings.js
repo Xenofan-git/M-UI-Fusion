@@ -1723,9 +1723,106 @@
     }catch(error){showWarpError(error.message);}finally{warpBusy=false;renderWarpModal();}
   }
 
+
+  // Reuse the existing centered M-UI dialog design for Save and Restart.
+  // A busy dialog is intentionally not dismissible while the request runs.
+  let mihomoActionBusy=false;
+  function openMihomoStatusDialog(kind){
+    const previousFocus=document.activeElement;
+    const backdrop=document.createElement('div');
+    backdrop.id='mihomo-operation-status';
+    backdrop.className='modal-backdrop mui-dialog mui-balancer-use-backdrop mui-mihomo-status-backdrop open';
+    const panel=document.createElement('section');
+    panel.className='modal-panel narrow mui-dialog-panel mui-balancer-use-panel mui-mihomo-status-panel';
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-modal','true');
+    panel.setAttribute('aria-labelledby','mihomo-operation-title');
+    panel.setAttribute('aria-describedby','mihomo-operation-message');
+    const header=document.createElement('header');
+    header.className='mui-balancer-use-header mui-mihomo-status-header';
+    const indicator=document.createElement('span');
+    indicator.className='mui-balancer-use-icon mui-mihomo-status-indicator';
+    indicator.setAttribute('aria-hidden','true');
+    const title=document.createElement('h2');
+    title.id='mihomo-operation-title';
+    header.append(indicator,title);
+    const body=document.createElement('div');
+    body.className='modal-content mui-balancer-use-content mui-mihomo-status-content';
+    const detail=document.createElement('p');
+    detail.id='mihomo-operation-message';
+    detail.setAttribute('role','status');
+    detail.setAttribute('aria-live','polite');
+    body.appendChild(detail);
+    const footer=document.createElement('footer');
+    footer.className='modal-footer mui-balancer-use-actions mui-mihomo-status-actions';
+    const dismiss=document.createElement('button');
+    dismiss.type='button';
+    dismiss.className='primary-btn';
+    dismiss.textContent=muiT('common.close');
+    dismiss.disabled=true;
+    footer.append(dismiss);
+    panel.append(header,body,footer);
+    backdrop.appendChild(panel);
+    let busy=true;
+    const close=()=>{
+      if(busy)return;
+      document.removeEventListener('keydown',onKey,true);
+      backdrop.remove();
+      if(previousFocus&&document.contains(previousFocus))previousFocus.focus?.({preventScroll:true});
+    };
+    const onKey=event=>{
+      if(event.key==='Escape'){
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      }else if(event.key==='Tab'){
+        if(busy){event.preventDefault();return;}
+        event.preventDefault();
+        dismiss.focus();
+      }
+    };
+    dismiss.onclick=close;
+    backdrop.addEventListener('mousedown',event=>{if(event.target===backdrop)close();});
+    document.addEventListener('keydown',onKey,true);
+    document.body.appendChild(backdrop);
+    panel.tabIndex=-1;
+    panel.focus({preventScroll:true});
+    const set=(phase,message)=>{
+      busy=phase==='pending';
+      backdrop.dataset.phase=phase;
+      indicator.textContent=phase==='pending'?'':(phase==='success'?'✓':'!');
+      title.textContent=muiT(phase==='error'?'mh.operationFailureTitle':
+        phase==='success'?(kind==='save'?'mh.operationSaveTitle':'mh.operationRestartTitle'):
+        (kind==='save'?'mh.operationSaving':'mh.operationRestarting'));
+      detail.textContent=String(message||'');
+      dismiss.disabled=busy;
+      if(!busy)dismiss.focus({preventScroll:true});
+    };
+    set('pending',muiT(kind==='save'?'mh.operationSaving':'mh.operationRestarting'));
+    return {set,close};
+  }
+
+  async function restartMihomoFromSettings(){
+    if(mihomoActionBusy)return;
+    if(dirty){toast(muiT('mh.saveFirst'),true);return;}
+    mihomoActionBusy=true;
+    const button=$('#mihomo-restart');
+    button.disabled=true;
+    const dialog=openMihomoStatusDialog('restart');
+    try{
+      await api('/api/core/restart',{method:'POST'});
+      dialog.set('success',muiT('mh.operationRestartSuccess'));
+      await refresh();
+    }catch(error){dialog.set('error',error.message);}
+    finally{mihomoActionBusy=false;syncButtons();}
+  }
+
   async function saveSettings(){
+    if(mihomoActionBusy)return;
     for(const field of $$('[data-basics-list]'))commitBasicsTags(field);
+    mihomoActionBusy=true;
     const button=$('#mihomo-save');button.disabled=true;
+    const dialog=openMihomoStatusDialog('save');
     try{
       // Rules can be changed without sending stale subscription nodes.
       // Retain full save only for edits to Outbounds or Basics.
@@ -1744,8 +1841,10 @@
         }
         app.state.state.routingRules=clone(draft.routingRules);
       }
-      toast(response.message||muiT('mh.settingsSaved'));await refresh();
-    }catch(error){toast(error.message,true);}finally{syncButtons();}
+      dialog.set('success',muiT('mh.settingsSaved'));
+      await refresh();
+    }catch(error){dialog.set('error',error.message);}
+    finally{mihomoActionBusy=false;syncButtons();}
   }
 
   ensureModals();
@@ -1759,7 +1858,7 @@
   $('#mihomo-vpngate').onclick=()=>openVPNGateModal();
   $('#basics-warp').onclick=openWarpModal;
   $('#mihomo-save').onclick=saveSettings;
-  $('#mihomo-restart').onclick=()=>{if(dirty){toast(muiT('mh.saveFirst'),true);return;}coreAction('restart');};
+  $('#mihomo-restart').onclick=restartMihomoFromSettings;
 
   const baseRenderState=renderState;
   renderState=function(){baseRenderState();syncFromState();if(app.currentView==='mihomo'&&currentTab==='outbounds'&&draft.outbounds.some(item=>item.vpngate))refreshVPNGateData();};

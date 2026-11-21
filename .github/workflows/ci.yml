@@ -36,6 +36,8 @@ jobs:
         run: node tests/button-hover-colors.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
+      - name: Test centered Mihomo Save and Restart operation dialogs
+        run: node tests/mihomo-operations-dialog.cjs
       - name: Test routing rule info icons and No-Resolve explanations
         run: node tests/routing-rule-tooltips.cjs
       - name: Guard saved outbound delay button and readable Save hover

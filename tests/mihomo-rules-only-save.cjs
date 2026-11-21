@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert.ok(html.includes('static/mihomo-settings.js?v=115'));
+assert.ok(html.includes('static/mihomo-settings.js?v=116'));
 assert.ok(source.includes('lastSyncedOutbounds=clone(draft.outbounds)'));
 assert.ok(source.includes('lastSyncedBasics=clone(draft.basics)'));
 const start=source.indexOf('  async function saveSettings(){');
@@ -25,10 +25,11 @@ async function scenario({changeRules=false,changeOutbounds=false,changeBasics=fa
  if(changeRules)draft.routingRules.splice(1,1);
  if(changeOutbounds)draft.outbounds.push({id:'manual',name:'MyManual',kind:'proxy'});
  if(changeBasics)draft.basics.ipv6=false;
- const requests=[],messages=[],classes=[];
+ const requests=[],messages=[],classes=[],dialogEvents=[];
  const button={disabled:false};
  const scope={
-   draft,lastSyncedOutbounds,lastSyncedBasics,dirty:true,
+   draft,lastSyncedOutbounds,lastSyncedBasics,dirty:true,mihomoActionBusy:false,
+   openMihomoStatusDialog:(kind)=>({set:(phase,message)=>dialogEvents.push({kind,phase,message})}),
    app:{state:{state}},root:{classList:{remove:v=>classes.push(v)}},
    clone:copy,
    $$:()=>[],
@@ -43,7 +44,7 @@ async function scenario({changeRules=false,changeOutbounds=false,changeBasics=fa
  vm.runInContext(fn+'\nthis.runSave=saveSettings',scope);
  await scope.runSave();
  const calls=JSON.parse(JSON.stringify(requests));
- return {calls,scope,oldNode,freshNode,state,messages,button};
+ return {calls,scope,oldNode,freshNode,state,messages,button,dialogEvents};
 }
 (async()=>{
  const only=await scenario({changeRules:true});
@@ -62,6 +63,7 @@ async function scenario({changeRules=false,changeOutbounds=false,changeBasics=fa
  const rejected=await scenario({changeRules:true,reject:true});
  assert.equal(rejected.scope.dirty,true,'rejected rules must stay editable');
  assert.equal(rejected.state.routingRules.length,3,'server rejection must not fake a save');
- assert.equal(rejected.messages[0].err,true);
+ assert.equal(rejected.dialogEvents[0].phase,'error');
+ assert.equal(rejected.messages.length,0,'errors should use centered dialog, not toast');
  console.log('PASS: rule delete uses isolated rules-only request despite changed subscription nodes; full-save and error behavior preserved');
 })().catch(e=>{console.error(e);process.exitCode=1});

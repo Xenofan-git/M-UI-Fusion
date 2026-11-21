@@ -1043,3 +1043,49 @@ html body .mihomo-rule-switch:has(input:disabled){opacity:1;cursor:not-allowed}
 .mihomo-table .mihomo-actions.mihomo-rule-controls .mihomo-rule-switch-track{
   box-sizing:border-box;
 }
+
+
+/* Save/Restart status: same centered M-UI dialog geometry as the balancer
+   dependency warning, with explicit pending / success / failure states. */
+.mui-mihomo-status-backdrop{z-index:1600}
+.mui-mihomo-status-panel{
+  width:min(480px,calc(100vw - 32px));
+  text-align:left;
+}
+.mui-mihomo-status-indicator{
+  font-size:27px;
+  color:#fff;
+  background:linear-gradient(160deg,#009B77,#08795E);
+  box-shadow:0 7px 22px rgba(0,155,119,.22);
+}
+.mui-mihomo-status-backdrop[data-phase="pending"] .mui-mihomo-status-indicator{
+  background:#183D36;
+  box-shadow:none;
+}
+.mui-mihomo-status-backdrop[data-phase="pending"] .mui-mihomo-status-indicator::after{
+  content:"";display:block;width:23px;height:23px;
+  border:3px solid rgba(255,255,255,.27);
+  border-top-color:#12c996;border-radius:50%;
+  animation:mui-mihomo-status-spin .8s linear infinite;
+}
+.mui-mihomo-status-backdrop[data-phase="error"] .mui-mihomo-status-indicator{
+  background:linear-gradient(160deg,#ffad55,#de623d);
+  box-shadow:0 7px 22px rgba(222,98,61,.20);
+}
+.mui-mihomo-status-content{overflow-wrap:anywhere}
+.mui-mihomo-status-content p{margin:0 0 3px}
+.mui-mihomo-status-actions .primary-btn{
+  background:#009B77;
+  color:#fff;
+  border-color:#009B77;
+}
+.mui-mihomo-status-actions .primary-btn:is(:hover,:focus-visible):not(:disabled){
+  background:#087f64;color:#fff;border-color:#087f64;
+}
+.mui-mihomo-status-actions .primary-btn:disabled{display:none}
+@keyframes mui-mihomo-status-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+  .mui-mihomo-status-backdrop[data-phase="pending"] .mui-mihomo-status-indicator::after{
+    animation-duration:2.4s;
+  }
+}
