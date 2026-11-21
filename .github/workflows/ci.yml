@@ -42,6 +42,8 @@ jobs:
         run: node tests/routing-rule-tooltips.cjs
       - name: Guard saved outbound delay button and readable Save hover
         run: node tests/mihomo-delay-action.cjs
+      - name: Guard current outbound SVG against global refresh redraws
+        run: node tests/current-outbound-no-repaint.cjs
       - name: Verify isolated routing rule save with refreshed subscriptions
         run: node tests/mihomo-rules-only-save.cjs
       - name: Test Russian descriptions of all routing rule types

@@ -707,7 +707,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   display:inline-flex;align-items:center;gap:8px;
 }
 .mihomo-current-group .mihomo-current-country-flag{
-  display:inline-block;flex:none;width:26px;height:19px;
+  display:inline-block;flex:none;width:20px;height:15px;
   object-fit:cover;border-radius:2px;
   border:1px solid rgba(148,163,184,.25);
   box-sizing:border-box;vertical-align:middle;

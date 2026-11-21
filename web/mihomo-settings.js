@@ -28,6 +28,9 @@
   const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
   const activeGroupResults=new Map();
+  // The global /api/state poll calls render() every 5 seconds. Keep table
+  // DOM nodes when the markup is structurally identical, preserving SVG flags.
+  const outboundTableMarkup=new WeakMap();
   let activeGroupRequest=null;
   let geoCategoryCatalog=null,geoCategoryLoading=null;
   let warpData=null,warpBusy=false;
@@ -270,18 +273,46 @@
       subscribed?isSubscriptionGroup(item):
       item.kind!=='group'
     ),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
-    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
+    const markup=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
       const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
-      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(item.kind==='group'?groupTypeLabel(type):type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td>${item.kind==='group'
-        ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}" title="${esc(groupResultTitle(item.name))}">${esc(groupResultLabel(item.name))}</span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" ${groupTestNote(item.name)?'':'hidden'}>${esc(groupTestNote(item.name))}</small>`
-        :`<span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${esc(outboundTestUnavailableReason(item)||muiT('mh.testOutbound'))}" ${outboundTestUnavailableReason(item)?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
+      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(item.kind==='group'?groupTypeLabel(type):type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?`<td data-outbound-traffic="${esc(item.name)}"></td>`:''}<td>${item.kind==='group'
+        ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}"></span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" hidden></small>`
+        :`<span class="mihomo-delay-result" data-outbound-delay="${esc(item.name)}"></span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}">${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
-    bindOutboundTable();
-    $$('[data-test-outbound]',root).forEach(button=>button.onclick=()=>testOutbound(button));
+    // Skip the destructive innerHTML update on the 5-second state poll.
+    // Transient results and counters are painted in place after the cache check.
+    if(outboundTableMarkup.get(box)!==markup||!box.querySelector('.mihomo-table')){
+      box.innerHTML=markup;
+      outboundTableMarkup.set(box,markup);
+      bindOutboundTable();
+      $$('[data-test-outbound]',box).forEach(button=>button.onclick=()=>testOutbound(button));
+    }
+    paintOutboundTransientState(box,rows,showTraffic);
     if(manual||subscribed){
       paintActiveGroupResults();
       refreshActiveGroups();
     }
+  }
+  function paintOutboundTransientState(box,rows,showTraffic){
+    const byName=new Map(rows.map(item=>[item.name,item]));
+    $$('[data-outbound-delay]',box).forEach(node=>{
+      const result=delayLabel(node.dataset.outboundDelay)||'—';
+      if(node.textContent!==result)node.textContent=result;
+      if(node.title!==result)node.title=result;
+    });
+    $$('[data-test-outbound]',box).forEach(button=>{
+      const item=byName.get(button.dataset.testOutbound);
+      if(!item)return;
+      const reason=outboundTestUnavailableReason(item);
+      button.disabled=!!reason;
+      const title=reason||muiT('mh.testOutbound');
+      if(button.title!==title)button.title=title;
+    });
+    if(showTraffic)$$('[data-outbound-traffic]',box).forEach(node=>{
+      const counters=app.state?.state?.outboundTraffic?.[node.dataset.outboundTraffic];
+      const traffic=fmt(counters?.up||0)+' / '+fmt(counters?.down||0);
+      if(node.textContent!==traffic)node.textContent=traffic;
+    });
   }
   function bindOutboundTable(){
     $$('[data-outbound-edit]',root).forEach(button=>button.onclick=()=>openOutboundModal(button.dataset.outboundEdit));

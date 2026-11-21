@@ -10,7 +10,7 @@ const boot=[
  "const $=s=>root.querySelector(s),$$=(s,c=root)=>[...c.querySelectorAll(s)];",
  "const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('\"','&quot;');",
  "const muiT=k=>({'mh.testOutbound':'Проверить исходящий','mh.testing':'Проверяется','mh.testUnavailable':'Не поддерживается','mh.saveFirst':'Сначала сохраните изменения'})[k]||k;",
- "const SF=x=>'*';const fmt=x=>x;let currentTab='outbounds';const delayResults=new Map(),activeGroupResults=new Map();",
+ "const SF=x=>'*';const fmt=x=>x;let currentTab='outbounds';const delayResults=new Map(),activeGroupResults=new Map(),outboundTableMarkup=new WeakMap();",
  "const draft={basics:{directIpVersion:'dual',ipv4Domains:[]},outbounds:[",
  " {id:'a',name:'saved-node',kind:'proxy',type:'vless',server:'one.test',port:443},",
  " {id:'b',name:'new-node',kind:'proxy',type:'vless',server:'two.test',port:443},",

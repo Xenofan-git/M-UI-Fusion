@@ -9,7 +9,9 @@ assert.ok(js.includes('function outboundTestUnavailableReason(item)'));
 assert.ok(js.includes("(app.state?.state?.outbounds||[])"),'test active saved configuration, not draft');
 const btn=js.match(/data-test-outbound[^\n]+/);
 assert.ok(btn,'rendered node test button missing');
-assert.ok(btn[0].includes('outboundTestUnavailableReason(item)'));
+assert.ok(js.includes('paintOutboundTransientState(box,rows,showTraffic)'));
+assert.ok(js.includes('button.disabled=!!reason'));
+assert.ok(js.includes('outboundTestUnavailableReason(item)'));
 assert.ok(!btn[0].includes('dirty||'),'a draft cannot block probing an existing node');
 assert.ok(js.includes("api('/api/mihomo/outbound/delay'"));
 assert.ok(js.includes("if(!item||outboundTestUnavailableReason(item))return"));
@@ -17,5 +19,5 @@ assert.ok(i18n.includes('"mh.testUnavailable": "Этот исходящий не
 assert.ok(css.includes('#mihomo-settings-root .mihomo-actionbar #mihomo-save:is(:hover,:focus-visible):not(:disabled)'),'Save hover must be legible');
 assert.ok(css.includes('#mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled'),'disabled Save must remain visible');
 assert.ok(html.includes('static/color-skins.css?v=113'));
-assert.ok(html.includes('static/mihomo-settings.js?v=116'));
+assert.ok(html.includes('static/mihomo-settings.js?v=117'));
 console.log('PASS: saved outbounds testable with dirty draft, unsupported nodes blocked, Save visible');
