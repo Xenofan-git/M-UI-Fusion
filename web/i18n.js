@@ -1971,6 +1971,19 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     'mh.noResolveLabel':'No-Resolve — не выполнять DNS-разрешение при проверке правила',
     'mh.ruleListHelp':'По одному значению в строке. Условия объединяются через ИЛИ и направляются в выбранный исходящий.'
   });
+  // Routing rule priorities, persistent enabled state, and fixed fallback.
+  Object.assign(DICT.en,{
+    'mh.ruleEnabled':'Enable or disable this routing rule',
+    'mh.managedRuleSwitch':'Managed under Basics; change it in the Basics tab',
+    'mh.matchAlwaysOn':'Default fallback: always enabled, always last, cannot be deleted or moved',
+    'mh.dragPriority':'Drag to change routing priority'
+  });
+  Object.assign(DICT.ru,{
+    'mh.ruleEnabled':'Включить или выключить правило',
+    'mh.managedRuleSwitch':'Системное правило: управляется на вкладке «Основные»',
+    'mh.matchAlwaysOn':'Правило по умолчанию: всегда включено, стоит последним, не перемещается и не удаляется',
+    'mh.dragPriority':'Перетащить для изменения приоритета правила'
+  });
   // Unified rule editor: always-visible type, conditions and outbound.
   Object.assign(DICT.en,{
     'mh.ruleConditionsTitle':'Conditions',

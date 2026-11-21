@@ -927,3 +927,26 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   padding:0;
   min-width:0;
 }
+
+/* v1.0.10: rule priority, drag handles and on/off switches. */
+.mihomo-rule-order{font-variant-numeric:tabular-nums}
+.mihomo-rule-off>td:not(:last-child){opacity:.54}
+.mihomo-rule-off .mihomo-pill{filter:grayscale(.45)}
+.mihomo-rule-default>td{border-top:2px solid var(--line-strong)}
+.mihomo-rule-drop-target>td{background:var(--surface-hover)!important;box-shadow:inset 0 2px var(--teal)}
+.mihomo-rule-switch{position:relative;display:inline-flex;flex:none;width:39px;height:23px;align-items:center;cursor:pointer;vertical-align:middle}
+.mihomo-rule-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:inherit}
+.mihomo-rule-switch-track{display:block;width:100%;height:22px;border-radius:99px;background:var(--line-strong);border:1px solid var(--line-strong);transition:background .16s,border-color .16s;pointer-events:none}
+.mihomo-rule-switch-track::after{content:"";display:block;margin:2px;width:16px;height:16px;background:var(--surface);border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .16s}
+.mihomo-rule-switch input:checked+.mihomo-rule-switch-track{background:var(--skin-accent,#009B77);border-color:var(--skin-accent,#009B77)}
+.mihomo-rule-switch input:checked+.mihomo-rule-switch-track::after{transform:translateX(16px);background:#fff}
+.mihomo-rule-switch input:focus-visible+.mihomo-rule-switch-track{outline:2px solid var(--teal);outline-offset:3px}
+.mihomo-rule-switch:has(input:disabled){opacity:.65;cursor:not-allowed}
+.mihomo-rule-drag{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;cursor:grab;color:var(--text);user-select:none;touch-action:none;font-size:22px;border:1px dashed var(--line-strong)}
+.mihomo-rule-drag:active{cursor:grabbing}
+.mihomo-rule-drag:hover{background:var(--surface-hover);color:var(--teal);border-color:var(--teal)}
+.mihomo-rule-locked{display:inline-flex;width:28px;justify-content:center;align-items:center;font-size:17px;opacity:.65}
+/* Keep arrow buttons separate when the table is narrower than its actions.
+   Otherwise the disabled down arrow can cover the enabled up arrow. */
+.mihomo-table .mihomo-actions>*{flex-shrink:0}
+.mihomo-table td:last-child{min-width:220px}

@@ -66,6 +66,8 @@ jobs:
         run: node tests/routing-labels.cjs
       - name: Test basic and advanced routing editors
         run: node tests/routing-basic-editor.cjs
+      - name: Test rule switches and priority drag persistence
+        run: node tests/routing-rule-controls.cjs
       - name: Test localized built-in outbound names
         run: node tests/routing-outbound-labels.cjs
       - name: Run tests

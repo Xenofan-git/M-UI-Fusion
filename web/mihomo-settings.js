@@ -44,7 +44,12 @@
 
   function freshID(prefix){return prefix+'-'+crypto.randomUUID().replaceAll('-','').slice(0,12);}
   function ensureFinalMatch(){
-    if(!draft.routingRules.some(rule=>String(rule.type).toUpperCase()==='MATCH'))draft.routingRules.push({id:freshID('rule'),type:'MATCH',payload:'',target:'DIRECT',noResolve:false});
+    const index=draft.routingRules.findIndex(rule=>String(rule.type).toUpperCase()==='MATCH');
+    if(index<0){draft.routingRules.push({id:freshID('rule'),type:'MATCH',payload:'',target:'DIRECT',noResolve:false});return;}
+    if(index!==draft.routingRules.length-1){
+      const [match]=draft.routingRules.splice(index,1);
+      draft.routingRules.push(match);
+    }
   }
   function syncFromState(){
     if(dirty)return;
@@ -576,17 +581,121 @@
     },true);
     window.addEventListener('resize',hideRuleHelp);
   }
+  // Every user rule is retained in state.json, even when disabled. The
+  // backend omits disabled rules from Mihomo, but requires MATCH always ON.
+  function ruleIsEnabled(rule){return rule.enabled!==false;}
+  let draggedRuleID='';
+  function moveRuleTo(id,targetID,after=false){
+    if(!id||!targetID||id===targetID)return;
+    const from=draft.routingRules.findIndex(rule=>rule.id===id);
+    const target=draft.routingRules.findIndex(rule=>rule.id===targetID);
+    if(from<0||target<0||draft.routingRules[from].type==='MATCH')return;
+    const [rule]=draft.routingRules.splice(from,1);
+    const to=draft.routingRules.findIndex(item=>item.id===targetID);
+    // Dragging onto MATCH inserts immediately before it; MATCH never moves.
+    const insertAt=draft.routingRules[to].type==='MATCH'?to:to+(after?1:0);
+    draft.routingRules.splice(insertAt,0,rule);
+    markDirty();
+  }
+  function toggleRule(id,enabled){
+    const rule=draft.routingRules.find(item=>item.id===id);
+    if(!rule||rule.type==='MATCH')return;
+    if(ruleIsEnabled(rule)===enabled)return;
+    if(enabled)delete rule.enabled; // legacy ON serializes identically
+    else rule.enabled=false;
+    markDirty();
+  }
   function renderRules(){
     hideRuleHelp();
     const box=$('#mihomo-rule-table');
     ensureFinalMatch();
     const managed=basicsRuleRows();
-    const managedHTML=managed.map((rule,index)=>'<tr><td>'+(index+1)+'</td><td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleTypeDisplayLabel(rule.type))+'</span>'+ruleHelpButton('type',rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td><td><span class="mihomo-pill group">Basics</span></td></tr>').join('');
-    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colRuleType')}</th><th>${muiT('mh.colPayload')}</th><th>${muiT('mh.colOutbound')}</th><th>${muiT('mh.colOptions')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${managedHTML}${draft.routingRules.map((rule,index)=>`<tr><td>${managed.length+index+1}</td><td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">${esc(ruleReadableType(rule))}</span>${ruleHelpButton('type',window.MUIRuleLists?.decode(rule)?'LIST':rule.type)}</span></td><td><div class="mihomo-rule-payload" title="${esc(rule.payload||'')}">${esc(ruleReadablePayload(rule))}</div></td><td class="mihomo-name">${esc(rule.target)}</td><td>${rule.noResolve?'<span class="mihomo-rule-type-with-help"><span class="mihomo-pill group">No-Resolve</span>'+ruleHelpButton('no-resolve')+'</span>':'—'}</td><td><div class="mihomo-actions"><button class="mihomo-icon" data-rule-up="${esc(rule.id)}" title="${muiT('mh.moveUp')}" ${index===0||rule.type==='MATCH'?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-rule-down="${esc(rule.id)}" title="${muiT('mh.moveDown')}" ${index===draft.routingRules.length-1||draft.routingRules[index+1]?.type==='MATCH'?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-rule-edit="${esc(rule.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-rule-delete="${esc(rule.id)}" title="${muiT('common.delete')}" ${rule.type==='MATCH'?'disabled':''}>${SF('delete')}</button></div></td></tr>`).join('')}</tbody></table></div>`;
+    const enabledTitle=muiT('mh.ruleEnabled');
+    const readonlyTitle=muiT('mh.managedRuleSwitch');
+    const lockedTitle=muiT('mh.matchAlwaysOn');
+    const managedHTML=managed.map((rule,index)=>
+      '<tr class="mihomo-managed-rule"><td>'+(index+1)+'</td>'+
+      '<td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleTypeDisplayLabel(rule.type))+
+      '</span>'+ruleHelpButton('type',rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td>'+
+      '<td><div class="mihomo-actions"><label class="mihomo-rule-switch" title="'+esc(readonlyTitle)+'"><input type="checkbox" checked disabled aria-label="'+esc(readonlyTitle)+'"><span class="mihomo-rule-switch-track"></span></label>'+
+      '<span class="mihomo-pill group">Basics</span></div></td></tr>').join('');
+    const rows=draft.routingRules.map((rule,index)=>{
+      const locked=rule.type==='MATCH';
+      const enabled=ruleIsEnabled(rule);
+      const next=draft.routingRules[index+1];
+      const toggleLabel=locked?lockedTitle:enabledTitle;
+      return '<tr data-rule-row="'+esc(rule.id)+'" class="'+(!enabled?'mihomo-rule-off ':'')+(locked?'mihomo-rule-default':'')+'">'+
+        '<td class="mihomo-rule-order">'+(managed.length+index+1)+'</td>'+
+        '<td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleReadableType(rule))+'</span>'+
+        ruleHelpButton('type',window.MUIRuleLists?.decode(rule)?'LIST':rule.type)+'</span></td>'+
+        '<td><div class="mihomo-rule-payload" title="'+esc(rule.payload||'')+'">'+esc(ruleReadablePayload(rule))+'</div></td>'+
+        '<td class="mihomo-name">'+esc(rule.target)+'</td>'+
+        '<td>'+(rule.noResolve?'<span class="mihomo-rule-type-with-help"><span class="mihomo-pill group">No-Resolve</span>'+
+        ruleHelpButton('no-resolve')+'</span>':'—')+'</td>'+
+        '<td><div class="mihomo-actions">'+
+        '<label class="mihomo-rule-switch" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
+        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span></label>'+
+        (locked?'<span class="mihomo-rule-locked" title="'+esc(lockedTitle)+'">🔒</span>':
+        '<span class="mihomo-rule-drag" draggable="true" data-rule-drag="'+esc(rule.id)+'" title="'+esc(muiT('mh.dragPriority'))+'" aria-label="'+esc(muiT('mh.dragPriority'))+'">⠿</span>')+
+        '<button class="mihomo-icon" data-rule-up="'+esc(rule.id)+'" title="'+esc(muiT('mh.moveUp'))+'"'+
+        (index===0||locked?' disabled':'')+'>'+SF('arrow-up')+'</button>'+
+        '<button class="mihomo-icon" data-rule-down="'+esc(rule.id)+'" title="'+esc(muiT('mh.moveDown'))+'"'+
+        (locked||!next||next.type==='MATCH'?' disabled':'')+'>'+SF('arrow-down')+'</button>'+
+        '<button class="mihomo-icon" data-rule-edit="'+esc(rule.id)+'" title="'+esc(muiT('action.edit'))+'">'+SF('edit')+'</button>'+
+        (locked?'':'<button class="mihomo-icon danger" data-rule-delete="'+esc(rule.id)+'" title="'+esc(muiT('common.delete'))+'">'+SF('delete')+'</button>')+
+        '</div></td></tr>';
+    }).join('');
+    box.innerHTML='<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>'+muiT('mh.colRuleType')+
+      '</th><th>'+muiT('mh.colPayload')+'</th><th>'+muiT('mh.colOutbound')+'</th><th>'+muiT('mh.colOptions')+
+      '</th><th>'+muiT('mh.colActions')+'</th></tr></thead><tbody>'+managedHTML+rows+'</tbody></table></div>';
     $$('[data-rule-edit]',root).forEach(button=>button.onclick=()=>openRuleModal(button.dataset.ruleEdit));
     $$('[data-rule-delete]',root).forEach(button=>button.onclick=()=>deleteRule(button.dataset.ruleDelete));
     $$('[data-rule-up]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleUp,-1));
     $$('[data-rule-down]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleDown,1));
+    $$('[data-rule-toggle]',root).forEach(input=>input.onchange=()=>toggleRule(input.dataset.ruleToggle,input.checked));
+    // Desktop: native HTML drag/drop. The only drag origin is the handle.
+    $$('[data-rule-drag]',root).forEach(handle=>{
+      handle.ondragstart=event=>{
+        draggedRuleID=handle.dataset.ruleDrag;
+        event.dataTransfer.effectAllowed='move';
+        event.dataTransfer.setData('text/plain',draggedRuleID);
+      };
+      handle.ondragend=()=>{draggedRuleID='';$$('.mihomo-rule-drop-target',box).forEach(row=>row.classList.remove('mihomo-rule-drop-target'));};
+    });
+    $$('[data-rule-row]',box).forEach(row=>{
+      row.ondragover=event=>{
+        if(!draggedRuleID)return;
+        event.preventDefault();event.dataTransfer.dropEffect='move';
+        $$('.mihomo-rule-drop-target',box).forEach(item=>item.classList.remove('mihomo-rule-drop-target'));
+        row.classList.add('mihomo-rule-drop-target');
+      };
+      row.ondrop=event=>{
+        event.preventDefault();
+        const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
+        const from=draggedRuleID;draggedRuleID='';
+        moveRuleTo(from,row.dataset.ruleRow,after);
+      };
+    });
+    // Touch/pen: dragging the handle moves the rule when released over a row.
+    // Keep the up/down buttons for keyboard users and as a mobile fallback.
+    $$('[data-rule-drag]',root).forEach(handle=>{
+      let pointer=null;
+      handle.onpointerdown=event=>{
+        if(event.pointerType==='mouse')return;
+        pointer={id:event.pointerId,from:handle.dataset.ruleDrag};
+        handle.setPointerCapture(event.pointerId);
+      };
+      handle.onpointerup=event=>{
+        if(!pointer||pointer.id!==event.pointerId)return;
+        const from=pointer.from;pointer=null;
+        const row=document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-rule-row]');
+        if(row){
+          const rect=row.getBoundingClientRect();
+          moveRuleTo(from,row.dataset.ruleRow,event.clientY>rect.top+rect.height/2);
+        }
+      };
+      handle.onpointercancel=()=>{pointer=null;};
+    });
   }
   function moveRule(id,delta){
     const index=draft.routingRules.findIndex(rule=>rule.id===id),next=index+delta;
@@ -1116,7 +1225,8 @@
       // Hidden options must never silently overwrite a saved rule. If the
       // user changed to an unrelated type, do not carry the old IP flag over.
       noResolve:type==='MATCH'?false:permitsNoResolve?form.elements.noResolve.checked:
-        original?.type===type?!!original.noResolve:false
+        original?.type===type?!!original.noResolve:false,
+      ...(original?.enabled===false?{enabled:false}:{})
     };
     if(type==='LIST'){
       try{

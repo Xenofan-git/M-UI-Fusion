@@ -146,6 +146,13 @@ type MihomoRoutingRule struct {
 	Payload   string `json:"payload,omitempty"`
 	Target    string `json:"target"`
 	NoResolve bool   `json:"noResolve,omitempty"`
+	// Missing field means enabled for backwards compatibility.
+	// A false value preserves the rule in state, but omits it from Mihomo.
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func mihomoRuleIsEnabled(rule MihomoRoutingRule) bool {
+	return rule.Enabled == nil || *rule.Enabled
 }
 
 type mihomoSettingsPayload struct {
@@ -776,6 +783,9 @@ func normalizeMihomoRoutingRules(input []MihomoRoutingRule, outbounds []MihomoOu
 			return nil, fmt.Errorf("Routing Rule #%d 引用了不存在的 Outbound %q", index+1, rule.Target)
 		}
 		if rule.Type == "MATCH" {
+			if !mihomoRuleIsEnabled(*rule) {
+				return nil, fmt.Errorf("MATCH is the permanent fallback and cannot be disabled")
+			}
 			if rule.Payload != "" || rule.NoResolve {
 				return nil, fmt.Errorf("MATCH 规则不能包含 Payload 或 no-resolve")
 			}
@@ -1229,6 +1239,10 @@ func mihomoRoutingConfig(rules []MihomoRoutingRule) []string {
 		rules = defaultMihomoRoutingRules()
 	}
 	for _, rule := range rules {
+		// Disabled rules remain editable, but do not reach Mihomo.
+		if !mihomoRuleIsEnabled(rule) {
+			continue
+		}
 		if rule.Type == "MATCH" {
 			result = append(result, "MATCH,"+rule.Target)
 			continue
