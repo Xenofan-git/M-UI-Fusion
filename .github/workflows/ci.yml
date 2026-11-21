@@ -44,7 +44,7 @@ jobs:
         run: node tests/mihomo-delay-action.cjs
       - name: Guard current outbound SVG against global refresh redraws
         run: node tests/current-outbound-no-repaint.cjs
-      - name: Verify isolated routing rule save with refreshed subscriptions
+      - name: Verify isolated routing and manual outbound edits with refreshed subscriptions
         run: node tests/mihomo-rules-only-save.cjs
       - name: Test Russian descriptions of all routing rule types
         run: node tests/routing-type-labels.cjs

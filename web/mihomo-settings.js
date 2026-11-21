@@ -38,7 +38,7 @@
   const root=$('#mihomo-settings-root');
   if(!root)return;
 
-  let lastSyncedOutbounds=[],lastSyncedBasics={};
+  let lastSyncedOutbounds=[],lastSyncedBasics={},lastSyncedRules=[];
   let draft={outbounds:[],routingRules:[],basics:defaultBasics()},dirty=false,currentTab='basics',editingOutbound='',editingRule='',outboundMode='form',outboundBusy=false,editingOriginal=null;
   let balancerSubscriptions=[];
   // The shared editor is used by two mutually exclusive balancer tabs.
@@ -64,6 +64,7 @@
     // Remember the editor's baseline. A subscription may refresh while dirty.
     lastSyncedOutbounds=clone(draft.outbounds);
     lastSyncedBasics=clone(draft.basics);
+    lastSyncedRules=clone(draft.routingRules);
     const persistedGroups=new Set(draft.outbounds.filter(x=>x.kind==='group').map(x=>x.name));
     for(const key of activeGroupResults.keys())if(!persistedGroups.has(key))activeGroupResults.delete(key);
     render();
@@ -1855,22 +1856,40 @@
     const button=$('#mihomo-save');button.disabled=true;
     const dialog=openMihomoStatusDialog('save');
     try{
-      // Rules can be changed without sending stale subscription nodes.
-      // Retain full save only for edits to Outbounds or Basics.
-      const routingOnly=JSON.stringify(draft.outbounds)===JSON.stringify(lastSyncedOutbounds)&&
-        JSON.stringify(draft.basics)===JSON.stringify(lastSyncedBasics);
-      const response=routingOnly
-        ?await api('/api/mihomo/rules',{method:'PUT',body:JSON.stringify({routingRules:draft.routingRules})})
-        :await api('/api/mihomo/settings',{method:'PUT',body:JSON.stringify(draft)});
+      // Never submit the full list of subscription nodes for a manual group
+      // edit (e.g. deleting FOREIGN). The server applies only changed IDs
+      // against its live subscription snapshot under one mutex.
+      const same= (a,b)=>JSON.stringify(a)===JSON.stringify(b);
+      const changedOutbounds=!same(draft.outbounds,lastSyncedOutbounds);
+      const changedBasics=!same(draft.basics,lastSyncedBasics);
+      const changedRules=!same(draft.routingRules,lastSyncedRules);
+      const routingOnly=!changedOutbounds&&!changedBasics;
+      let response;
+      if(routingOnly){
+        response=await api('/api/mihomo/rules',{method:'PUT',body:JSON.stringify({routingRules:draft.routingRules})});
+      }else{
+        const previous=new Map(lastSyncedOutbounds.map(item=>[item.id,item]));
+        const current=new Set(draft.outbounds.map(item=>item.id));
+        const deleteIds=lastSyncedOutbounds.filter(item=>!current.has(item.id)).map(item=>item.id);
+        const upserts=draft.outbounds.filter(item=>!previous.has(item.id)||!same(item,previous.get(item.id)));
+        const manualOrder=items=>items.filter(item=>!item.sourceSubscriptionId).map(item=>item.id);
+        const order=manualOrder(draft.outbounds);
+        const changes={upserts,deleteIds};
+        if(!same(order,manualOrder(lastSyncedOutbounds)))changes.order=order;
+        if(changedRules)changes.routingRules=draft.routingRules;
+        if(changedBasics)changes.basics=draft.basics;
+        response=await api('/api/mihomo/editor',{method:'PUT',body:JSON.stringify(changes)});
+      }
       dirty=false;root.classList.remove('mihomo-dirty');
       if(app.state?.state){
-        if(!routingOnly){
-          app.state.state.outbounds=clone(draft.outbounds);
+        if(changedBasics){
           app.state.state.mihomoBasics=clone(draft.basics);
           app.state.state.settings.mode=draft.basics.mode;
           app.state.state.settings.logLevel=draft.basics.logLevel;
         }
-        app.state.state.routingRules=clone(draft.routingRules);
+        if(changedRules)app.state.state.routingRules=clone(draft.routingRules);
+        // Deliberately do NOT replace live Outbounds with a stale draft.
+        // refresh() reloads the canonical subscribed nodes after the save.
       }
       dialog.set('success',muiT('mh.settingsSaved'));
       await refresh();

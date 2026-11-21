@@ -201,6 +201,200 @@ func (a *App) handleMihomoSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// mihomoEditorDelta submits only modified manual Outbounds. Subscription nodes
+// are always read from live state, not stale copies in the browser.
+type mihomoEditorDelta struct {
+	Upserts      []MihomoOutbound     `json:"upserts"`
+	DeleteIDs    []string             `json:"deleteIds"`
+	Order        []string             `json:"order,omitempty"`
+	RoutingRules *[]MihomoRoutingRule `json:"routingRules,omitempty"`
+	Basics       *MihomoBasics        `json:"basics,omitempty"`
+}
+
+func (a *App) handleMihomoEditorChanges(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Message: "method not allowed"})
+		return
+	}
+	var changes mihomoEditorDelta
+	if err := decodeJSON(r, &changes); err != nil {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Message: "invalid editor changes"})
+		return
+	}
+	if err := a.manager.updateMihomoEditorChanges(changes); err != nil {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Message: a.tr(err.Error())})
+		return
+	}
+	if err := a.manager.writeConfig(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, apiResponse{Message: a.tr(err.Error())})
+		return
+	}
+	go a.manager.syncVPNGateTasks()
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: a.tr("Mihomo 分流设置已保存")})
+}
+
+func (m *CoreManager) updateMihomoEditorChanges(changes mihomoEditorDelta) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	current := m.state.Outbounds
+	byID := make(map[string]MihomoOutbound, len(current))
+	for _, item := range current {
+		if item.ID == "" {
+			return fmt.Errorf("Outbound ID отсутствует")
+		}
+		if _, exists := byID[item.ID]; exists {
+			return fmt.Errorf("дублирующийся ID Outbound %q", item.ID)
+		}
+		byID[item.ID] = item
+	}
+	deletions := make(map[string]bool, len(changes.DeleteIDs))
+	for _, id := range changes.DeleteIDs {
+		old, exists := byID[id]
+		if !exists {
+			return fmt.Errorf("Outbound %q уже изменён; обновите страницу", id)
+		}
+		if old.SourceSubscriptionID != "" {
+			return fmt.Errorf("узлы подписок нельзя удалять из редактора исходящих")
+		}
+		for _, sub := range m.state.OutboundSubscriptions {
+			if old.Kind == "group" && sub.Group == old.Name {
+				return fmt.Errorf("балансировщик %q закреплён за подпиской; сначала измените её настройки", old.Name)
+			}
+		}
+		if deletions[id] {
+			return fmt.Errorf("дублирующее удаление Outbound %q", id)
+		}
+		deletions[id] = true
+	}
+	upserts := make(map[string]MihomoOutbound, len(changes.Upserts))
+	changedIDs := make(map[string]bool, len(changes.Upserts))
+	for _, item := range changes.Upserts {
+		if item.ID == "" {
+			return fmt.Errorf("Outbound ID обязателен")
+		}
+		if item.SourceSubscriptionID != "" {
+			return fmt.Errorf("узлы подписок изменяются только в разделе Подписки")
+		}
+		if deletions[item.ID] {
+			return fmt.Errorf("нельзя одновременно изменить и удалить Outbound %q", item.ID)
+		}
+		if _, exists := upserts[item.ID]; exists {
+			return fmt.Errorf("повторное изменение Outbound %q", item.ID)
+		}
+		if old, exists := byID[item.ID]; exists && old.SourceSubscriptionID != "" {
+			return fmt.Errorf("узлы подписок изменяются только в разделе Подписки")
+		}
+		upserts[item.ID] = item
+		changedIDs[item.ID] = true
+	}
+	next := make([]MihomoOutbound, 0, len(current)+len(upserts))
+	for _, item := range current {
+		if deletions[item.ID] {
+			continue
+		}
+		if replacement, exists := upserts[item.ID]; exists {
+			next = append(next, replacement)
+			delete(upserts, item.ID)
+		} else {
+			next = append(next, item)
+		}
+	}
+	if len(changes.Order) > 0 {
+		// Preserve managed node positions; reorder only editable Outbounds.
+		order := make([]MihomoOutbound, 0, len(next)+len(upserts))
+		manual := make(map[string]MihomoOutbound, len(next)+len(upserts))
+		for _, item := range next {
+			if item.SourceSubscriptionID == "" {
+				manual[item.ID] = item
+			}
+		}
+		for id, item := range upserts {
+			manual[id] = item
+		}
+		seen := make(map[string]bool)
+		for _, id := range changes.Order {
+			item, exists := manual[id]
+			if !exists || seen[id] {
+				return fmt.Errorf("список исходящих изменился; обновите страницу")
+			}
+			order = append(order, item)
+			seen[id] = true
+		}
+		for _, item := range next {
+			if item.SourceSubscriptionID == "" && !seen[item.ID] {
+				order = append(order, item)
+				seen[item.ID] = true
+			}
+		}
+		for id, item := range upserts {
+			if !seen[id] {
+				order = append(order, item)
+				seen[id] = true
+			}
+		}
+		index := 0
+		for i := range next {
+			if next[i].SourceSubscriptionID == "" {
+				next[i] = order[index]
+				index++
+			}
+		}
+		next = append(next, order[index:]...)
+	} else {
+		for _, item := range changes.Upserts {
+			if _, exists := byID[item.ID]; !exists {
+				next = append(next, item)
+			}
+		}
+	}
+	// Rebuild automatic subscription memberships from the live state.
+	materialized, err := materializeGroupSubscriptions(m.state, next)
+	if err != nil {
+		return err
+	}
+	outbounds, err := normalizeMihomoOutbounds(materialized)
+	if err != nil {
+		return err
+	}
+	// Never rewrite untouched Outbounds. Native parsing can normalize an
+	// unrelated group even when only FOREIGN was deleted; preserve its exact
+	// live representation. Subscription-managed nodes are always untouched.
+	for i, item := range outbounds {
+		if !changedIDs[item.ID] {
+			if original, ok := byID[item.ID]; ok {
+				outbounds[i] = original
+			}
+		}
+	}
+	rules := m.state.RoutingRules
+	if changes.RoutingRules != nil {
+		rules = *changes.RoutingRules
+	}
+	rules, err = normalizeMihomoRoutingRules(rules, outbounds)
+	if err != nil {
+		return err
+	}
+	basics := effectiveMihomoBasics(m.state)
+	if changes.Basics != nil {
+		basics = *changes.Basics
+	}
+	basics, err = normalizeMihomoBasics(basics)
+	if err != nil {
+		return err
+	}
+	if _, _, _, err = compileMihomoBasics(basics, outbounds, rules); err != nil {
+		return err
+	}
+	previous := m.state
+	m.state.Outbounds, m.state.RoutingRules, m.state.MihomoBasics = outbounds, rules, &basics
+	m.state.Settings.Mode, m.state.Settings.LogLevel = basics.Mode, basics.LogLevel
+	if err = m.saveLocked(); err != nil {
+		m.state = previous
+		return err
+	}
+	return nil
+}
+
 // Routing-only saves must not merge Outbounds: a subscription can refresh
 // while the rule editor is open. Validate against the live state under mu.
 type mihomoRulesPayload struct {

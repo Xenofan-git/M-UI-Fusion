@@ -15,6 +15,6 @@ assert(render.includes('paintActiveGroupResults()'), 'current outbound still upd
 assert(!render.includes('groupResultLabel(item.name)'), 'volatile current name must not invalidate structural cache');
 assert(!render.includes('fmt(app.state?.state?.outboundTraffic'), 'volatile traffic must not invalidate structural cache');
 assert(css.includes('width:20px;height:15px'), 'flag should be smaller');
-assert(html.includes('static/mihomo-settings.js?v=117'));
+assert(html.includes('static/mihomo-settings.js?v=118'));
 assert(html.includes('static/mihomo-settings.css?v=117'));
 console.log('PASS structural redraw cache, volatile counters in-place, 20x15 flag and asset versions');

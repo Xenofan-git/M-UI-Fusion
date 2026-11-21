@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert.ok(html.includes('static/mihomo-settings.js?v=117'));
+assert.ok(html.includes('static/mihomo-settings.js?v=118'));
 assert.ok(source.includes('lastSyncedOutbounds=clone(draft.outbounds)'));
 assert.ok(source.includes('lastSyncedBasics=clone(draft.basics)'));
 const start=source.indexOf('  async function saveSettings(){');
@@ -17,18 +17,27 @@ const rules=[
   {id:'geoip',type:'GEOIP',payload:'RU',target:'Russia'},
   {id:'match',type:'MATCH',target:'FOREIGN'}
 ];
-async function scenario({changeRules=false,changeOutbounds=false,changeBasics=false,reject=false}){
- const draft={outbounds:[copy(oldNode)],routingRules:copy(rules),basics:{mode:'rule',ipv6:true}};
- const lastSyncedOutbounds=copy(draft.outbounds),lastSyncedBasics=copy(draft.basics);
+async function scenario({changeRules=false,changeOutbounds=false,deleteForeign=false,changeBasics=false,reorder=false,reject=false}){
+ const foreign={id:'group-foreign',name:'FOREIGN',kind:'group',type:'url-test',proxies:[]};
+ const draft={outbounds:[copy(oldNode),copy(foreign)],routingRules:copy(rules),basics:{mode:'rule',ipv6:true}};
+ const lastSyncedOutbounds=copy(draft.outbounds),lastSyncedBasics=copy(draft.basics),lastSyncedRules=copy(draft.routingRules);
  // Background refresh replaces the node but does NOT change the open draft.
- const state={outbounds:[copy(freshNode)],routingRules:copy(rules),mihomoBasics:{mode:'rule',ipv6:true},settings:{mode:'rule',logLevel:'info'}};
+ const state={outbounds:[copy(freshNode),copy(foreign)],routingRules:copy(rules),mihomoBasics:{mode:'rule',ipv6:true},settings:{mode:'rule',logLevel:'info'}};
  if(changeRules)draft.routingRules.splice(1,1);
  if(changeOutbounds)draft.outbounds.push({id:'manual',name:'MyManual',kind:'proxy'});
+ if(deleteForeign)draft.outbounds=draft.outbounds.filter(item=>item.id!=='group-foreign');
+ if(reorder){
+   const second={id:'group-second',name:'SECOND',kind:'group',type:'url-test',proxies:[]};
+   draft.outbounds.push(copy(second));
+   lastSyncedOutbounds.push(copy(second));
+   state.outbounds.push(copy(second));
+   draft.outbounds.unshift(draft.outbounds.pop());
+ }
  if(changeBasics)draft.basics.ipv6=false;
  const requests=[],messages=[],classes=[],dialogEvents=[];
  const button={disabled:false};
  const scope={
-   draft,lastSyncedOutbounds,lastSyncedBasics,dirty:true,mihomoActionBusy:false,
+   draft,lastSyncedOutbounds,lastSyncedBasics,lastSyncedRules,dirty:true,mihomoActionBusy:false,
    openMihomoStatusDialog:(kind)=>({set:(phase,message)=>dialogEvents.push({kind,phase,message})}),
    app:{state:{state}},root:{classList:{remove:v=>classes.push(v)}},
    clone:copy,
@@ -57,13 +66,30 @@ async function scenario({changeRules=false,changeOutbounds=false,changeBasics=fa
  assert.equal(only.state.routingRules.length,2);
  assert.equal(only.scope.dirty,false);
  const edited=await scenario({changeOutbounds:true});
- assert.equal(edited.calls[0].url,'/api/mihomo/settings','outbound changes still use protected full-save API');
+ assert.equal(edited.calls[0].url,'/api/mihomo/editor','outbound changes must use delta, not stale full save');
+ assert.deepEqual(edited.calls[0].body.upserts.map(x=>x.id),['manual']);
+ assert.deepEqual(edited.calls[0].body.deleteIds,[]);
+ assert.ok(!JSON.stringify(edited.calls[0].body).includes('old-node'),'old subscription nodes must not be uploaded');
+ assert.equal(edited.state.outbounds[0].id,'fresh-node');
+ const deleted=await scenario({deleteForeign:true});
+ assert.equal(deleted.calls[0].url,'/api/mihomo/editor','unrelated FOREIGN removal must use delta API');
+ assert.deepEqual(deleted.calls[0].body.deleteIds,['group-foreign']);
+ assert.deepEqual(deleted.calls[0].body.upserts,[]);
+ assert.ok(!JSON.stringify(deleted.calls[0].body).includes('old-node'));
+ assert.equal(deleted.state.outbounds[0].id,'fresh-node');
  const basics=await scenario({changeBasics:true});
- assert.equal(basics.calls[0].url,'/api/mihomo/settings','Basics changes still use protected full-save API');
+ assert.equal(basics.calls[0].url,'/api/mihomo/editor','Basics changes must not carry stale subscription nodes');
+ assert.equal(basics.calls[0].body.basics.ipv6,false);
+ assert.deepEqual(basics.calls[0].body.upserts,[]);
+ const reordered=await scenario({reorder:true});
+ assert.deepEqual(reordered.calls[0].body.order,['group-second','group-foreign']);
+ const combined=await scenario({changeRules:true,deleteForeign:true});
+ assert.equal(combined.calls[0].body.routingRules.length,2);
+ assert.deepEqual(combined.calls[0].body.deleteIds,['group-foreign']);
  const rejected=await scenario({changeRules:true,reject:true});
  assert.equal(rejected.scope.dirty,true,'rejected rules must stay editable');
  assert.equal(rejected.state.routingRules.length,3,'server rejection must not fake a save');
  assert.equal(rejected.dialogEvents[0].phase,'error');
  assert.equal(rejected.messages.length,0,'errors should use centered dialog, not toast');
- console.log('PASS: rule delete uses isolated rules-only request despite changed subscription nodes; full-save and error behavior preserved');
+ console.log('PASS: rules-only and manual FOREIGN deletion, add, reorder, Basics and combined edits never transmit stale subscription nodes; errors preserve draft');
 })().catch(e=>{console.error(e);process.exitCode=1});

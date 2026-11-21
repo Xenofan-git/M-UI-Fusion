@@ -1038,6 +1038,7 @@ func (a *App) panelRoutes(serveSubscriptions bool) http.Handler {
 	mux.HandleFunc("/api/multi-control/", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/mihomo/settings", a.auth(a.handleMihomoSettings))
 	mux.HandleFunc("/api/mihomo/rules", a.auth(a.handleMihomoRoutingRules))
+	mux.HandleFunc("/api/mihomo/editor", a.auth(a.handleMihomoEditorChanges))
 	mux.HandleFunc("/api/mihomo/subscriptions", a.auth(a.handleOutboundSubscriptions))
 	mux.HandleFunc("/api/mihomo/subscriptions/", a.auth(a.handleOutboundSubscriptionAction))
 	mux.HandleFunc("/api/mihomo/outbound/parse", a.auth(a.handleMihomoOutboundYAML))

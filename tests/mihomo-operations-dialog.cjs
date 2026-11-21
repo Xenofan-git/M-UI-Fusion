@@ -22,7 +22,7 @@ assert(css.includes('.mui-mihomo-status-backdrop[data-phase="pending"]'));
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="error"]'));
 assert(css.includes('background:linear-gradient(160deg,#009B77,#08795E)'));
 for(const asset of ['mihomo-settings.js','mihomo-settings.css','i18n.js','i18n-locales.js'])
- assert(html.includes('static/'+asset+'?v='+(asset.startsWith('mihomo-settings.')?'117':'116')),asset+' cache version');
+ assert(html.includes('static/'+asset+'?v='+(asset==='mihomo-settings.js'?'118':asset==='mihomo-settings.css'?'117':'116')),asset+' cache version');
 const keys=['mh.operationSaving','mh.operationSaveTitle','mh.operationRestarting','mh.operationRestartTitle','mh.operationFailureTitle','mh.operationRestartSuccess'];
 for(const key of keys){
  assert(cn.includes("'"+key+"':"),'missing base '+key);

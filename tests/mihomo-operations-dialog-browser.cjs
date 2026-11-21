@@ -5,7 +5,7 @@ const html=fs.readFileSync('web/index.html','utf8');
 const sourceStart=source.indexOf('  // Reuse the existing centered M-UI dialog design');
 const sourceEnd=source.indexOf('\n  ensureModals();',sourceStart);
 assert(sourceStart>=0&&sourceEnd>sourceStart,'status dialog code missing');
-assert(html.includes('static/mihomo-settings.js?v=117')&&html.includes('static/mihomo-settings.css?v=117'));
+assert(html.includes('static/mihomo-settings.js?v=118')&&html.includes('static/mihomo-settings.css?v=117'));
 const snippet=source.slice(sourceStart,sourceEnd)+'\nwindow.__ops={saveSettings,restartMihomoFromSettings};';
 const inlineCSS=[...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
 const css=[inlineCSS,fs.readFileSync('web/mihomo-settings.css','utf8')].join('\n');
@@ -29,7 +29,7 @@ async function launchTest(browser,theme,width){
    window.root=document.querySelector('#mihomo-settings-root');
    window.dirty=true;
    window.draft={outbounds:[],routingRules:[{id:'match',type:'MATCH',target:'DIRECT'}],basics:{mode:'rule'}};
-   window.lastSyncedOutbounds=[];window.lastSyncedBasics={mode:'rule'};
+   window.lastSyncedOutbounds=[];window.lastSyncedBasics={mode:'rule'};window.lastSyncedRules=[];
    window.clone=data=>JSON.parse(JSON.stringify(data));
    window.app={state:{state:{outbounds:[],routingRules:[],mihomoBasics:{},settings:{}}}};
    window.muiT=key=>trans[key]||key;
