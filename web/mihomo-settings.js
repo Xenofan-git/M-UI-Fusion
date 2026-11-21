@@ -35,6 +35,7 @@
   const root=$('#mihomo-settings-root');
   if(!root)return;
 
+  let lastSyncedOutbounds=[],lastSyncedBasics={};
   let draft={outbounds:[],routingRules:[],basics:defaultBasics()},dirty=false,currentTab='basics',editingOutbound='',editingRule='',outboundMode='form',outboundBusy=false,editingOriginal=null;
   let balancerSubscriptions=[];
   // The shared editor is used by two mutually exclusive balancer tabs.
@@ -57,6 +58,9 @@
     draft={outbounds:clone(state.outbounds||[])||[],routingRules:clone(state.routingRules||[])||[],basics:{...defaultBasics(),...clone(state.mihomoBasics||{}),mode:state.settings?.mode||'rule',logLevel:state.settings?.logLevel||'info'}};
     fillBasicsForm();
     ensureFinalMatch();
+    // Remember the editor's baseline. A subscription may refresh while dirty.
+    lastSyncedOutbounds=clone(draft.outbounds);
+    lastSyncedBasics=clone(draft.basics);
     const persistedGroups=new Set(draft.outbounds.filter(x=>x.kind==='group').map(x=>x.name));
     for(const key of activeGroupResults.keys())if(!persistedGroups.has(key))activeGroupResults.delete(key);
     render();
@@ -1723,9 +1727,23 @@
     for(const field of $$('[data-basics-list]'))commitBasicsTags(field);
     const button=$('#mihomo-save');button.disabled=true;
     try{
-      const response=await api('/api/mihomo/settings',{method:'PUT',body:JSON.stringify(draft)});
+      // Rules can be changed without sending stale subscription nodes.
+      // Retain full save only for edits to Outbounds or Basics.
+      const routingOnly=JSON.stringify(draft.outbounds)===JSON.stringify(lastSyncedOutbounds)&&
+        JSON.stringify(draft.basics)===JSON.stringify(lastSyncedBasics);
+      const response=routingOnly
+        ?await api('/api/mihomo/rules',{method:'PUT',body:JSON.stringify({routingRules:draft.routingRules})})
+        :await api('/api/mihomo/settings',{method:'PUT',body:JSON.stringify(draft)});
       dirty=false;root.classList.remove('mihomo-dirty');
-      if(app.state?.state){app.state.state.outbounds=clone(draft.outbounds);app.state.state.routingRules=clone(draft.routingRules);app.state.state.mihomoBasics=clone(draft.basics);app.state.state.settings.mode=draft.basics.mode;app.state.state.settings.logLevel=draft.basics.logLevel;}
+      if(app.state?.state){
+        if(!routingOnly){
+          app.state.state.outbounds=clone(draft.outbounds);
+          app.state.state.mihomoBasics=clone(draft.basics);
+          app.state.state.settings.mode=draft.basics.mode;
+          app.state.state.settings.logLevel=draft.basics.logLevel;
+        }
+        app.state.state.routingRules=clone(draft.routingRules);
+      }
       toast(response.message||muiT('mh.settingsSaved'));await refresh();
     }catch(error){toast(error.message,true);}finally{syncButtons();}
   }

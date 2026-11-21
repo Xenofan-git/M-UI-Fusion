@@ -201,6 +201,55 @@ func (a *App) handleMihomoSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Routing-only saves must not merge Outbounds: a subscription can refresh
+// while the rule editor is open. Validate against the live state under mu.
+type mihomoRulesPayload struct {
+	RoutingRules *[]MihomoRoutingRule `json:"routingRules"`
+}
+
+func (a *App) handleMihomoRoutingRules(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Message: "method not allowed"})
+		return
+	}
+	var input mihomoRulesPayload
+	if err := decodeJSON(r, &input); err != nil || input.RoutingRules == nil {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Message: "routingRules is required"})
+		return
+	}
+	if err := a.manager.updateMihomoRoutingRules(*input.RoutingRules); err != nil {
+		writeJSON(w, http.StatusBadRequest, apiResponse{Message: a.tr(err.Error())})
+		return
+	}
+	if err := a.manager.writeConfig(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, apiResponse{Message: a.tr(err.Error())})
+		return
+	}
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: a.tr("Mihomo 分流设置已保存")})
+}
+
+// updateMihomoRoutingRules never accepts subscription nodes, balancers,
+// Basics, or other mutable settings in its input.
+func (m *CoreManager) updateMihomoRoutingRules(input []MihomoRoutingRule) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rules, err := normalizeMihomoRoutingRules(input, m.state.Outbounds)
+	if err != nil {
+		return err
+	}
+	basics := effectiveMihomoBasics(m.state)
+	if _, _, _, err := compileMihomoBasics(basics, m.state.Outbounds, rules); err != nil {
+		return err
+	}
+	previous := m.state
+	m.state.RoutingRules = rules
+	if err := m.saveLocked(); err != nil {
+		m.state = previous
+		return err
+	}
+	return nil
+}
+
 func (m *CoreManager) updateMihomoSettings(input mihomoSettingsPayload) error {
 	m.mu.Lock()
 	sourceState := m.state
