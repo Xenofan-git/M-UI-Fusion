@@ -80,11 +80,24 @@
       const title=make('div','outsub-card-head'),block=make('div','outsub-card-title');
       block.appendChild(make('h3','',sub.name));
       title.appendChild(block);
-      title.appendChild(make('span','outsub-pill'+(sub.enabled?'':' off'),sub.enabled?'Автообновление':'Приостановлено'));
+      const statusBadge=make('span','outsub-pill'+(sub.enabled?'':' off'));
+      if(sub.enabled){
+        const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        icon.setAttribute('viewBox','0 0 24 24');
+        icon.setAttribute('aria-hidden','true');
+        icon.classList.add('outsub-refresh-icon');
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d','M20 11a8 8 0 0 0-14.9-4M4 4v5h5M4 13a8 8 0 0 0 14.9 4M20 20v-5h-5');
+        icon.appendChild(path);
+        statusBadge.appendChild(icon);
+      }
+      statusBadge.appendChild(make('span','',sub.enabled?'Автообновление':'Приостановлено'));
+      title.appendChild(statusBadge);
       info.appendChild(title);
       info.appendChild(make('p','outsub-muted outsub-card-meta','Балансировщик: '+(sub.group||'не выбран')+' · интервал '+sub.intervalMinutes+' мин'));
       const stats=make('div','outsub-stat');
-      stats.appendChild(make('span','',String(sub.nodeCount||0)+' узлов · последнее обновление '+date(sub.lastUpdated)));
+      stats.appendChild(make('span','outsub-count-badge',String(sub.nodeCount||0)+' узлов'));
+      stats.appendChild(make('span','outsub-last-updated','Обновлено '+date(sub.lastUpdated)));
       info.appendChild(stats);
       if(sub.lastError){
         const problem=make('div','outsub-error','Ошибка: '+sub.lastError);

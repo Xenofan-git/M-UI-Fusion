@@ -251,3 +251,76 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 .outsub-dialog .outsub-country-chip .outsub-flag-svg{
   width:22px;height:16px;
 }
+
+
+/* Dark subscription information cards: consistent with M-UI Fusion's
+   near-black panels. Keep the action buttons beneath the card untouched. */
+#outsub-root .outsub-info-frame{
+  background:#0B0F14 !important;
+  background-image:none !important;
+  color:#D6DBE3;
+  border:1px solid #343144 !important;
+  border-radius:14px;
+  box-shadow:0 2px 9px rgba(0,0,0,.11);
+  transition:border-color .16s ease,box-shadow .16s ease;
+}
+#outsub-root .outsub-info-frame:hover{
+  background:#0B0F14 !important;
+  border-color:#535367 !important;
+  box-shadow:0 3px 13px rgba(0,0,0,.16);
+}
+#outsub-root .outsub-card h3{
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+}
+#outsub-root .outsub-info-frame .outsub-card-meta{
+  color:#D6DBE3 !important;
+  -webkit-text-fill-color:#D6DBE3 !important;
+  overflow-wrap:anywhere;
+}
+#outsub-root .outsub-card-head{gap:8px 12px}
+#outsub-root .outsub-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 8px;
+  background:#15221F !important;
+  border:1px solid #285348;
+  border-radius:8px;
+  color:#D6DBE3 !important;
+  -webkit-text-fill-color:#D6DBE3 !important;
+  font-size:11px;
+}
+#outsub-root .outsub-pill.off{
+  background:#181A21 !important;
+  border-color:#343144;
+  color:#A1ADBC !important;
+  -webkit-text-fill-color:#A1ADBC !important;
+}
+#outsub-root .outsub-refresh-icon{
+  width:14px;height:14px;flex:none;
+  fill:none;stroke:#009B77;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+#outsub-root .outsub-stat{
+  flex-direction:row;align-items:center;gap:8px;
+  flex-wrap:wrap;
+}
+#outsub-root .outsub-count-badge{
+  display:inline-flex;align-items:center;
+  padding:4px 8px;
+  border:1px solid #303841;
+  border-radius:7px;
+  background:#161B23;
+  color:#D6DBE3 !important;
+  -webkit-text-fill-color:#D6DBE3 !important;
+  font-size:12px;font-weight:600;
+  white-space:nowrap;
+}
+#outsub-root .outsub-last-updated{
+  color:#A1ADBC !important;
+  -webkit-text-fill-color:#A1ADBC !important;
+  font-size:12px;
+  overflow-wrap:anywhere;
+}
+@media(prefers-reduced-motion:reduce){
+  #outsub-root .outsub-info-frame{transition:none}
+}
