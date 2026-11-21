@@ -928,7 +928,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   min-width:0;
 }
 
-/* v1.0.10: rule priority, drag handles and on/off switches. */
+/* v1.1.0: rule priority, drag handles and on/off switches. */
 .mihomo-rule-order{font-variant-numeric:tabular-nums}
 .mihomo-rule-off>td:not(:last-child){opacity:.54}
 .mihomo-rule-off .mihomo-pill{filter:grayscale(.45)}
