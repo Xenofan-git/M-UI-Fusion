@@ -523,3 +523,46 @@ html body :is(#mihomo-rule-modal,#mihomo-outbound-modal,#vpngate-modal) .modal-f
   filter: none !important;
   text-shadow: none !important;
 }
+
+/* M-UI Fusion: Save inside the Mihomo action bar is a light, legible action
+   across ALL skins. Theme hover/focus/disabled rules previously painted its
+   surface near black while leaving text dark (and the save dot visible).
+   Keep the disabled state visibly muted, but never unreadable. */
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save {
+  --lb-fill: #f4f1e9 !important;
+  --lb-text: #243440 !important;
+  background: #f4f1e9 !important;
+  background-image: none !important;
+  border: 1px solid #d5d8dc !important;
+  color: #243440 !important;
+  -webkit-text-fill-color: #243440 !important;
+  text-shadow: none !important;
+  filter: none !important;
+  box-shadow: 0 2px 8px rgb(0 0 0 / .12) !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save:is(:hover,:focus-visible):not(:disabled) {
+  --lb-fill: #ffffff !important;
+  --lb-text: #182e2a !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #009B77 !important;
+  color: #182e2a !important;
+  -webkit-text-fill-color: #182e2a !important;
+  opacity: 1 !important;
+  filter: none !important;
+  box-shadow: 0 0 0 1px rgb(0 155 119 / .22), 0 3px 10px rgb(0 0 0 / .12) !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled,
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled:is(:hover,:focus-visible) {
+  --lb-fill: #e8e6e1 !important;
+  --lb-text: #303941 !important;
+  background: #e8e6e1 !important;
+  background-image: none !important;
+  border-color: #c9cbcc !important;
+  color: #303941 !important;
+  -webkit-text-fill-color: #303941 !important;
+  opacity: .76 !important;
+  filter: none !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}

@@ -9,11 +9,11 @@ const i18n=read('web/i18n.js');
 const locales=read('web/i18n-locales.js');
 const css=read('web/color-skins.css');
 const keys=[
- 'static/color-skins.css?v=108',
- 'static/mihomo-settings.css?v=110',
- 'static/mihomo-settings.js?v=110',
- 'static/i18n.js?v=110',
- 'static/i18n-locales.js?v=109'
+ 'static/color-skins.css?v=113',
+ 'static/mihomo-settings.css?v=113',
+ 'static/mihomo-settings.js?v=113',
+ 'static/i18n.js?v=113',
+ 'static/i18n-locales.js?v=113'
 ];
 for(const asset of keys)assert.ok(html.includes(asset),'missing cache-busting for '+asset);
 assert.equal((js.match(/data-i18n="mh.applyToDraft">Apply<\/button>/g)||[]).length,2,'rule and outbound editors must show Apply');

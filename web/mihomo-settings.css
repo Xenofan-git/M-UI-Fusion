@@ -851,7 +851,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 /* Compact help badges in the routing-rule table and editor. The tooltip is
    mounted on document.body to avoid clipping inside scrollable tables/modals. */
 .mihomo-rule-type-with-help,.mihomo-rule-editor-type-label,.mihomo-no-resolve-row{
-  display:inline-flex;align-items:center;justify-content:center;gap:7px;max-width:100%;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;max-width:100%;
 }
 .mihomo-rule-editor-type-label,.mihomo-no-resolve-row{justify-content:flex-start;flex-wrap:wrap;}
 .mihomo-no-resolve-row .mihomo-check{min-width:0;flex:0 1 auto}
@@ -934,12 +934,12 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .mihomo-rule-off .mihomo-pill{filter:grayscale(.45)}
 .mihomo-rule-default>td{border-top:2px solid var(--line-strong)}
 .mihomo-rule-drop-target>td{background:var(--surface-hover)!important;box-shadow:inset 0 2px var(--teal)}
-.mihomo-rule-switch{position:relative;display:inline-flex;flex:none;width:39px;height:23px;align-items:center;cursor:pointer;vertical-align:middle}
+.mihomo-rule-switch{position:relative;display:inline-flex;flex:none;width:34px;height:20px;align-items:center;cursor:pointer;vertical-align:middle}
 .mihomo-rule-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:inherit}
-.mihomo-rule-switch-track{display:block;width:100%;height:22px;border-radius:99px;background:var(--line-strong);border:1px solid var(--line-strong);transition:background .16s,border-color .16s;pointer-events:none}
-.mihomo-rule-switch-track::after{content:"";display:block;margin:2px;width:16px;height:16px;background:var(--surface);border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .16s}
+.mihomo-rule-switch-track{display:block;width:100%;height:19px;border-radius:99px;background:var(--line-strong);border:1px solid var(--line-strong);transition:background .16s,border-color .16s;pointer-events:none}
+.mihomo-rule-switch-track::after{content:"";display:block;margin:2px;width:13px;height:13px;background:var(--surface);border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .16s}
 .mihomo-rule-switch input:checked+.mihomo-rule-switch-track{background:var(--skin-accent,#009B77);border-color:var(--skin-accent,#009B77)}
-.mihomo-rule-switch input:checked+.mihomo-rule-switch-track::after{transform:translateX(16px);background:#fff}
+.mihomo-rule-switch input:checked+.mihomo-rule-switch-track::after{transform:translateX(15px);background:#fff}
 .mihomo-rule-switch input:focus-visible+.mihomo-rule-switch-track{outline:2px solid var(--teal);outline-offset:3px}
 .mihomo-rule-switch:has(input:disabled){opacity:.65;cursor:not-allowed}
 .mihomo-rule-drag{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;cursor:grab;color:var(--text);user-select:none;touch-action:none;font-size:22px;border:1px dashed var(--line-strong)}
@@ -950,3 +950,96 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
    Otherwise the disabled down arrow can cover the enabled up arrow. */
 .mihomo-table .mihomo-actions>*{flex-shrink:0}
 .mihomo-table td:last-child{min-width:220px}
+
+
+/* Work-in-progress: move priority handles into the # column, before the
+   visible order number. Buttons and switches stay in the Actions column. */
+.mihomo-table td.mihomo-rule-order{white-space:nowrap;padding:8px 9px;min-width:75px}
+.mihomo-rule-priority-cell{display:flex;align-items:center;justify-content:center;gap:7px}
+.mihomo-rule-priority-number{min-width:1.3ch;font-variant-numeric:tabular-nums;text-align:right}
+.mihomo-rule-priority-cell .mihomo-rule-drag{
+  flex:none;width:28px;height:30px;color:#fff;border-color:var(--line-strong);
+  background:transparent;
+}
+.mihomo-rule-priority-cell .mihomo-rule-drag:hover{
+  color:#fff;background:var(--surface-hover);border-color:var(--teal);
+}
+.mihomo-rule-priority-cell .mihomo-rule-locked{flex:none;height:30px}
+
+
+/* Routing priority drag: the real row occupies the proposed position
+   before release, with translucent highlighting and a small cursor ghost. */
+.mihomo-rule-previewing .mihomo-rule-preview>td{
+  background:color-mix(in srgb,var(--skin-accent,#009B77) 14%,var(--surface,#1a2333))!important;
+  opacity:.72!important;
+  box-shadow:inset 0 2px var(--skin-accent,#009B77),inset 0 -2px var(--skin-accent,#009B77);
+  transition:background-color .12s ease,opacity .12s ease;
+}
+.mihomo-rule-previewing .mihomo-rule-preview .mihomo-rule-drag{
+  cursor:grabbing;border-color:var(--skin-accent,#009B77);
+}
+.mihomo-rule-drag-ghost{
+  position:fixed;left:0;top:0;z-index:9999;pointer-events:none;
+  display:flex;align-items:center;gap:12px;max-width:360px;min-width:220px;
+  padding:12px 16px;border-radius:12px;border:1px solid var(--skin-accent,#009B77);
+  background:var(--surface,#1a2333);color:var(--text-strong,#fff);
+  box-shadow:0 10px 32px rgba(0,0,0,.3);opacity:.87;
+  font-size:13px;font-weight:500;
+}
+.mihomo-rule-drag-ghost strong{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mihomo-rule-drag-ghost span{color:var(--muted,#ccc);flex:none}
+@media(prefers-reduced-motion:reduce){
+  .mihomo-rule-previewing .mihomo-rule-preview>td{transition:none}
+}
+
+
+/* Every routing-rule (!) badge is muted in its resting state across skins.
+   Only the glyph becomes pure white when hovered/focused/pinned. */
+html body .mihomo-rule-help-trigger{
+  background:var(--surface-subtle)!important;
+  border-color:var(--line)!important;
+  color:#8793a5!important;
+  -webkit-text-fill-color:#8793a5!important;
+  box-shadow:none!important;
+}
+html body .mihomo-rule-help-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  background:var(--surface-subtle)!important;
+  border-color:var(--line)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  box-shadow:none!important;
+}
+html body .mihomo-rule-help-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
+  content:none!important;
+}
+/* Theme resets must never paint the native checkbox over our custom track.
+   MATCH is locked (input disabled) but must look like the other green toggles. */
+html body .mihomo-rule-switch > input[type="checkbox"]{
+  appearance:none!important;-webkit-appearance:none!important;
+  position:absolute!important;inset:0!important;
+  width:100%!important;height:100%!important;
+  opacity:0!important;z-index:1;
+  margin:0!important;padding:0!important;
+  border:0!important;background:transparent!important;
+  box-shadow:none!important;outline:0!important;
+}
+html body .mihomo-rule-switch:has(input:disabled){opacity:1;cursor:not-allowed}
+
+.mihomo-rule-priority-cell .mihomo-rule-drag{touch-action:none;user-select:none;-webkit-user-select:none}
+.mihomo-rule-preview{pointer-events:none}
+
+
+/* Rule management: small green switches are anchored at the far RIGHT edge
+   of the Settings column, after priority arrows, edit and delete controls.
+   MATCH's locked switch occupies the very same edge as other rows. */
+.mihomo-table .mihomo-actions.mihomo-rule-controls{
+  justify-content:flex-end;
+  gap:7px;
+  min-width:255px;
+}
+.mihomo-table .mihomo-actions.mihomo-rule-controls>.mihomo-rule-switch{
+  margin-left:auto;
+}
+.mihomo-table .mihomo-actions.mihomo-rule-controls .mihomo-rule-switch-track{
+  box-sizing:border-box;
+}

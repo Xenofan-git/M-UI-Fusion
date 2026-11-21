@@ -50,16 +50,33 @@ source,
    const types=page.locator('#mihomo-rule-table [data-mihomo-help=type]');
    if(await types.count()!==4)throw Error('missing type info buttons for builtins and rows');
    const geo=page.locator('#mihomo-rule-table [data-mihomo-rule-type=GEOIP]');
+   const badgeBefore=await geo.evaluate(el=>({
+     bg:getComputedStyle(el).backgroundColor,
+     fg:getComputedStyle(el).color,
+     fill:getComputedStyle(el).webkitTextFillColor
+   }));
+   if(badgeBefore.fg!=='rgb(135, 147, 165)'||badgeBefore.fill!==badgeBefore.fg)
+     throw Error('resting (!) mark not subdued: '+JSON.stringify(badgeBefore));
    await geo.hover();
+   const badgeOnHover=await geo.evaluate(el=>({
+     bg:getComputedStyle(el).backgroundColor,
+     fg:getComputedStyle(el).color
+   }));
+   if(badgeOnHover.bg!==badgeBefore.bg)throw Error('hover filled the help circle: '+JSON.stringify({badgeBefore,badgeOnHover}));
+   if(badgeOnHover.fg!=='rgb(255, 255, 255)')throw Error('only the exclamation mark should become white: '+JSON.stringify(badgeOnHover));
    if(await popup.isHidden()||!(await getText()).includes('Страна IP'))throw Error('GEOIP hover tooltip missing');
    const rect=await popup.boundingBox();if(!rect||rect.x<0||rect.x+rect.width>width+2)throw Error('tooltip clipped or outside viewport');
    const list=page.locator('#mihomo-rule-table [data-mihomo-rule-type=LIST]');
    await list.hover();
    if(!(await getText()).includes('Списки GeoSite'))throw Error('List help incorrect');
    const ruleRow=page.locator('#mihomo-rule-table tbody tr').nth(2);
-   if(!(await ruleRow.textContent()).includes('СПИСКИ'))throw Error('List label not uppercase');
+   if(!(await ruleRow.textContent()).includes('GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP'))throw Error('universal GeoSite list label not visible');
    const nr=page.locator('#mihomo-rule-table [data-mihomo-help=no-resolve]');
+   const nrBefore=await nr.evaluate(el=>getComputedStyle(el).color);
+   if(nrBefore!=='rgb(135, 147, 165)')throw Error('No-Resolve info badge is not muted: '+nrBefore);
    await nr.hover();
+   if((await nr.evaluate(el=>getComputedStyle(el).color))!=='rgb(255, 255, 255)')
+     throw Error('No-Resolve exclamation did not turn white');
    if(!(await getText()).includes('не запускает DNS'))throw Error('No-Resolve tooltip missing');
    if(!(await nr.locator('xpath=..').textContent()).includes('No-Resolve'))throw Error('Badge not capitalized');
    await nr.click();
@@ -72,7 +89,7 @@ source,
    await page.keyboard.press('Escape');
    if(!(await popup.isHidden()))throw Error('Escape did not dismiss tooltip');
    const selected=page.locator('#mihomo-rule-modal select[name=type] option[value=LIST]');
-   if((await selected.textContent())!=='СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP')throw Error('selector not uppercase');
+   if((await selected.textContent())!=='GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP')throw Error('selector not uppercase');
    await page.locator('#mihomo-rule-advanced').evaluate(element=>{element.open=true});
    const formHelp=page.locator('#mihomo-no-resolve-field [data-mihomo-help=no-resolve]');
    const checkbox=page.locator('#mihomo-no-resolve-field input[name=noResolve]');

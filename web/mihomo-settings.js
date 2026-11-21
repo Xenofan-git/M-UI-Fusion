@@ -171,6 +171,15 @@
       return;
     }
     const meta=currentNodeMeta(name,group.current);
+    // Reuse the loaded SVG on each 9-second health refresh. Replacing <img>
+    // with the very same URL repeatedly makes the flag visibly blink.
+    const previousFlag=node.querySelector(':scope > img.mihomo-current-country-flag');
+    const previousLabel=node.querySelector(':scope > .mihomo-current-country-label');
+    if(previousFlag&&previousLabel&&previousFlag.getAttribute('aria-label')===meta.code){
+      if(previousLabel.textContent!==meta.label)previousLabel.textContent=meta.label;
+      node.title=meta.original+(groupTestNote(name)?'\n'+groupTestNote(name):'');
+      return;
+    }
     const icon=window.MUICountryFlags?.createIcon?.(meta.code);
     if(icon){
       icon.classList.add('mihomo-current-country-flag');
@@ -220,6 +229,17 @@
   // Mihomo may switch URLTest/Fallback choices without user interaction.
   setInterval(()=>{if(['balancers','subscriptions'].includes(currentTab))refreshActiveGroups();},9000);
   function outboundSupportsDelay(item){return !['reject','reject-drop'].includes(String(item.type||'').toLowerCase());}
+  // Delay checks query the running Mihomo configuration, not the unsaved
+  // draft. Keep saved nodes clickable even if unrelated fields are dirty.
+  function outboundTestUnavailableReason(item){
+    if(!outboundSupportsDelay(item)||item.kind==='builtin'&&item.name!=='DIRECT')
+      return muiT('mh.testUnavailable');
+    if(delayResults.get(item.name)==='Testing')return muiT('mh.testing');
+    if(item.kind!=='builtin'&&!(app.state?.state?.outbounds||[])
+      .some(saved=>saved.name===item.name&&outboundSupportsDelay(saved)))
+      return muiT('mh.saveFirst');
+    return '';
+  }
   // Some existing subscription groups use the provider's group name and
   // intentionally have no subscriptionIds field in state.json. Respect both
   // the source's group binding and explicit subscriptionIds when classifying.
@@ -250,7 +270,7 @@
       const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
       return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(item.kind==='group'?groupTypeLabel(type):type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td>${item.kind==='group'
         ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}" title="${esc(groupResultTitle(item.name))}">${esc(groupResultLabel(item.name))}</span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" ${groupTestNote(item.name)?'':'hidden'}>${esc(groupTestNote(item.name))}</small>`
-        :`<span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
+        :`<span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${esc(outboundTestUnavailableReason(item)||muiT('mh.testOutbound'))}" ${outboundTestUnavailableReason(item)?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
     bindOutboundTable();
     $$('[data-test-outbound]',root).forEach(button=>button.onclick=()=>testOutbound(button));
@@ -419,7 +439,7 @@
   // Only the visible label is translated. Stored rule.type/option.value,
   // API payloads and the generated Mihomo YAML retain their exact codes.
   const russianRuleTypes={
-    LIST:'СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP — Несколько условий',
+    LIST:'GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP',
     DOMAIN:'Точное совпадение домена',
     'DOMAIN-SUFFIX':'Домен и его поддомены',
     'DOMAIN-KEYWORD':'Слово или часть домена',
@@ -457,7 +477,7 @@
     if(type==='MATCH')return window.muiGetLang?.()==='ru'?'ВЕСЬ ОСТАЛЬНОЙ ТРАФИК':'MATCH';
     if(type==='LIST'){
       if(window.muiGetLang?.()!=='ru')return full?'LISTS OF CATEGORIES, DOMAINS AND IPs':'LISTS';
-      return full?russianRuleTypes.LIST:'СПИСКИ — Категории, домены и IP';
+      return russianRuleTypes.LIST;
     }
     const description=window.muiGetLang?.()==='ru'?russianRuleTypes[type]:null;
     return description?type+' — '+description:type;
@@ -585,6 +605,145 @@
   // backend omits disabled rules from Mihomo, but requires MATCH always ON.
   function ruleIsEnabled(rule){return rule.enabled!==false;}
   let draggedRuleID='';
+  let dragSourceRow=null;
+  let dragOriginalOrder=null;
+  let dragOriginalSlots=null;
+  function beginRulePreview(handle){
+    const row=handle.closest('[data-rule-row]');
+    if(!row||!draft.routingRules.some(rule=>rule.id===row.dataset.ruleRow&&rule.type!=='MATCH'))return false;
+    draggedRuleID=row.dataset.ruleRow;
+    dragSourceRow=row;
+    dragOriginalOrder=draft.routingRules.map(rule=>rule.id);
+    // Freeze the initial slot centres: moving a live DOM row shifts the
+    // neighbouring rows, so hit-testing their *new* rectangles can oscillate.
+    dragOriginalSlots=$$('[data-rule-row]',$('#mihomo-rule-table'))
+      .filter(item=>item!==row)
+      .map(item=>({
+        id:item.dataset.ruleRow,
+        midpoint:(item.getBoundingClientRect().top+item.getBoundingClientRect().bottom)/2,
+        locked:draft.routingRules.some(rule=>rule.id===item.dataset.ruleRow&&rule.type==='MATCH')
+      }));
+    row.classList.add('mihomo-rule-preview');
+    $('#mihomo-rule-table').classList.add('mihomo-rule-previewing');
+    return true;
+  }
+  // The visible row moves into its proposed slot while the pointer is still
+  // held. No draft state is changed until drop, so cancellation is lossless.
+  function previewRuleAtPointer(clientY){
+    if(!dragSourceRow||!dragOriginalSlots)return;
+    // Work in stable original priority slots. The fallback is never counted
+    // as an insertion point: everything always lands before MATCH.
+    const regular=dragOriginalSlots.filter(slot=>!slot.locked);
+    const index=regular.filter(slot=>clientY>slot.midpoint).length;
+    const box=$('#mihomo-rule-table');
+    const otherRows=$$('[data-rule-row]',box).filter(row=>row!==dragSourceRow);
+    const before=otherRows[index];
+    if(!before||before===dragSourceRow.nextElementSibling)return;
+    before.before(dragSourceRow);
+    const managedCount=basicsRuleRows().length;
+    $$('[data-rule-row]',box).forEach((row,position)=>{
+      const number=row.querySelector('.mihomo-rule-priority-number');
+      if(number)number.textContent=managedCount+position+1;
+    });
+  }
+  function finishRulePreview(apply){
+    if(!dragSourceRow)return;
+    const box=$('#mihomo-rule-table'),row=dragSourceRow;
+    const ordered=$$('[data-rule-row]',box).map(element=>element.dataset.ruleRow);
+    const original=dragOriginalOrder||[];
+    const valid=apply&&ordered.length===original.length&&
+      ordered[ordered.length-1]===original[original.length-1]&&
+      ordered.every(id=>original.includes(id));
+    const changed=valid&&ordered.some((id,index)=>id!==original[index]);
+    if(!changed){
+      // Restore DOM order on Escape, pointercancel and drops outside the table.
+      const tbody=row.closest('tbody');
+      if(tbody){
+        const nodes=new Map($$('[data-rule-row]',box).map(item=>[item.dataset.ruleRow,item]));
+        original.forEach(id=>{const item=nodes.get(id);if(item)tbody.appendChild(item);});
+      }
+    }
+    row.classList.remove('mihomo-rule-preview');
+    box.classList.remove('mihomo-rule-previewing');
+    draggedRuleID='';dragSourceRow=null;dragOriginalOrder=null;dragOriginalSlots=null;
+    if(changed){
+      const byID=new Map(draft.routingRules.map(rule=>[rule.id,rule]));
+      draft.routingRules=ordered.map(id=>byID.get(id));
+      markDirty();
+    }else{
+      const managedCount=basicsRuleRows().length;
+      $$('[data-rule-row]',box).forEach((item,index)=>{
+        const number=item.querySelector('.mihomo-rule-priority-number');
+        if(number)number.textContent=managedCount+index+1;
+      });
+    }
+  }
+  // Pointer-driven drag avoids the native HTML DnD cancellation that occurs
+  // when a dragged table row is reparented during the live preview.
+  let pendingRulePointer=null;
+  let floatingRuleGhost=null;
+  function clearFloatingRuleGhost(){
+    floatingRuleGhost?.remove();
+    floatingRuleGhost=null;
+  }
+  function placeFloatingRuleGhost(x,y){
+    if(!floatingRuleGhost)return;
+    floatingRuleGhost.style.left=(x+16)+'px';
+    floatingRuleGhost.style.top=(y+12)+'px';
+  }
+  function startFloatingRuleGhost(handle,x,y){
+    const rule=draft.routingRules.find(item=>item.id===handle.dataset.ruleDrag);
+    if(!rule)return;
+    floatingRuleGhost=document.createElement('div');
+    floatingRuleGhost.className='mihomo-rule-drag-ghost';
+    const name=document.createElement('strong'),outbound=document.createElement('span');
+    name.textContent=ruleReadableType(rule);
+    outbound.textContent='→ '+rule.target;
+    floatingRuleGhost.append(name,outbound);
+    document.body.appendChild(floatingRuleGhost);
+    placeFloatingRuleGhost(x,y);
+  }
+  function stopRulePointer(commit){
+    if(!pendingRulePointer)return;
+    const wasDragging=!!dragSourceRow;
+    pendingRulePointer=null;
+    clearFloatingRuleGhost();
+    if(wasDragging)finishRulePreview(commit);
+  }
+  function onRulePointerMove(event){
+    if(!pendingRulePointer||pendingRulePointer.id!==event.pointerId)return;
+    const pending=pendingRulePointer;
+    if(!dragSourceRow&&Math.hypot(event.clientX-pending.x,event.clientY-pending.y)<5)return;
+    if(!dragSourceRow){
+      if(!beginRulePreview(pending.handle)){stopRulePointer(false);return;}
+      startFloatingRuleGhost(pending.handle,event.clientX,event.clientY);
+    }
+    event.preventDefault();
+    placeFloatingRuleGhost(event.clientX,event.clientY);
+    previewRuleAtPointer(event.clientY);
+  }
+  function onRulePointerUp(event){
+    if(!pendingRulePointer||pendingRulePointer.id!==event.pointerId)return;
+    const box=$('#mihomo-rule-table');
+    const table=box?.querySelector('table');
+    const rect=table?.getBoundingClientRect();
+    const within=!!rect&&event.clientX>=rect.left&&event.clientX<=rect.right&&
+      event.clientY>=rect.top&&event.clientY<=rect.bottom;
+    if(within)previewRuleAtPointer(event.clientY);
+    stopRulePointer(within);
+  }
+  function onRulePointerCancel(event){
+    if(pendingRulePointer?.id===event.pointerId)stopRulePointer(false);
+  }
+  function onRuleDragEscape(event){
+    if(event.key==='Escape'&&pendingRulePointer){
+      event.preventDefault();stopRulePointer(false);
+    }
+  }
+  document.addEventListener('pointermove',onRulePointerMove,{passive:false});
+  document.addEventListener('pointerup',onRulePointerUp);
+  document.addEventListener('pointercancel',onRulePointerCancel);
+  document.addEventListener('keydown',onRuleDragEscape);
   function moveRuleTo(id,targetID,after=false){
     if(!id||!targetID||id===targetID)return;
     const from=draft.routingRules.findIndex(rule=>rule.id===id);
@@ -617,32 +776,33 @@
       '<tr class="mihomo-managed-rule"><td>'+(index+1)+'</td>'+
       '<td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleTypeDisplayLabel(rule.type))+
       '</span>'+ruleHelpButton('type',rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td>'+
-      '<td><div class="mihomo-actions"><label class="mihomo-rule-switch" title="'+esc(readonlyTitle)+'"><input type="checkbox" checked disabled aria-label="'+esc(readonlyTitle)+'"><span class="mihomo-rule-switch-track"></span></label>'+
-      '<span class="mihomo-pill group">Basics</span></div></td></tr>').join('');
+      '<td><div class="mihomo-actions mihomo-rule-controls"><span class="mihomo-pill group">Basics</span>'+
+      '<label class="mihomo-rule-switch" title="'+esc(readonlyTitle)+'"><input type="checkbox" checked disabled aria-label="'+esc(readonlyTitle)+'"><span class="mihomo-rule-switch-track"></span></label></div></td></tr>').join('');
     const rows=draft.routingRules.map((rule,index)=>{
       const locked=rule.type==='MATCH';
       const enabled=ruleIsEnabled(rule);
       const next=draft.routingRules[index+1];
       const toggleLabel=locked?lockedTitle:enabledTitle;
       return '<tr data-rule-row="'+esc(rule.id)+'" class="'+(!enabled?'mihomo-rule-off ':'')+(locked?'mihomo-rule-default':'')+'">'+
-        '<td class="mihomo-rule-order">'+(managed.length+index+1)+'</td>'+
+        '<td class="mihomo-rule-order"><div class="mihomo-rule-priority-cell">'+
+        (locked?'<span class="mihomo-rule-locked" title="'+esc(lockedTitle)+'" aria-label="'+esc(lockedTitle)+'">🔒</span>':
+        '<span class="mihomo-rule-drag" role="button" tabindex="0" data-rule-drag="'+esc(rule.id)+'" title="'+esc(muiT('mh.dragPriority'))+'" aria-label="'+esc(muiT('mh.dragPriority'))+'">⠿</span>')+
+        '<span class="mihomo-rule-priority-number">'+(managed.length+index+1)+'</span></div></td>'+
         '<td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleReadableType(rule))+'</span>'+
         ruleHelpButton('type',window.MUIRuleLists?.decode(rule)?'LIST':rule.type)+'</span></td>'+
         '<td><div class="mihomo-rule-payload" title="'+esc(rule.payload||'')+'">'+esc(ruleReadablePayload(rule))+'</div></td>'+
         '<td class="mihomo-name">'+esc(rule.target)+'</td>'+
         '<td>'+(rule.noResolve?'<span class="mihomo-rule-type-with-help"><span class="mihomo-pill group">No-Resolve</span>'+
         ruleHelpButton('no-resolve')+'</span>':'—')+'</td>'+
-        '<td><div class="mihomo-actions">'+
-        '<label class="mihomo-rule-switch" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
-        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span></label>'+
-        (locked?'<span class="mihomo-rule-locked" title="'+esc(lockedTitle)+'">🔒</span>':
-        '<span class="mihomo-rule-drag" draggable="true" data-rule-drag="'+esc(rule.id)+'" title="'+esc(muiT('mh.dragPriority'))+'" aria-label="'+esc(muiT('mh.dragPriority'))+'">⠿</span>')+
+        '<td><div class="mihomo-actions mihomo-rule-controls">'+
         '<button class="mihomo-icon" data-rule-up="'+esc(rule.id)+'" title="'+esc(muiT('mh.moveUp'))+'"'+
         (index===0||locked?' disabled':'')+'>'+SF('arrow-up')+'</button>'+
         '<button class="mihomo-icon" data-rule-down="'+esc(rule.id)+'" title="'+esc(muiT('mh.moveDown'))+'"'+
         (locked||!next||next.type==='MATCH'?' disabled':'')+'>'+SF('arrow-down')+'</button>'+
         '<button class="mihomo-icon" data-rule-edit="'+esc(rule.id)+'" title="'+esc(muiT('action.edit'))+'">'+SF('edit')+'</button>'+
         (locked?'':'<button class="mihomo-icon danger" data-rule-delete="'+esc(rule.id)+'" title="'+esc(muiT('common.delete'))+'">'+SF('delete')+'</button>')+
+        '<label class="mihomo-rule-switch" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
+        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span></label>'+
         '</div></td></tr>';
     }).join('');
     box.innerHTML='<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>'+muiT('mh.colRuleType')+
@@ -653,48 +813,21 @@
     $$('[data-rule-up]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleUp,-1));
     $$('[data-rule-down]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleDown,1));
     $$('[data-rule-toggle]',root).forEach(input=>input.onchange=()=>toggleRule(input.dataset.ruleToggle,input.checked));
-    // Desktop: native HTML drag/drop. The only drag origin is the handle.
-    $$('[data-rule-drag]',root).forEach(handle=>{
-      handle.ondragstart=event=>{
-        draggedRuleID=handle.dataset.ruleDrag;
-        event.dataTransfer.effectAllowed='move';
-        event.dataTransfer.setData('text/plain',draggedRuleID);
-      };
-      handle.ondragend=()=>{draggedRuleID='';$$('.mihomo-rule-drop-target',box).forEach(row=>row.classList.remove('mihomo-rule-drop-target'));};
-    });
-    $$('[data-rule-row]',box).forEach(row=>{
-      row.ondragover=event=>{
-        if(!draggedRuleID)return;
-        event.preventDefault();event.dataTransfer.dropEffect='move';
-        $$('.mihomo-rule-drop-target',box).forEach(item=>item.classList.remove('mihomo-rule-drop-target'));
-        row.classList.add('mihomo-rule-drop-target');
-      };
-      row.ondrop=event=>{
-        event.preventDefault();
-        const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
-        const from=draggedRuleID;draggedRuleID='';
-        moveRuleTo(from,row.dataset.ruleRow,after);
-      };
-    });
-    // Touch/pen: dragging the handle moves the rule when released over a row.
-    // Keep the up/down buttons for keyboard users and as a mobile fallback.
-    $$('[data-rule-drag]',root).forEach(handle=>{
-      let pointer=null;
+    // One predictable pointer interaction for mouse, pen and touch.
+    // Keep listeners on document: moving the real row detaches its original
+    // handle, which would otherwise drop pointer capture prematurely.
+    $$('[data-rule-drag]',box).forEach(handle=>{
       handle.onpointerdown=event=>{
-        if(event.pointerType==='mouse')return;
-        pointer={id:event.pointerId,from:handle.dataset.ruleDrag};
-        handle.setPointerCapture(event.pointerId);
+        if(event.button!==0||pendingRulePointer)return;
+        pendingRulePointer={id:event.pointerId,x:event.clientX,y:event.clientY,handle};
+        event.preventDefault();
       };
-      handle.onpointerup=event=>{
-        if(!pointer||pointer.id!==event.pointerId)return;
-        const from=pointer.from;pointer=null;
-        const row=document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-rule-row]');
-        if(row){
-          const rect=row.getBoundingClientRect();
-          moveRuleTo(from,row.dataset.ruleRow,event.clientY>rect.top+rect.height/2);
-        }
+      // Keyboard users can continue using the adjacent up/down buttons.
+      handle.onkeydown=event=>{
+        if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')return;
+        event.preventDefault();
+        moveRule(handle.dataset.ruleDrag,event.key==='ArrowUp'?-1:1);
       };
-      handle.onpointercancel=()=>{pointer=null;};
     });
   }
   function moveRule(id,delta){
@@ -743,7 +876,7 @@
     const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid mihomo-unified-rule-editor"><input name="id" type="hidden">
       <label class="mihomo-field full" id="mihomo-rule-type-field">
         <span class="mihomo-rule-editor-type-label"><span data-i18n="mh.colRuleType">Тип правила</span>${ruleHelpButton('type','LIST')}</span>
-        <select name="type"><option value="LIST">СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP</option>${ruleTypes.filter(type=>type!=='MATCH').map(type=>`<option value="${type}">${type}</option>`).join('')}</select>
+        <select name="type"><option value="LIST">GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP</option>${ruleTypes.filter(type=>type!=='MATCH'&&type!=='GEOSITE').map(type=>`<option value="${type}">${type}</option>`).join('')}</select>
       </label>
       <section class="mihomo-rule-conditions full" id="mihomo-rule-conditions" aria-labelledby="mihomo-rule-conditions-title">
         <div class="mihomo-rule-section-heading" id="mihomo-rule-conditions-title" data-i18n="mh.ruleConditionsTitle">Условия</div>
@@ -1148,12 +1281,15 @@
     const decoded=window.MUIRuleLists?.decode(item);
     form.reset();
     form.elements.id.value=item.id||'';
-    // A fresh MATCH is not selectable; the existing fallback remains editable.
+    // Standalone GEOSITE stays editable on existing rules, but new rules
+    // use the universal LIST editor. MATCH remains protected.
     const typeSelect=form.elements.type;
-    typeSelect.querySelector('option[value="MATCH"]')?.remove();
-    if(item.type==='MATCH'){
+    for(const legacy of ['MATCH','GEOSITE'])
+      typeSelect.querySelector('option[value="'+legacy+'"]')?.remove();
+    if(item.type==='MATCH'||item.type==='GEOSITE'){
       const option=document.createElement('option');
-      option.value='MATCH';option.textContent=ruleTypeDisplayLabel('MATCH');
+      option.value=item.type;
+      option.textContent=ruleTypeDisplayLabel(item.type);
       typeSelect.appendChild(option);
     }
     refreshRuleTypeLabels();
@@ -1301,6 +1437,8 @@
   }
   async function testOutbound(button){
     const name=button.dataset.testOutbound;
+    const item=outboundRows().find(row=>row.name===name);
+    if(!item||outboundTestUnavailableReason(item))return;
     button.disabled=true;delayResults.set(name,'Testing');
     renderOutbounds();
     try{

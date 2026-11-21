@@ -29,8 +29,8 @@ assert.match(js,/document\.addEventListener\('pointerover'/);
 assert.match(js,/document\.addEventListener\('focusin'/);
 assert.match(js,/document\.addEventListener\('keydown'/);
 assert.match(js,/ruleHelpAnchor.*hideRuleHelp/);
-assert.match(js,/СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP/);
-assert.match(js,/return full\?russianRuleTypes\.LIST:'СПИСКИ — Категории, домены и IP'/);
+assert.ok(js.includes('GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP'));
+assert.match(js,/return russianRuleTypes.LIST/);
 assert.match(js,/No-Resolve/);
 assert.doesNotMatch(js,/<span class="mihomo-pill group">no-resolve<\/span>/);
 for(const marker of ['.mihomo-rule-help-trigger{','.mihomo-rule-help-popup{','.mihomo-rule-help-popup[hidden]','.mihomo-rule-type-with-help']){
@@ -39,5 +39,5 @@ for(const marker of ['.mihomo-rule-help-trigger{','.mihomo-rule-help-popup{','.m
 assert.match(i18n,/No-Resolve — не выполнять DNS-разрешение/);
 assert.match(i18n,/No-Resolve запрещает/);
 assert.match(i18n,/No-Resolve stops/);
-assert.ok(html.includes('mihomo-settings.js?v=110')&&html.includes('mihomo-settings.css?v=110'));
+assert.ok(html.includes('mihomo-settings.js?v=113')&&html.includes('mihomo-settings.css?v=113'));
 console.log('PASS: '+types.length+' Mihomo rule type help texts, No-Resolve popovers, uppercase LIST, safe UI and cache version');

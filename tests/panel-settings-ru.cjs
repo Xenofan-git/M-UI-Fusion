@@ -21,7 +21,7 @@ vm.createContext(ctx);
 vm.runInContext(locales,ctx);
 vm.runInContext(i18n,ctx);
 const fields={
- 'settings.listenIp':'Прослушивающий IP',
+ 'settings.listenIp':'Прослушиваемый IP',
  'settings.listenDomain':'Прослушиваемый домен',
  'settings.listenPort':'Прослушиваемый порт',
  'settings.uriPath':'URL путь панели',

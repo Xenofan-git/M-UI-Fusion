@@ -38,6 +38,8 @@ jobs:
         run: node tests/mihomo-modal-primary.cjs
       - name: Test routing rule info icons and No-Resolve explanations
         run: node tests/routing-rule-tooltips.cjs
+      - name: Guard saved outbound delay button and readable Save hover
+        run: node tests/mihomo-delay-action.cjs
       - name: Test Russian descriptions of all routing rule types
         run: node tests/routing-type-labels.cjs
       - name: Verify exact Mihomo toolbar buttons and legacy-browser hover fallback

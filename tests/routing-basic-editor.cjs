@@ -26,8 +26,10 @@ assert.equal((html.match(/name="target"/g)||[]).length,1);
 for(const name of ['id','geoCategories','domainIPs','payload','noResolve']){
   assert.ok(html.includes('name="'+name+'"'),name);
 }
-assert.ok(html.includes('<option value="LIST">СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP</option>'));
+assert.ok(html.includes('<option value="LIST">GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP</option>'));
 assert.ok(html.includes('<option value="GEOIP">GEOIP</option>'));
+assert.ok(!html.includes('<option value="GEOSITE">'),'standalone GeoSite hidden for new rules');
+assert.ok(source.includes("item.type==='MATCH'||item.type==='GEOSITE'"),'legacy GeoSite remains editable');
 assert.ok(!html.includes('<option value="MATCH">'),'MATCH cannot be offered to new rules');
 assert.ok(html.includes('<details class="mihomo-rule-advanced full" id="mihomo-rule-advanced">'));
 assert.ok(source.includes("typeSelect.disabled=item.type==='MATCH'"));
@@ -41,8 +43,8 @@ assert.ok(css.includes('#mihomo-rule-modal .mihomo-unified-rule-editor'));
 assert.ok(css.includes('#mihomo-rule-modal #mihomo-rule-payload-field[hidden]'));
 assert.ok(css.includes('#mihomo-rule-modal #mihomo-rule-advanced[hidden]'));
 const index=fs.readFileSync('web/index.html','utf8');
-assert.ok(index.includes('static/mihomo-settings.js?v=110'));
-assert.ok(index.includes('static/mihomo-settings.css?v=110'));
+assert.ok(index.includes('static/mihomo-settings.js?v=113'));
+assert.ok(index.includes('static/mihomo-settings.css?v=113'));
 const i18n=fs.readFileSync('web/i18n.js','utf8');
 assert.ok(i18n.includes("'mh.ruleConditionsTitle':'Условия'"));
 assert.ok(i18n.includes("'mh.ruleNoConditions':'Условий нет: весь оставшийся трафик"));

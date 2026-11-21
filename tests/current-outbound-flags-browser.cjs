@@ -51,7 +51,24 @@ helperCode,
   if(!data[0].src.endsWith('/flags/lv.svg')||!data[1].src.endsWith('/flags/ru.svg'))throw Error('wrong assets '+JSON.stringify(data));
   if(data[0].text.includes('lv')||data[1].text.match(/^ru\b/i)||!data[0].text.includes('Латвия')||!data[1].text.includes('Москва'))throw Error('raw country code visible '+JSON.stringify(data));
   if(data[0].naturalWidth===0||data[1].naturalWidth===0)throw Error('SVG not loaded');
-  console.log('PASS: real browser loads LV and RU SVG flags with clean labels, retaining backend names as tooltip');
+  // The image must be the SAME DOM node across repeated health polling.
+  // Replacing it every nine seconds reloads the SVG and makes the flag blink.
+  const stable=await page.evaluate(()=>{
+    const f=document.querySelector('#foreign img'),r=document.querySelector('#russia img');
+    for(let i=0;i<12;i++){
+      paintCurrentGroupNode(document.getElementById('foreign'),'FOREIGN');
+      paintCurrentGroupNode(document.getElementById('russia'),'Russia');
+    }
+    const sameFlags=f===document.querySelector('#foreign img')&&r===document.querySelector('#russia img');
+    activeGroupResults.get('FOREIGN').current='INT | lv 🟩 🔥 ⭐ 0.1X - LTE №52 - Латвия';
+    paintCurrentGroupNode(document.getElementById('foreign'),'FOREIGN');
+    const sameFlagAfterLabelChange=f===document.querySelector('#foreign img');
+    const label=document.querySelector('#foreign .mihomo-current-country-label').textContent;
+    return {sameFlags,sameFlagAfterLabelChange,label};
+  });
+  if(!stable.sameFlags||!stable.sameFlagAfterLabelChange||!stable.label.includes('№52'))
+    throw Error('flag SVG reloaded during refresh: '+JSON.stringify(stable));
+  console.log('PASS: real browser loads LV/RU SVG, retains original img after 12 polls and same-country label update');
   for(const d of data)console.log(JSON.stringify(d));
  }finally{await browser?.close();fs.rmSync(fixture,{force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1});
