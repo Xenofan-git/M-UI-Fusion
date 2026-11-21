@@ -16,7 +16,7 @@ const helperCode=source.slice(start,end)+'\n'+source.slice(paintStart,paintEnd);
 const fixture=path.join(web,'.current-outbound-flags-test.html');
 const doc='<!doctype html><html><head><style>'+
 '.mihomo-current-group{display:inline-flex;align-items:center;gap:8px}'+
-'.mihomo-current-country-flag{width:20px;height:15px;object-fit:cover}'+
+'.mihomo-current-country-flag{width:16px;height:11px;object-fit:cover}'+
 '</style></head><body>'+
 '<span id="foreign" class="mihomo-current-group"></span>'+
 '<span id="russia" class="mihomo-current-group"></span>'+

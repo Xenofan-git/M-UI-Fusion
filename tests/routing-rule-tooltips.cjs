@@ -39,5 +39,5 @@ for(const marker of ['.mihomo-rule-help-trigger{','.mihomo-rule-help-popup{','.m
 assert.match(i18n,/No-Resolve — не выполнять DNS-разрешение/);
 assert.match(i18n,/No-Resolve запрещает/);
 assert.match(i18n,/No-Resolve stops/);
-assert.ok(html.includes('mihomo-settings.js?v=118')&&html.includes('mihomo-settings.css?v=117'));
+assert.ok(html.includes('mihomo-settings.js?v=119')&&html.includes('mihomo-settings.css?v=119'));
 console.log('PASS: '+types.length+' Mihomo rule type help texts, No-Resolve popovers, uppercase LIST, safe UI and cache version');

@@ -324,3 +324,11 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 @media(prefers-reduced-motion:reduce){
   #outsub-root .outsub-info-frame{transition:none}
 }
+
+
+/* Uniform SVG cap-height across subscribed-node preview and country picker. */
+.outsub-dialog .outsub-flag-svg,
+.outsub-dialog .outsub-country-chip .outsub-flag-svg{
+  width:16px;height:11px;
+}
+.outsub-dialog .outsub-node-flag{width:20px;height:15px}

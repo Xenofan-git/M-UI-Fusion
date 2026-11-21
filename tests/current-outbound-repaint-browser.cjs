@@ -8,8 +8,8 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-settings.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-settings.js?v=118'));
-assert(html.includes('static/mihomo-settings.css?v=117'));
+assert(html.includes('static/mihomo-settings.js?v=119'));
+assert(html.includes('static/mihomo-settings.css?v=119'));
 const chunk=(a,b)=>{
  const start=source.indexOf(a),end=source.indexOf(b,start);
  assert(start>=0&&end>start,a+' -> '+b);
@@ -85,8 +85,8 @@ const fixture='<!doctype html><html><head><meta charset="UTF-8">'+
    assert.equal(stable.sameTable,true,'global refresh must never recreate unchanged table');
    assert.equal(stable.removals,0,'no DOM removal when polling');
    assert.equal(stable.connected,true);
-   assert.equal(stable.width,'20px');
-   assert.equal(stable.height,'15px');
+   assert.equal(stable.width,'16px');
+   assert.equal(stable.height,'11px');
    assert.equal(stable.traffic,'110 / 55','traffic counters must update without table rebuild');
    // When the ACTIVE node label changes but the country remains Latvia, only
    // the text content changes; the flag and the table retain identity.
@@ -121,7 +121,7 @@ const fixture='<!doctype html><html><head><meta charset="UTF-8">'+
    await page.evaluate(()=>{__test.draft.outbounds[0].proxies.push('RU');__test.renderOutbounds()});
    assert.match(await page.locator('#mihomo-subscription-balancer-table').textContent(),/2 узлов/);
    assert.deepEqual(errors,[]);
-   console.log('PASS real global-state redraw',width,'px: flag preserved across 12+10 polls, counters refreshed, smaller 20x15px');
+   console.log('PASS real global-state redraw',width,'px: flag preserved across 12+10 polls, counters refreshed, smaller 16x11px');
    await page.close();
   }
  }finally{await browser?.close();fs.rmSync(file,{force:true})}

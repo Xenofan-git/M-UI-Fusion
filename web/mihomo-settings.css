@@ -554,8 +554,8 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-table td input[type="checkbox"]{accent-color:var(--teal);width:17px;height:17px;cursor:pointer}
 .fbs-table td.fbs-protocol{font-size:10px;color:var(--muted);text-transform:uppercase}
 .fbs-node{max-width:0;min-width:0}
-.fbs-node .fbs-flag{display:inline-flex;vertical-align:middle;width:27px;align-items:center;justify-content:center;margin-right:8px}
-.fbs-flag img{display:block;object-fit:cover;width:26px;height:19px;border:1px solid #fff3;border-radius:2px}
+.fbs-node .fbs-flag{display:inline-flex;vertical-align:middle;width:18px;align-items:center;justify-content:center;margin-right:6px}
+.fbs-flag img{display:block;object-fit:cover;width:16px;height:11px;border:1px solid #fff3;border-radius:2px}
 .fbs-node-name{
   display:inline-block;max-width:calc(100% - 40px);
   vertical-align:middle;white-space:nowrap;overflow-x:auto;overflow-y:hidden;
@@ -635,7 +635,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-country-list{max-height:155px;overflow:auto;display:flex;flex-direction:column;gap:4px}
 .fbs-country-choice{display:flex;align-items:center;gap:9px;padding:6px 8px;border:0;border-radius:6px;text-align:left;color:var(--text-strong);background:transparent;cursor:pointer}
 .fbs-country-choice:hover{background:var(--surface-hover)}
-.fbs-country-choice img{display:block;width:24px;height:18px;object-fit:cover}
+.fbs-country-choice img{display:block;width:16px;height:11px;object-fit:cover}
 .fbs-settings-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-basis:100%}
 .fbs-settings-actions button{min-height:35px;padding:7px 13px}
 .fbs-settings-actions .fbs-save-hint{font-size:12px;color:var(--muted)}
@@ -645,7 +645,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 
 
 .fbs-candidate{display:inline-flex;align-items:center;gap:7px;max-width:100%;vertical-align:middle}
-.fbs-candidate img{display:block;width:24px;height:18px;object-fit:cover;border-radius:2px;flex:none}
+.fbs-candidate img{display:block;width:16px;height:11px;object-fit:cover;border-radius:2px;flex:none}
 .fbs-candidate span{min-width:0;white-space:normal;overflow-wrap:anywhere}
 
 /* Manual balancers reuse the HydraRoute-style subscribed-server table, with
@@ -686,7 +686,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-add-result:hover,.fbs-add-result:focus{
   background:var(--surface-hover);outline-color:var(--teal)
 }
-.fbs-add-result .fbs-flag{display:inline-flex;align-items:center;justify-content:center;width:28px;flex:none}
+.fbs-add-result .fbs-flag{display:inline-flex;align-items:center;justify-content:center;width:18px;flex:none}
 .fbs-add-result .fbs-add-name{
   flex:1;min-width:0;font-size:12px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap
@@ -707,7 +707,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   display:inline-flex;align-items:center;gap:8px;
 }
 .mihomo-current-group .mihomo-current-country-flag{
-  display:inline-block;flex:none;width:20px;height:15px;
+  display:inline-block;flex:none;width:16px;height:11px;
   object-fit:cover;border-radius:2px;
   border:1px solid rgba(148,163,184,.25);
   box-sizing:border-box;vertical-align:middle;
@@ -1089,3 +1089,16 @@ html body .mihomo-rule-switch:has(input:disabled){opacity:1;cursor:not-allowed}
     animation-duration:2.4s;
   }
 }
+
+
+/* Country flags match the cap-height of the node names, not emoji height. */
+.fbs-tab{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.fbs-tab-icon{width:16px;height:16px;flex:none}
+.fbs-copy-flag{
+  border:0;background:transparent;padding:0;margin:0 6px 0 0;
+  min-width:18px;min-height:20px;cursor:copy;color:inherit;
+}
+.fbs-copy-flag:hover,.fbs-copy-flag:focus-visible{outline:1px solid var(--teal);outline-offset:2px;border-radius:3px}
+.fbs-filter-flags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 3px}
+.fbs-filter-flag-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--stroke);border-radius:5px;padding:3px 6px;font-size:11px;color:var(--text-strong)}
+.fbs-filter-flag-chip img{width:16px;height:11px;object-fit:cover;flex:none}

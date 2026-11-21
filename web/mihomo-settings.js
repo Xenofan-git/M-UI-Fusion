@@ -1209,6 +1209,8 @@
     event.preventDefault();if(outboundBusy)return;
     if(outboundMode==='form'&&!event.currentTarget.reportValidity())return;
     setImportBusy(true);showImportError('');
+    const applyingGroup=$('#mihomo-outbound-form').elements.kind.value==='group';
+    const dialog=applyingGroup?openMihomoStatusDialog('apply'):null;
     try{
       let yaml=$('#outbound-yaml').value;
       if(outboundMode==='form'){
@@ -1230,7 +1232,8 @@
         if(previous.name!==item.name)renameReferences(next.outbounds,next.routingRules,previous.name,item.name);
       }else next.outbounds.push(...response.outbounds);
       draft=next;window.MUIBalancerServers?.teardown();closeModal($('#mihomo-outbound-modal'));markDirty();
-    }catch(error){showImportError(error.message);}finally{setImportBusy(false);}
+      dialog?.set('success',muiT('mh.operationApplyReady'));
+    }catch(error){showImportError(error.message);dialog?.set('error',error.message);}finally{setImportBusy(false);}
   }
 
   function rulePayloadHint(type){
@@ -1824,13 +1827,13 @@
       backdrop.dataset.phase=phase;
       indicator.textContent=phase==='pending'?'':(phase==='success'?'✓':'!');
       title.textContent=muiT(phase==='error'?'mh.operationFailureTitle':
-        phase==='success'?(kind==='save'?'mh.operationSaveTitle':'mh.operationRestartTitle'):
-        (kind==='save'?'mh.operationSaving':'mh.operationRestarting'));
+        phase==='success'?(kind==='save'?'mh.operationSaveTitle':kind==='apply'?'mh.operationApplyTitle':'mh.operationRestartTitle'):
+        (kind==='save'?'mh.operationSaving':kind==='apply'?'mh.operationApplying':'mh.operationRestarting'));
       detail.textContent=String(message||'');
       dismiss.disabled=busy;
       if(!busy)dismiss.focus({preventScroll:true});
     };
-    set('pending',muiT(kind==='save'?'mh.operationSaving':'mh.operationRestarting'));
+    set('pending',muiT(kind==='save'?'mh.operationSaving':kind==='apply'?'mh.operationApplying':'mh.operationRestarting'));
     return {set,close};
   }
 

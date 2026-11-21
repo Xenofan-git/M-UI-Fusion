@@ -23,11 +23,13 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
       - name: Check web JavaScript syntax
-        run: node --check web/mihomo-settings.js && node --check web/mihomo-rule-lists.js
+        run: node --check web/mihomo-settings.js && node --check web/mihomo-rule-lists.js && node --check web/mihomo-balancer-servers.js && node --check web/i18n.js && node --check web/i18n-locales.js
       - name: Test balancer display labels
         run: node tests/balancer-labels.cjs
       - name: Test editable manual balancer defaults and source separation
         run: node tests/manual-balancer-defaults.cjs
+      - name: Guard balancer flag SVG, copying, stable poll updates and Apply popup
+        run: node tests/balancer-svg-flags-and-apply.cjs
       - name: Test friendly balancer dependency warning
         run: node tests/balancer-use-warning.cjs
       - name: Test Russian translation quality and CPU plurals

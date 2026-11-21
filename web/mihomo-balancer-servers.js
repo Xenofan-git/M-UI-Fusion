@@ -13,6 +13,29 @@
    if(!r.ok){let error={};try{error=await r.json();}catch{}throw Error(error.message||'HTTP '+r.status);}
    const data=await r.json();return data.data??data;
  };
+ // Inline SVG icons are independent of emoji fonts (Windows 8.1 in particular).
+ const tabIcon=type=>type==='refresh'
+   ?'<svg class="fbs-tab-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.7 8.9a7.5 7.5 0 0 1 12.6-2L20 12M4 12l1.7 3.1a7.5 7.5 0 0 0 12.6-2"/></svg>'
+   :'<svg class="fbs-tab-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5z"/></svg>';
+ const copyFlag=async(country)=>{
+   if(!country?.flag)return false;
+   const value=country.flag;
+   try{
+     if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return true;}
+   }catch{}
+   // Intranet HTTP and older browsers lack navigator.clipboard; use a
+   // temporary focused textarea so Ctrl+V receives the real Unicode flag.
+   const before=document.activeElement;
+   const copyBox=elt('textarea','fbs-clipboard-copy');
+   copyBox.value=value;
+   copyBox.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+   document.body.append(copyBox);
+   copyBox.focus();copyBox.select();
+   const success=!!document.execCommand?.('copy');
+   copyBox.remove();
+   before?.focus?.({preventScroll:true});
+   return success;
+ };
  const setStatus=(message,bad=false)=>{const target=q('.fbs-status',panel);if(target){target.textContent=message;target.classList.toggle('bad',bad);}};
  function selectedSources(group,subs){
    const set=new Set(group.subscriptionIds||[]);
@@ -69,13 +92,22 @@
    const down=items.filter(n=>n.member&&n.alive===false).length;
    q('.fbs-count',panel).textContent='В пуле '+enabled+' из '+count+' · исключено '+(count-enabled)+' · недоступно '+down;
    const candidate=q('.fbs-candidate',panel);
-   candidate.replaceChildren();
-   if(liveCandidate){
-     const country=window.MUICountryFlags?.read(liveCandidate);
-     const flag=window.MUICountryFlags?.createIcon(country?.code);
-     if(flag)candidate.append(flag);
-     candidate.append(elt('span','',rowName({name:liveCandidate})));
-   }else candidate.textContent='Нет данных от Mihomo';
+   if(candidate.dataset.candidate===liveCandidate)return;
+   candidate.dataset.candidate=liveCandidate;
+   const country=window.MUICountryFlags?.read(liveCandidate);
+   const code=country?.code||'';
+   const oldFlag=candidate.querySelector(':scope > img.outsub-flag-svg');
+   if(oldFlag?.dataset.countryCode!==code){
+     oldFlag?.remove();
+     if(code){
+       const icon=window.MUICountryFlags?.createIcon(code);
+       if(icon){icon.dataset.countryCode=code;candidate.prepend(icon);}
+     }
+   }
+   let label=candidate.querySelector(':scope > span.fbs-candidate-label');
+   if(!label){label=elt('span','fbs-candidate-label');candidate.append(label);}
+   const value=liveCandidate?rowName({name:liveCandidate}):'Нет данных от Mihomo';
+   if(label.textContent!==value)label.textContent=value;
    candidate.title=liveCandidate||'Сначала примените конфигурацию группы';
  }
  function rowName(item){
@@ -128,30 +160,63 @@
      return ascending?result:-result;
    });
    const body=q('.fbs-table-body',panel);
-   body.replaceChildren();
-   for(const item of listing){
-     const tr=elt('tr',!selected.has(item.name)?'fbs-row-excluded':'');
-     tr.dataset.node=item.name;
-     const selectCol=elt('td');
-     const check=elt('input');check.type='checkbox';check.checked=selected.has(item.name);
-     check.setAttribute('aria-label','Использовать сервер '+item.name);
-     check.onchange=()=>{if(check.checked)selected.add(item.name);else selected.delete(item.name);updateSelection();renderRows();};
-     selectCol.append(check);tr.append(selectCol);
-     const proto=elt('td','fbs-protocol',item.protocol||'proxy');tr.append(proto);
-     const name=elt('td','fbs-node');name.title=item.name;
-     const flag=elt('span','fbs-flag');addFlag(flag,item);name.append(flag);
-     const label=elt('span','fbs-node-name',rowName(item));label.title=item.name;
-     if(item.name===liveCandidate){label.classList.add('fbs-active-candidate');label.title='Текущий кандидат: '+item.name;}
-     name.append(label);tr.append(name);
-     const ping=elt('td','fbs-ping',item.ping>0?item.ping+' мс':'—');ping.title='ICMP echo до хоста (не показатель исправности VPN)';tr.append(ping);
-     const delay=elt('td','fbs-delay',latest(item));delay.title='Проверка HTTP-задержки через Mihomo';
-     if(item.alive===false)delay.classList.add('fbs-down');
-     else if(item.alive===true)delay.classList.add('fbs-up');
-     tr.append(delay);
-     body.append(tr);
+   // A polling tick arrives every 7.5 seconds. Reuse tr/img nodes by name:
+   // replacing tbody children caused the flag SVGs to blink after each poll.
+   const existing=new Map([...body.querySelectorAll(':scope > tr[data-node]')].map(tr=>[tr.dataset.node,tr]));
+   const visible=new Set(listing.map(item=>item.name));
+   for(const [name,row] of existing)if(!visible.has(name))row.remove();
+   const emptyRow=body.querySelector(':scope > tr.fbs-empty-row');
+   emptyRow?.remove();
+   for(let index=0;index<listing.length;index++){
+     const item=listing[index];
+     let tr=existing.get(item.name);
+     if(!tr){
+       tr=elt('tr');
+       tr.dataset.node=item.name;
+       const selectCol=elt('td');
+       const check=elt('input');check.type='checkbox';
+       check.setAttribute('aria-label','Использовать сервер '+item.name);
+       check.onchange=()=>{if(check.checked)selected.add(item.name);else selected.delete(item.name);updateSelection();renderRows();};
+       selectCol.append(check);tr.append(selectCol);
+       tr.append(elt('td','fbs-protocol'));
+       const name=elt('td','fbs-node');name.title=item.name;
+       const flag=elt('button','fbs-flag fbs-copy-flag');
+       flag.type='button';
+       flag.setAttribute('aria-label','Копировать флаг страны узла '+item.name);
+       flag.title='Нажмите, чтобы скопировать флаг для фильтров';
+       addFlag(flag,item);
+       flag.onclick=async()=>{
+         const flags=window.MUICountryFlags;
+         const country=flags?.byCode.get(item.countryCode)||flags?.read(item.name);
+         const copied=await copyFlag(country);
+         setStatus(copied?'Флаг «'+country.ru+'» скопирован. Вставьте его в «Оставить только» или «Исключить».':'Не удалось скопировать флаг',!copied);
+       };
+       name.append(flag);
+       const label=elt('span','fbs-node-name');label.title=item.name;name.append(label);
+       tr.append(name);
+       const ping=elt('td','fbs-ping');ping.title='ICMP echo до хоста (не показатель исправности VPN)';tr.append(ping);
+       const delay=elt('td','fbs-delay');delay.title='Проверка HTTP-задержки через Mihomo';tr.append(delay);
+     }
+     tr.classList.toggle('fbs-row-excluded',!selected.has(item.name));
+     const check=q('input[type=checkbox]',tr);
+     if(check.checked!==selected.has(item.name))check.checked=selected.has(item.name);
+     const proto=q('.fbs-protocol',tr),protocol=item.protocol||'proxy';
+     if(proto.textContent!==protocol)proto.textContent=protocol;
+     const label=q('.fbs-node-name',tr),name=rowName(item);
+     if(label.textContent!==name)label.textContent=name;
+     label.classList.toggle('fbs-active-candidate',item.name===liveCandidate);
+     label.title=item.name===liveCandidate?'Текущий кандидат: '+item.name:item.name;
+     const ping=q('.fbs-ping',tr),pingText=item.ping>0?item.ping+' мс':'—';
+     if(ping.textContent!==pingText)ping.textContent=pingText;
+     const delay=q('.fbs-delay',tr),delayText=latest(item);
+     if(delay.textContent!==delayText)delay.textContent=delayText;
+     delay.classList.toggle('fbs-down',item.alive===false);
+     delay.classList.toggle('fbs-up',item.alive===true);
+     if(body.children[index]!==tr)body.insertBefore(tr,body.children[index]||null);
    }
    if(!listing.length){
-     const empty=elt('tr');const td=elt('td','fbs-empty','Серверы не найдены');td.colSpan=5;empty.append(td);body.append(empty);
+     const row=elt('tr','fbs-empty-row'),td=elt('td','fbs-empty','Серверы не найдены');
+     td.colSpan=5;row.append(td);body.append(row);
    }
    q('.fbs-show-count',panel).textContent='Показано '+listing.length+' из '+items.length;
  }
@@ -212,7 +277,7 @@
    '<div class="fbs-table-wrap"><table class="fbs-table"><thead><tr><th><label><input type="checkbox" class="fbs-toggle-all"> Все</label></th><th>Протокол</th><th><button type="button" data-sort="name">Имя ↕</button></th><th><button type="button" data-sort="ping">Пинг ↕</button></th><th><button type="button" data-sort="latency">Задержка ↕</button></th></tr></thead><tbody class="fbs-table-body"></tbody></table></div>'+
    '<div class="fbs-toolbar fbs-table-actions"><button type="button" class="outline-btn fbs-exclude-offline">Исключить недоступные</button><button type="button" class="outline-btn fbs-select-all">Выбрать все</button><button type="button" class="outline-btn fbs-select-none">Снять все</button><select class="fbs-filter-status" aria-label="Фильтр состояния"><option value="all">Все серверы</option><option value="online">Только online</option><option value="offline">Только offline</option></select><span class="fbs-show-count"></span></div>'+
    '<p class="fbs-status" role="status">Получение состояния Mihomo…</p>'+
-   '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="update">🟢 Обновление</button><button type="button" class="fbs-tab" data-sub-pane="filters">🟢 Фильтры</button>'+
+   '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="update">'+tabIcon('refresh')+'<span>Обновление</span></button><button type="button" class="fbs-tab" data-sub-pane="filters">'+tabIcon('filter')+'<span>Фильтры</span></button>'+
    '<div class="fbs-settings-source">Источник: <select class="fbs-source" aria-label="Подписка для настройки"></select></div>'+
    '<div class="fbs-panel" data-sub-panel="update"><label class="fbs-check"><input type="checkbox" class="fbs-auto"> Обновлять подписку автоматически</label><div class="fbs-interval"><label>Интервал: <input type="number" min="0" max="168" class="fbs-hours"> ч</label><label><input type="number" min="0" max="59" class="fbs-minutes"> м</label></div></div>'+
    '<div class="fbs-panel" data-sub-panel="filters" hidden><div class="fbs-filter-fields"><label>Оставить только<textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">🏳️ Добавить страну</button></label><label>Исключить<textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">🏳️ Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
@@ -279,6 +344,28 @@
    sourceChoice.replaceChildren();
    for(const sub of sourceList)sourceChoice.add(new Option(sub.name,sub.id));
    const currentSource=()=>sourceList.find(sub=>sub.id===sourceChoice.value);
+   function renderFilterFlagPreviews(){
+     for(const [areaClass,previewClass] of [['.fbs-keep','.fbs-keep-flag-preview'],['.fbs-drop','.fbs-drop-flag-preview']]){
+       const area=q(areaClass,el),parent=area.parentElement;
+       let preview=q(previewClass,parent);
+       if(!preview){preview=elt('div','fbs-filter-flags '+previewClass.slice(1));area.after(preview);}
+       const flags=window.MUICountryFlags,seen=new Set();
+       const countries=area.value.split(/\r?\n/).map(v=>flags?.fromFilterLine(v)).filter(country=>{
+         if(!country||seen.has(country.code))return false;seen.add(country.code);return true;
+       });
+       // Stable preview nodes: do not replace them every 7.5 second poll.
+       if(preview.dataset.codes===countries.map(c=>c.code).join(','))continue;
+       preview.dataset.codes=countries.map(c=>c.code).join(',');
+       preview.replaceChildren();
+       for(const country of countries){
+         const chip=elt('span','fbs-filter-flag-chip');
+         const icon=flags?.createIcon(country.code);if(icon)chip.append(icon);
+         chip.append(elt('span','',country.ru));
+         preview.append(chip);
+       }
+     }
+   }
+   for(const selector of ['.fbs-keep','.fbs-drop'])q(selector,el).addEventListener('input',renderFilterFlagPreviews);
    function fillSource(){
      const sub=currentSource();if(!sub)return;
      q('.fbs-auto',el).checked=!!sub.enabled;
@@ -286,6 +373,7 @@
      q('.fbs-minutes',el).value=(sub.intervalMinutes||1440)%60;
      q('.fbs-keep',el).value=sub.filterKeep||'';
      q('.fbs-drop',el).value=sub.filterExclude||'';
+     renderFilterFlagPreviews();
    }
    sourceChoice.onchange=fillSource;
    fillSource();
@@ -324,8 +412,9 @@
        button.append(elt('span','',country.ru+' ('+country.code+')'));
        button.onclick=()=>{
          const current=targetArea.value.trimEnd();
-         const term=country.english;
+         const term=country.flag;
          if(!current.split(/\r?\n/).includes(term))targetArea.value=current+(current?'\n':'')+term;
+         renderFilterFlagPreviews();
          countryMenu.hidden=true;
          targetArea.focus();
        };
