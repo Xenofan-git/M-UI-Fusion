@@ -4,12 +4,12 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=122'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=123'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
 const html='<!doctype html><html><head><meta charset="utf-8">'+
- '<link rel="stylesheet" href="mihomo-settings.css"></head><body class="dark">'+
+ '<link rel="stylesheet" href="mihomo-settings.css"><style>:root{--muted:#8896a8;--text-strong:#f3f5fb}</style></head><body class="dark">'+
  '<form id="fake-editor"><label class="mihomo-field"><span>Серверы подписки</span>'+
  '<select name="proxies" multiple>'+
  '<option value="quatro-vpn | LTE - Россия" selected>RU</option>'+
@@ -99,8 +99,17 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.locator('.fbs-table-body tr[data-node] .fbs-copy-flag').first().click();
    assert.equal(await page.evaluate(()=>window.__copied),'🇵🇱');
    await page.locator('.fbs-tab[data-sub-pane="filters"]').click();
-   assert.equal(await page.locator('.fbs-filter-guidance').innerText(),'Вписать по одному по вертикали');
-   assert.equal(await page.locator('.fbs-filter-guidance').isVisible(),true);
+   assert.equal(await page.locator('.fbs-filter-guidance').count(),0,'old standalone hint must be removed');
+   const titles=await page.locator('.fbs-filter-field-title').allTextContents();
+   assert.deepEqual(titles.map(t=>t.replace(/\s+/g,' ').trim()),[
+     'Оставить только(одна строка = одно условие)',
+     'Исключить(одна строка = одно условие)'
+   ]);
+   for(const title of await page.locator('.fbs-filter-field-title').all()){
+     const parts=await title.locator('span,small').all();
+     assert.equal(parts.length,2);
+     assert.equal(await parts[1].evaluate(el=>getComputedStyle(el).color!==getComputedStyle(el.parentElement).color),true,'inline hint should be muted');
+   }
    await page.locator('.fbs-keep').fill(await page.evaluate(()=>window.__copied));
    assert.equal(await page.locator('.fbs-keep-flag-preview img').count(),1);
    assert.equal((await page.locator('.fbs-keep-flag-preview img').first().getAttribute('src')).includes('pl.svg'),true);
@@ -113,7 +122,7 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.locator('.fbs-country-search').fill('Австрия');
    await page.locator('.fbs-country-search').click();
    assert.equal(await page.locator('.fbs-country-menu').isVisible(),true,'inside menu must stay open');
-   await page.locator('.fbs-filter-guidance').click();
+   await page.locator('.fbs-filter-field-title').first().click();
    assert.equal(await page.locator('.fbs-country-menu').isHidden(),true,'click on empty panel closes menu');
    assert.equal(await page.locator('.fbs-keep').inputValue(),'🇵🇱','outside click must not alter current filter');
    await page.locator('.fbs-flag-picker[data-flag-for="keep"]').click();

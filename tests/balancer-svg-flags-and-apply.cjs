@@ -25,8 +25,10 @@ assert(js.includes("document.addEventListener('click',onOutsideClick)"),'country
 assert(js.includes('dismissCountryPicker()'),'country picker listener must be released on teardown');
 assert(js.includes('renderFilterFlagPreviews()'),'old Windows filter preview requires local SVG');
 assert(css.includes('.fbs-copy-flag')&&css.includes('.fbs-filter-flag-chip'));
-assert(js.includes('class="fbs-filter-guidance">Вписать по одному по вертикали</p>'));
-assert(css.includes('.fbs-filter-guidance{'),'missing visible filter guidance styling');
+assert(!js.includes('fbs-filter-guidance')&&!css.includes('.fbs-filter-guidance{'),'standalone guidance must be removed');
+assert.equal((js.match(/class="fbs-filter-field-title"/g)||[]).length,2,'both field titles should carry inline guidance');
+assert.equal((js.match(/\(одна строка = одно условие\)/g)||[]).length,2,'every field needs exact inline hint');
+assert(css.includes('.fbs-filter-field-title small{'),'inline hint should use muted label styling');
 assert(css.includes('width:16px;height:11px'));
 assert(subsCSS.includes('.outsub-dialog .outsub-flag-svg,'));
 assert(editor.includes("openMihomoStatusDialog('apply')"));
@@ -38,7 +40,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','122'],['mihomo-settings.js','119'],['mihomo-settings.css','122'],
+ ['mihomo-balancer-servers.js','123'],['mihomo-settings.js','119'],['mihomo-settings.css','123'],
  ['outbound-subscriptions.css','119'],['i18n.js','119'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');
