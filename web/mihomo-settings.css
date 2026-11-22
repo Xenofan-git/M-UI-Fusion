@@ -557,16 +557,29 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-node .fbs-flag{display:inline-flex;vertical-align:middle;width:18px;align-items:center;justify-content:center;margin-right:6px}
 .fbs-flag img{display:block;object-fit:cover;width:16px;height:11px;border:1px solid #fff3;border-radius:2px}
 .fbs-node-name{
-  display:inline-block;max-width:calc(100% - 40px);
-  vertical-align:middle;white-space:nowrap;overflow-x:auto;overflow-y:hidden;
-  scrollbar-width:thin;color:var(--text-strong);line-height:1.6;
+  display:inline;vertical-align:middle;white-space:normal;overflow:visible;
+  overflow-wrap:anywhere;color:var(--text-strong);line-height:1.6;
 }
+.fbs-node{overflow-wrap:anywhere;}
 
 /* Preserve regular mouse/touch text selection for outbound node names. */
 .fbs-node-name,.fbs-candidate-label,.mihomo-table .mihomo-name,
 .mihomo-table .mihomo-current-group,.mihomo-table .mihomo-current-country-label,
 .mihomo-table .mihomo-delay-result{
   -webkit-user-select:text!important;user-select:text!important;cursor:text;
+}
+/* Always visible against dark graphite/emerald backgrounds, including
+   Windows Chromium: bright teal selection with high-contrast dark letters. */
+.fbs-node-name::selection,.fbs-candidate-label::selection,
+.mihomo-table .mihomo-name::selection,.mihomo-table .mihomo-current-group::selection,
+.mihomo-table .mihomo-current-country-label::selection,
+.mihomo-table .mihomo-delay-result::selection{
+  background:#4dd6ae!important;color:#071c18!important;
+  -webkit-text-fill-color:#071c18!important;
+}
+.fbs-node-name::-moz-selection,.fbs-candidate-label::-moz-selection,
+.mihomo-table .mihomo-name::-moz-selection,.mihomo-table .mihomo-current-country-label::-moz-selection{
+  background:#4dd6ae;color:#071c18;
 }
 .fbs-active-candidate{font-weight:700;color:var(--teal) !important}
 .fbs-up{color:#3ec68d;font-weight:600}

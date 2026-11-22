@@ -974,7 +974,13 @@
     form.reset();form.elements.kind.value=item.kind||'proxy';populateOutboundTypes(form,item.type);syncOutboundTargets(item);
     for(const field of form.querySelectorAll('[name]')){
       if(['kind','type','proxies','defaultSelected','subscriptionIds'].includes(field.name))continue;
-      setFormValue(form,field.name,item[field.name]??(field.type==='checkbox'?false:''));
+      // Historical URL Test groups may have missing health knobs. Show the
+      // same editable defaults as a newly added group without replacing a
+      // user's explicitly saved zero or custom value.
+      const groupHealthDefaults=item.kind==='group'&&item.type!=='select'
+        ?(field.name==='timeout'?8000:field.name==='tolerance'&&item.type==='url-test'?100:undefined)
+        :undefined;
+      setFormValue(form,field.name,item[field.name]??groupHealthDefaults??(field.type==='checkbox'?false:''));
     }
     form.elements.tls.value=String(!!item.tls);
     form.elements.network.value=item.network||'tcp';

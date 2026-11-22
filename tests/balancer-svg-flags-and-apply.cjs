@@ -29,6 +29,9 @@ assert(js.includes("document.addEventListener('visibilitychange',onVisibilityCha
 assert(js.includes('statusRequestPromise'),'deduplicate concurrent status reads');
 assert(css.includes('.fbs-node-name,.fbs-candidate-label,.mihomo-table .mihomo-name,'),
  'outbound node names must be selectable as normal text');
+assert(css.includes('.fbs-node-name::selection'),'selection appearance must be explicitly defined');
+assert(css.includes('background:#4dd6ae!important'),'selection must show on dark background');
+assert(!css.includes('max-width:calc(100% - 40px)'),'node-name selection must not be trapped in a clipped scroller');
 assert(js.includes('renderFilterFlagPreviews()'),'old Windows filter preview requires local SVG');
 assert(css.includes('.fbs-copy-flag')&&css.includes('.fbs-filter-flag-chip'));
 assert(!js.includes('fbs-filter-guidance')&&!css.includes('.fbs-filter-guidance{'),'standalone guidance must be removed');
@@ -46,7 +49,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','124'],['mihomo-settings.js','121'],['mihomo-settings.css','124'],
+ ['mihomo-balancer-servers.js','124'],['mihomo-settings.js','122'],['mihomo-settings.css','125'],
  ['outbound-subscriptions.css','119'],['i18n.js','119'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

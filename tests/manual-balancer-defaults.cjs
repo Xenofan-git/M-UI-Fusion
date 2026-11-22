@@ -31,6 +31,12 @@ assert.match(source,/\.\.\.newManualBalancerDefaults\(\)/);
 assert.match(source,/function fillOutboundForm\(item\)/);
 assert.match(source,/setFormValue\(form,field.name,item\[field.name\]/);
 
+// Existing historical groups with missing fields show editable defaults,
+ // while an explicit 0 or a user value remains unchanged.
+assert.match(source,/field\.name==='timeout'\?8000/);
+assert.match(source,/field\.name==='tolerance'&&item\.type==='url-test'\?100/);
+assert.match(source,/item\[field.name\]\?\?groupHealthDefaults\?\?/);
+
 // Manual and subscription editors use separate association scopes.
 assert.match(source,/editingSubscriptionGroup=\(requestedItem\?\.kind\|\|requestedKind\)==='group'\s*&&currentTab==='subscriptions'/);
 assert.match(source,/balancerSubscriptions=\[\];\s*if\(editingSubscriptionGroup\)\{/);

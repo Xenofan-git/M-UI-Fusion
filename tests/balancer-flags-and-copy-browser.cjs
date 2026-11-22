@@ -104,6 +104,34 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
      assert.equal(selection.userSelect,'text',JSON.stringify(selection));
      assert(selection.picked.length>0,'node text must be selectable');
    }
+   // Actual mouse drag, not a synthetic range: the user must see the
+   // selection and be able to issue ordinary Ctrl+C on an outbound name.
+   const mark=await page.locator('.fbs-node-name').first().evaluate(el=>{
+     const text=el.firstChild;
+     const rectAt=(start,end)=>{
+       const range=document.createRange();
+       range.setStart(text,start);range.setEnd(text,end);
+       const r=range.getBoundingClientRect();
+       return {x:r.x,y:r.y,w:r.width,h:r.height};
+     };
+     return {begin:rectAt(0,1),end:rectAt(12,13)};
+   });
+   await page.mouse.move(mark.begin.x+1,mark.begin.y+mark.begin.h/2);
+   await page.mouse.down();
+   await page.mouse.move(mark.end.x+mark.end.w,mark.end.y+mark.end.h/2,{steps:12});
+   await page.mouse.up();
+   const copiedSelection=await page.evaluate(()=>window.getSelection().toString());
+   assert(copiedSelection.length>=6,'mouse drag must visibly select the node name: '+JSON.stringify({mark,copiedSelection}));
+   const selectionPaint=await page.locator('.fbs-node-name').first().evaluate(el=>{
+     const css=getComputedStyle(el,'::selection');
+     return {background:css.backgroundColor,foreground:css.color};
+   });
+   assert.equal(selectionPaint.background,'rgb(77, 214, 174)','selected text has bright teal background');
+   assert.equal(selectionPaint.foreground,'rgb(7, 28, 24)','selected text is legible on bright background');
+   await page.evaluate(()=>document.addEventListener('copy',()=>{window.__nameSelectedForCopy=window.getSelection().toString()}, {once:true}));
+   await page.keyboard.press('Control+c');
+   assert.equal(await page.evaluate(()=>window.__nameSelectedForCopy),copiedSelection,'Ctrl+C must copy selected node text');
+   await page.evaluate(()=>window.getSelection().removeAllRanges());
    const normalTable=await page.evaluate(()=>{
      const cell=document.createElement('td');cell.className='mihomo-name';cell.textContent='Outgoing - example';
      const table=document.createElement('table');table.className='mihomo-table';table.append(cell);document.body.append(table);
