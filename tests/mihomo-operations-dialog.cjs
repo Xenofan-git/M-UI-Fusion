@@ -21,8 +21,8 @@ assert(js.includes("if(busy)return"),'pending dialog cannot be dismissed');
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="pending"]'));
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="error"]'));
 assert(css.includes('background:linear-gradient(160deg,#009B77,#08795E)'));
-for(const asset of ['mihomo-settings.js','mihomo-settings.css','i18n.js','i18n-locales.js'])
- assert(html.includes('static/'+asset+'?v='+'119'),asset+' cache version');
+for(const [asset,version] of [['mihomo-settings.js','119'],['mihomo-settings.css','122'],['i18n.js','119'],['i18n-locales.js','119']])
+ assert(html.includes('static/'+asset+'?v='+version),asset+' cache version');
 const keys=['mh.operationSaving','mh.operationSaveTitle','mh.operationRestarting','mh.operationRestartTitle','mh.operationFailureTitle','mh.operationRestartSuccess'];
 for(const key of keys){
  assert(cn.includes("'"+key+"':"),'missing base '+key);
