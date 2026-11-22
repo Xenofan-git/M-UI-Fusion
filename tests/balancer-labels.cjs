@@ -106,7 +106,7 @@ const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 assert.ok(css.includes('.mihomo-current-country-flag'));
 assert.ok(html.includes('mihomo-settings.js?v=119'));
-assert.ok(html.includes('mihomo-settings.css?v=119'));
+assert.ok(html.includes('mihomo-settings.css?v=121'));
 for(const code of ['lv','ru','fi','de']){
   const svg=fs.readFileSync('web/flags/'+code+'.svg','utf8');
   assert.ok(svg.startsWith('<svg ')&&svg.includes('viewBox='),'local SVG asset '+code);

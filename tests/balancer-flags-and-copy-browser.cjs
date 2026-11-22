@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=120'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=121'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -99,6 +99,8 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.locator('.fbs-table-body tr[data-node] .fbs-copy-flag').first().click();
    assert.equal(await page.evaluate(()=>window.__copied),'🇵🇱');
    await page.locator('.fbs-tab[data-sub-pane="filters"]').click();
+   assert.equal(await page.locator('.fbs-filter-guidance').innerText(),'Вписать по одному по вертикали');
+   assert.equal(await page.locator('.fbs-filter-guidance').isVisible(),true);
    await page.locator('.fbs-keep').fill(await page.evaluate(()=>window.__copied));
    assert.equal(await page.locator('.fbs-keep-flag-preview img').count(),1);
    assert.equal((await page.locator('.fbs-keep-flag-preview img').first().getAttribute('src')).includes('pl.svg'),true);
