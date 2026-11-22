@@ -5,6 +5,7 @@
  'use strict';
  let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
  let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all';
+ let dismissCountryPicker=null;
  const q=(s,parent=document)=>parent.querySelector(s);
  const elt=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
  const request=async(path,opts={})=>{
@@ -17,6 +18,7 @@
  const tabIcon=type=>type==='refresh'
    ?'<svg class="fbs-tab-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.7 8.9a7.5 7.5 0 0 1 12.6-2L20 12M4 12l1.7 3.1a7.5 7.5 0 0 0 12.6-2"/></svg>'
    :'<svg class="fbs-tab-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5z"/></svg>';
+ const addCountryIcon='<svg class="fbs-country-add-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
  const copyFlag=async(country)=>{
    if(!country?.flag)return false;
    const value=country.flag;
@@ -227,6 +229,7 @@
      context.form.elements.proxies.classList.remove('fbs-native-members');
    }
    if(refreshTimer){clearInterval(refreshTimer);refreshTimer=0;}
+   if(dismissCountryPicker){dismissCountryPicker();dismissCountryPicker=null;}
    controller?.abort();controller=null;probing=false;
    if(panel){panel.remove();panel=null;}
    context=null;items=[];selected.clear();excluded.clear();liveCandidate='';
@@ -280,7 +283,7 @@
    '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="update">'+tabIcon('refresh')+'<span>Обновление</span></button><button type="button" class="fbs-tab" data-sub-pane="filters">'+tabIcon('filter')+'<span>Фильтры</span></button>'+
    '<div class="fbs-settings-source">Источник: <select class="fbs-source" aria-label="Подписка для настройки"></select></div>'+
    '<div class="fbs-panel" data-sub-panel="update"><label class="fbs-check"><input type="checkbox" class="fbs-auto"> Обновлять подписку автоматически</label><div class="fbs-interval"><label>Интервал: <input type="number" min="0" max="168" class="fbs-hours"> ч</label><label><input type="number" min="0" max="59" class="fbs-minutes"> м</label></div></div>'+
-   '<div class="fbs-panel" data-sub-panel="filters" hidden><p class="fbs-filter-guidance">Вписать по одному по вертикали</p><div class="fbs-filter-fields"><label>Оставить только<textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">🏳️ Добавить страну</button></label><label>Исключить<textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">🏳️ Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
+   '<div class="fbs-panel" data-sub-panel="filters" hidden><p class="fbs-filter-guidance">Вписать по одному по вертикали</p><div class="fbs-filter-fields"><label>Оставить только<textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">'+addCountryIcon+'Добавить страну</button></label><label>Исключить<textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">'+addCountryIcon+'Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
    '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить настройки подписки</button><span class="fbs-save-hint">Ручной выбор серверов сохраняется кнопкой «Применить к конфигурации».</span></div></div>';
    if(!context.subscribed){
      const toolbar=q('.fbs-toolbar',wrapper);
@@ -415,18 +418,38 @@
          const term=country.flag;
          if(!current.split(/\r?\n/).includes(term))targetArea.value=current+(current?'\n':'')+term;
          renderFilterFlagPreviews();
-         countryMenu.hidden=true;
-         targetArea.focus();
+         const area=targetArea;
+         closeCountryMenu();
+         area.focus();
        };
        countryList.append(button);
      }
    }
-   for(const button of el.querySelectorAll('[data-flag-for]'))button.onclick=()=>{
-     targetArea=q(button.dataset.flagFor==='keep'?'.fbs-keep':'.fbs-drop',el);
+   const pickerButtons=Array.from(el.querySelectorAll('[data-flag-for]'));
+   const closeCountryMenu=()=>{countryMenu.hidden=true;targetArea=null;};
+   for(const button of pickerButtons)button.onclick=()=>{
+     const area=q(button.dataset.flagFor==='keep'?'.fbs-keep':'.fbs-drop',el);
+     if(!countryMenu.hidden&&targetArea===area){closeCountryMenu();return;}
+     targetArea=area;
      countryMenu.hidden=false;countrySearch.value='';renderCountryChoices();countrySearch.focus();
+   };
+   // Close on any click outside the picker, including free space in the dialog.
+   const onOutsideClick=event=>{
+     if(countryMenu.hidden||countryMenu.contains(event.target)||pickerButtons.some(b=>b.contains(event.target)))return;
+     closeCountryMenu();
+   };
+   const onEscape=event=>{
+     if(event.key==='Escape'&&!countryMenu.hidden){closeCountryMenu();event.preventDefault();}
+   };
+   document.addEventListener('click',onOutsideClick);
+   document.addEventListener('keydown',onEscape);
+   dismissCountryPicker=()=>{
+     document.removeEventListener('click',onOutsideClick);
+     document.removeEventListener('keydown',onEscape);
    };
    countrySearch.oninput=renderCountryChoices;
    for(const b of el.querySelectorAll('[data-sub-pane]'))b.onclick=()=>{
+     if(b.dataset.subPane!=='filters')closeCountryMenu();
      for(const other of el.querySelectorAll('[data-sub-pane]'))other.classList.toggle('active',other===b);
      for(const page of el.querySelectorAll('[data-sub-panel]'))page.hidden=page.dataset.subPanel!==b.dataset.subPane;
    };

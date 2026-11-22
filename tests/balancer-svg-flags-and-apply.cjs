@@ -19,6 +19,10 @@ assert(js.includes('Просто нажмите на флаг, чтобы он �
 assert(js.includes("navigator.clipboard?.writeText"),'modern Clipboard API');
 assert(js.includes("document.execCommand?.('copy')"),'HTTP/Windows legacy fallback');
 assert(js.includes('term=country.flag'),'country picker must insert real flag, not only translated name');
+assert(js.includes('const addCountryIcon='),'country picker must use SVG plus icon, not an emoji');
+assert(!js.includes('🏳️ Добавить страну'),'unsupported flag emoji must not appear in country picker');
+assert(js.includes("document.addEventListener('click',onOutsideClick)"),'country picker must close on outside click');
+assert(js.includes('dismissCountryPicker()'),'country picker listener must be released on teardown');
 assert(js.includes('renderFilterFlagPreviews()'),'old Windows filter preview requires local SVG');
 assert(css.includes('.fbs-copy-flag')&&css.includes('.fbs-filter-flag-chip'));
 assert(js.includes('class="fbs-filter-guidance">Вписать по одному по вертикали</p>'));
@@ -34,7 +38,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','121'],['mihomo-settings.js','119'],['mihomo-settings.css','121'],
+ ['mihomo-balancer-servers.js','122'],['mihomo-settings.js','119'],['mihomo-settings.css','122'],
  ['outbound-subscriptions.css','119'],['i18n.js','119'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

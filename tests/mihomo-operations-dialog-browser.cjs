@@ -5,7 +5,7 @@ const html=fs.readFileSync('web/index.html','utf8');
 const sourceStart=source.indexOf('  // Reuse the existing centered M-UI dialog design');
 const sourceEnd=source.indexOf('\n  ensureModals();',sourceStart);
 assert(sourceStart>=0&&sourceEnd>sourceStart,'status dialog code missing');
-assert(html.includes('static/mihomo-settings.js?v=119')&&html.includes('static/mihomo-settings.css?v=121'));
+assert(html.includes('static/mihomo-settings.js?v=119')&&html.includes('static/mihomo-settings.css?v=122'));
 const snippet=source.slice(sourceStart,sourceEnd)+'\nwindow.__ops={saveSettings,restartMihomoFromSettings};';
 const inlineCSS=[...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
 const css=[inlineCSS,fs.readFileSync('web/mihomo-settings.css','utf8')].join('\n');

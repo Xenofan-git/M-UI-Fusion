@@ -634,7 +634,8 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   padding:8px;color:var(--text-strong);background:var(--surface-strong);
   font:inherit;
 }
-.fbs-filter-fields .fbs-flag-picker{align-self:flex-start;padding:7px 10px;font-size:12px}
+.fbs-filter-fields .fbs-flag-picker{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;padding:7px 10px;font-size:12px}
+.fbs-country-add-icon{width:14px;height:14px;flex:none}
 .fbs-country-menu{display:flex;flex-direction:column;gap:5px;max-width:430px;border:1px solid var(--stroke);border-radius:10px;padding:10px;background:var(--surface-strong)}
 .fbs-country-menu[hidden]{display:none!important}
 .fbs-country-search{width:100%;height:35px;padding:7px;border:1px solid var(--stroke);border-radius:8px;background:var(--card);color:var(--text-strong)}
