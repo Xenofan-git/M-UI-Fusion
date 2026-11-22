@@ -685,9 +685,17 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 				return fmt.Errorf("Outbound или балансировщик %q уже существует", sub.Group)
 			}
 		}
-		working.Outbounds = append(append([]MihomoOutbound(nil), before.Outbounds...),
-			MihomoOutbound{Kind: "group", Name: sub.Group, Type: groupType,
-				TestURL: defaultMihomoTestURL, Interval: 300})
+		// Defaults apply only to a newly created subscription balancer.
+		// Existing groups keep the user's own timeout/tolerance on refresh.
+		group := MihomoOutbound{Kind: "group", Name: sub.Group, Type: groupType,
+			TestURL: defaultMihomoTestURL, Interval: 300}
+		if groupType != "select" {
+			group.Timeout = 8000 // milliseconds: tolerate slow LTE/VPN handshakes.
+		}
+		if groupType == "url-test" {
+			group.Tolerance = 100 // milliseconds: avoid switching for tiny latency differences.
+		}
+		working.Outbounds = append(append([]MihomoOutbound(nil), before.Outbounds...), group)
 	}
 	next, err := applySubscriptionNodes(working, sub, selected)
 	if err != nil {

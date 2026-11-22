@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert(html.includes('static/mihomo-settings.js?v=119'));
+assert(html.includes('static/mihomo-settings.js?v=121'));
 const slice=(start,end)=>{
  const a=source.indexOf(start),b=source.indexOf(end,a+start.length);
  assert(a>=0&&b>a,'cannot extract '+start);
@@ -61,8 +61,8 @@ const dict={
    assert.equal(await page.evaluate(()=>window.draft.outbounds[0].proxies[0]),'New');
    assert.equal(await page.evaluate(()=>window.__marked),1);
    assert.equal(await page.evaluate(()=>document.querySelector('#mihomo-outbound-modal').classList.contains('open')),false);
-   await page.locator('.mui-mihomo-status-actions button').click();
-   assert.equal(await status.count(),0);
+   await status.waitFor({state:'detached',timeout:4200});
+   assert.equal(await status.count(),0,'successful apply notice closes itself after 2.5s');
    await page.evaluate(()=>{
      document.querySelector('#mihomo-outbound-modal').classList.add('open');
      window.__marked=0;

@@ -1007,7 +1007,10 @@
     ensureModals();editingOutbound=id;
     editingOriginal=clone(requestedItem||(requestedKind==='group'&&!editingSubscriptionGroup
       ?{...newManualBalancerDefaults(),port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,strategy:'consistent-hashing'}
-      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'}));
+      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,
+        // Defaults for newly created subscription balancers; never alter saved groups.
+        ...(requestedKind==='group'?{timeout:8000,tolerance:100}:{}),
+        strategy:'consistent-hashing'}));
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
     outboundFormChanged=false;outboundYAMLCached=false;
     setOutboundMode('form');
@@ -1798,9 +1801,10 @@
     footer.append(dismiss);
     panel.append(header,body,footer);
     backdrop.appendChild(panel);
-    let busy=true;
+    let busy=true,successDismissTimer=0;
     const close=()=>{
       if(busy)return;
+      if(successDismissTimer){clearTimeout(successDismissTimer);successDismissTimer=0;}
       document.removeEventListener('keydown',onKey,true);
       backdrop.remove();
       if(previousFocus&&document.contains(previousFocus))previousFocus.focus?.({preventScroll:true});
@@ -1823,6 +1827,7 @@
     panel.tabIndex=-1;
     panel.focus({preventScroll:true});
     const set=(phase,message)=>{
+      if(successDismissTimer){clearTimeout(successDismissTimer);successDismissTimer=0;}
       busy=phase==='pending';
       backdrop.dataset.phase=phase;
       indicator.textContent=phase==='pending'?'':(phase==='success'?'✓':'!');
@@ -1832,6 +1837,9 @@
       detail.textContent=String(message||'');
       dismiss.disabled=busy;
       if(!busy)dismiss.focus({preventScroll:true});
+      // Successful saves/apply/restarts dismiss themselves; errors stay visible
+      // until explicitly closed. The timer is canceled on manual dismissal.
+      if(phase==='success')successDismissTimer=setTimeout(close,2500);
     };
     set('pending',muiT(kind==='save'?'mh.operationSaving':kind==='apply'?'mh.operationApplying':'mh.operationRestarting'));
     return {set,close};

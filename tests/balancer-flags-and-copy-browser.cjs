@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=123'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=124'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -28,6 +28,14 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.goto(pathToFileURL(file).href);
    await page.evaluate(()=>{
     window.__serverCalls=0;
+    window.__pollIntervals=[];
+    const originalSetInterval=window.setInterval;
+    window.setInterval=(callback,ms)=>{
+      window.__pollIntervals.push({callback,ms});
+      return originalSetInterval(callback,ms);
+    };
+    window.__forceHidden=false;
+    Object.defineProperty(document,'hidden',{configurable:true,get:()=>window.__forceHidden});
     window.fetch=async()=>{
       window.__serverCalls++;
       return {ok:true,json:async()=>({data:{
@@ -53,10 +61,55 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
      });
    });
    await page.waitForFunction(()=>document.querySelector('.fbs-status')?.textContent==='Состояние Mihomo обновлено');
+   assert.deepEqual(await page.evaluate(()=>window.__pollIntervals.map(i=>i.ms)),[60000],
+     'one 60-second status timer, not a 7.5-second request');
+   const initialCalls=await page.evaluate(()=>window.__serverCalls);
+   assert.equal(initialCalls,1,'opening a balancer must fetch status immediately');
+   // An invisible browser tab or hidden modal must not send background requests.
+   await page.evaluate(()=>{window.__forceHidden=true;window.__pollIntervals[0].callback();document.dispatchEvent(new Event('visibilitychange'));});
+   assert.equal(await page.evaluate(()=>window.__serverCalls),initialCalls,'background status requests must stop');
+   await page.evaluate(()=>{window.__forceHidden=false;document.dispatchEvent(new Event('visibilitychange'));});
+   await page.waitForFunction(()=>window.__serverCalls===2);
+   // Never pile up overlapping status requests during a stalled response.
+   const beforeOverlap=await page.evaluate(()=>window.__serverCalls);
+   await page.evaluate(async()=>{
+     window.__serverDelay=null;
+     const oldFetch=window.fetch;
+     window.__baseFetch=oldFetch;
+     window.fetch=async(...args)=>{
+       await new Promise(resolve=>{window.__serverDelay=resolve;});
+       return oldFetch(...args);
+     };
+     window.__pollIntervals[0].callback();
+     window.__pollIntervals[0].callback();
+     window.__pollIntervals[0].callback();
+   });
+   // A pending status request is one request even if many polls fire.
+   assert.equal(await page.evaluate(()=>window.__serverCalls),beforeOverlap);
+   await page.evaluate(()=>window.__serverDelay());
+   await page.waitForFunction(n=>window.__serverCalls===n+1,beforeOverlap);
+   await page.evaluate(()=>{window.fetch=window.__baseFetch;});
    assert.equal(await page.locator('.fbs-tab .fbs-tab-icon').count(),2);
    assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Обновление');
    assert.equal((await page.locator('.fbs-tab').nth(1).innerText()).trim(),'Фильтры');
    assert.equal(await page.locator('.fbs-table-body > tr[data-node]').count(),2);
+   for(const selector of ['.fbs-node-name','.fbs-candidate-label']){
+     const selection=await page.locator(selector).first().evaluate(el=>{
+       const style=getComputedStyle(el);
+       const range=document.createRange();range.selectNodeContents(el);
+       const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+       const picked=sel.toString();sel.removeAllRanges();
+       return {userSelect:style.userSelect,webkitUserSelect:style.webkitUserSelect,picked};
+     });
+     assert.equal(selection.userSelect,'text',JSON.stringify(selection));
+     assert(selection.picked.length>0,'node text must be selectable');
+   }
+   const normalTable=await page.evaluate(()=>{
+     const cell=document.createElement('td');cell.className='mihomo-name';cell.textContent='Outgoing - example';
+     const table=document.createElement('table');table.className='mihomo-table';table.append(cell);document.body.append(table);
+     const value=getComputedStyle(cell).userSelect;table.remove();return value;
+   });
+   assert.equal(normalTable,'text','outgoing table node names must be selectable');
    assert.equal(await page.locator('.fbs-table-body .fbs-copy-flag').first().getAttribute('title'),'Просто нажмите на флаг, чтобы он скопировался для вставки в фильтр');
    await page.waitForFunction(()=>[...document.querySelectorAll('.fbs-node .fbs-flag img')].every(e=>e.complete&&e.naturalWidth>0));
    await page.evaluate(()=>{

@@ -10,7 +10,7 @@ for(const id of controls){
   assert.ok(m,'Missing visible toolbar button '+id);
   assert.match(m[0],/class="mihomo-primary"/);
 }
-assert.match(markup, /static\/color-skins\.css\?v=113/, 'cache-busting for existing browsers');
+assert.match(markup, /static\/color-skins\.css\?v=114/, 'cache-busting for existing browsers');
 const block=css.slice(css.indexOf('/* v1.0.4: Mihomo toolbar primary actions'));
 assert.ok(block.length>2000,'toolbar override block must exist');
 for(const token of ['#mihomo-settings-root','.mihomo-toolbar > button.mihomo-primary',

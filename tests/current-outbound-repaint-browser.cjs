@@ -8,8 +8,8 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-settings.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-settings.js?v=119'));
-assert(html.includes('static/mihomo-settings.css?v=123'));
+assert(html.includes('static/mihomo-settings.js?v=121'));
+assert(html.includes('static/mihomo-settings.css?v=124'));
 const chunk=(a,b)=>{
  const start=source.indexOf(a),end=source.indexOf(b,start);
  assert(start>=0&&end>start,a+' -> '+b);
@@ -55,6 +55,8 @@ const fixture='<!doctype html><html><head><meta charset="UTF-8">'+
    await page.goto(pathToFileURL(file).href);
    await page.addScriptTag({content:script});
    await page.waitForFunction(()=>document.querySelector('.mihomo-current-country-flag')?.naturalWidth>0);
+   assert.equal(await page.locator('.mihomo-current-country-label').first().evaluate(el=>getComputedStyle(el).userSelect),'text','current outgoing label must be selectable');
+   assert.equal(await page.locator('.mihomo-name').first().evaluate(el=>getComputedStyle(el).userSelect),'text','outgoing table names must be selectable');
    await page.evaluate(()=>{
      const box=document.querySelector('#mihomo-subscription-balancer-table');
      window.__table=box.querySelector('table');

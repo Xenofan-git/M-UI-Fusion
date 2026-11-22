@@ -566,3 +566,25 @@ html body #mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled:is(:hove
   box-shadow: none !important;
   cursor: not-allowed !important;
 }
+
+
+/* Dialog action buttons in every palette: never paint an unreadable dark
+   label/background on hover. Also covers balancer dependency dialogs. */
+html body .modal-backdrop:is(.mui-dialog,.mui-balancer-use-backdrop) .modal-footer :is(button.primary-btn,button.outline-btn):not(:disabled){
+  background:#076b55!important;background-image:none!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  border-color:#076b55!important;
+  box-shadow:0 2px 10px rgba(0,155,119,.23)!important;
+  filter:none!important;opacity:1!important;
+  transition:background .16s ease,box-shadow .16s ease,transform .16s ease!important;
+}
+html body .modal-backdrop:is(.mui-dialog,.mui-balancer-use-backdrop) .modal-footer :is(button.primary-btn,button.outline-btn):is(:hover,:focus-visible):not(:disabled){
+  background:#087f64!important;background-image:none!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  border-color:#43d6b3!important;
+  box-shadow:0 0 0 2px rgba(20,185,148,.26),0 4px 18px rgba(20,185,148,.4)!important;
+  filter:none!important;
+}
+html body .modal-backdrop:is(.mui-dialog,.mui-balancer-use-backdrop) .modal-footer :is(button.primary-btn,button.outline-btn):focus-visible{
+  outline:2px solid #72e9c9!important;outline-offset:2px;
+}

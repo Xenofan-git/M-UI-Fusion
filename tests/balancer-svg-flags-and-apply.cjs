@@ -23,6 +23,12 @@ assert(js.includes('const addCountryIcon='),'country picker must use SVG plus ic
 assert(!js.includes('🏳️ Добавить страну'),'unsupported flag emoji must not appear in country picker');
 assert(js.includes("document.addEventListener('click',onOutsideClick)"),'country picker must close on outside click');
 assert(js.includes('dismissCountryPicker()'),'country picker listener must be released on teardown');
+assert(js.includes('statusPollIntervalMs=60000'),'status read must poll once per minute');
+assert(js.includes('statusPanelVisible()'),'status poll must stop when the panel is hidden');
+assert(js.includes("document.addEventListener('visibilitychange',onVisibilityChange)"),'resume after tab becomes visible');
+assert(js.includes('statusRequestPromise'),'deduplicate concurrent status reads');
+assert(css.includes('.fbs-node-name,.fbs-candidate-label,.mihomo-table .mihomo-name,'),
+ 'outbound node names must be selectable as normal text');
 assert(js.includes('renderFilterFlagPreviews()'),'old Windows filter preview requires local SVG');
 assert(css.includes('.fbs-copy-flag')&&css.includes('.fbs-filter-flag-chip'));
 assert(!js.includes('fbs-filter-guidance')&&!css.includes('.fbs-filter-guidance{'),'standalone guidance must be removed');
@@ -40,7 +46,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','123'],['mihomo-settings.js','119'],['mihomo-settings.css','123'],
+ ['mihomo-balancer-servers.js','124'],['mihomo-settings.js','121'],['mihomo-settings.css','124'],
  ['outbound-subscriptions.css','119'],['i18n.js','119'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

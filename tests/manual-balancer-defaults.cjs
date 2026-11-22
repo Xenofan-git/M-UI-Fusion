@@ -19,6 +19,11 @@ assert.deepEqual(
     subscriptionIds:[],excludedSubscriptionMembers:[]}
 );
 
+// Creating a SUBSCRIPTION group also supplies editable values. Existing
+// requestedItem settings remain authoritative and are never defaulted again.
+assert.match(source,/requestedKind==='group'\?\{timeout:8000,tolerance:100\}:\{\}/);
+assert.match(source,/editingOriginal=clone\(requestedItem\|\|/);
+
 // The default factory must be used for CREATE only; persisted group settings
 // must be passed through unchanged when opening/editing an existing group.
 assert.match(source,/editingOriginal=clone\(requestedItem\|\|\(requestedKind==='group'&&!editingSubscriptionGroup/);

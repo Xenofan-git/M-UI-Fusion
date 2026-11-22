@@ -9,9 +9,9 @@ const i18n=read('web/i18n.js');
 const locales=read('web/i18n-locales.js');
 const css=read('web/color-skins.css');
 const keys=[
- 'static/color-skins.css?v=113',
- 'static/mihomo-settings.css?v=123',
- 'static/mihomo-settings.js?v=119',
+ 'static/color-skins.css?v=114',
+ 'static/mihomo-settings.css?v=124',
+ 'static/mihomo-settings.js?v=121',
  'static/i18n.js?v=119',
  'static/i18n-locales.js?v=119'
 ];

@@ -5,7 +5,8 @@
  'use strict';
  let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
  let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all';
- let dismissCountryPicker=null;
+ let dismissCountryPicker=null,removeVisibilityListener=null,statusRequestPromise=null;
+ const statusPollIntervalMs=60000;
  const q=(s,parent=document)=>parent.querySelector(s);
  const elt=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
  const request=async(path,opts={})=>{
@@ -162,7 +163,7 @@
      return ascending?result:-result;
    });
    const body=q('.fbs-table-body',panel);
-   // A polling tick arrives every 7.5 seconds. Reuse tr/img nodes by name:
+   // Even at a 60-second poll, reuse tr/img nodes: preserve text selection and SVG flags.
    // replacing tbody children caused the flag SVGs to blink after each poll.
    const existing=new Map([...body.querySelectorAll(':scope > tr[data-node]')].map(tr=>[tr.dataset.node,tr]));
    const visible=new Set(listing.map(item=>item.name));
@@ -212,6 +213,11 @@
      if(ping.textContent!==pingText)ping.textContent=pingText;
      const delay=q('.fbs-delay',tr),delayText=latest(item);
      if(delay.textContent!==delayText)delay.textContent=delayText;
+     const checked=Date.parse(item.checkedAt||'');
+     const checkedTitle=Number.isFinite(checked)
+       ?'Последняя проверка: '+new Date(checked).toLocaleString('ru-RU')
+       :'Время последней проверки неизвестно';
+     if(delay.title!==checkedTitle)delay.title=checkedTitle;
      delay.classList.toggle('fbs-down',item.alive===false);
      delay.classList.toggle('fbs-up',item.alive===true);
      if(body.children[index]!==tr)body.insertBefore(tr,body.children[index]||null);
@@ -229,12 +235,28 @@
      context.form.elements.proxies.classList.remove('fbs-native-members');
    }
    if(refreshTimer){clearInterval(refreshTimer);refreshTimer=0;}
+   if(removeVisibilityListener){removeVisibilityListener();removeVisibilityListener=null;}
+   // A pending request belongs to the previous context; it must not block a new modal.
+   statusRequestPromise=null;
    if(dismissCountryPicker){dismissCountryPicker();dismissCountryPicker=null;}
    controller?.abort();controller=null;probing=false;
    if(panel){panel.remove();panel=null;}
    context=null;items=[];selected.clear();excluded.clear();liveCandidate='';
  }
- async function refreshStatus(){
+ const statusPanelVisible=()=>{
+   if(!panel?.isConnected||document.hidden)return false;
+   const modal=panel.closest('.modal-backdrop');
+   return !modal||modal.classList.contains('open');
+ };
+ function refreshStatus(){
+   if(!panel||!context)return Promise.resolve();
+   // Never overlap requests to the same group while the previous one is running.
+   if(statusRequestPromise)return statusRequestPromise;
+   const task=loadBalancerStatus();
+   statusRequestPromise=task;
+   return task.finally(()=>{if(statusRequestPromise===task)statusRequestPromise=null;});
+ }
+ async function loadBalancerStatus(){
    if(!panel||!context)return;
    const ctx=context;
    if(!ctx.persistedName||ctx.persistedName!==ctx.group.name){
@@ -544,8 +566,13 @@
    label.after(panel);
    bindHandlers();
    renderRows();
-   refreshStatus();
-   refreshTimer=setInterval(()=>{if(!probing&&panel)refreshStatus();},7500);
+   // Immediate initial read; recurring reads only while the dialog is visible.
+   void refreshStatus();
+   const pollVisibleStatus=()=>{if(!probing&&statusPanelVisible())void refreshStatus();};
+   refreshTimer=setInterval(pollVisibleStatus,statusPollIntervalMs);
+   const onVisibilityChange=()=>{if(!document.hidden)pollVisibleStatus();};
+   document.addEventListener('visibilitychange',onVisibilityChange);
+   removeVisibilityListener=()=>document.removeEventListener('visibilitychange',onVisibilityChange);
    return true;
  }
  const getExcluded=()=>context?.subscribed&&panel?Array.from(excluded):null;

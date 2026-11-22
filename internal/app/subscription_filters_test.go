@@ -97,6 +97,9 @@ func TestCreateSubscribedBalancerAtomic(t *testing.T) {
 	if group.Kind != "group" || group.Name != "EU-Pool" || group.Type != "fallback" || len(group.Proxies) != 1 {
 		t.Fatalf("wrong group: %+v", group)
 	}
+	if group.Interval != 300 || group.Timeout != 8000 || group.Tolerance != 0 {
+		t.Fatalf("fallback defaults are wrong: interval=%d timeout=%d tolerance=%d", group.Interval, group.Timeout, group.Tolerance)
+	}
 	if !reflect.DeepEqual(m.state.OutboundSubscriptions[0].ExcludedNodeKeys, sub.ExcludedNodeKeys) {
 		t.Fatal("filter metadata lost")
 	}
@@ -117,6 +120,39 @@ func TestCreateSubscribedBalancerAtomic(t *testing.T) {
 		t.Fatal("failed duplicate creation touched state")
 	}
 }
+func TestCreateSubscribedURLTestDefaultsAndEditableSettings(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-new", Name: "Provider", URL: "https://example.org/sub",
+		Group: "New-URLTest", Enabled: true, IntervalMinutes: 60}
+	if err := m.commitOutboundSubscriptionWithGroup(sub, []MihomoOutbound{
+		subscriptionSS("Germany", "de.example")}, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	group := m.state.Outbounds[0]
+	if group.Interval != 300 || group.Timeout != 8000 || group.Tolerance != 100 {
+		t.Fatalf("wrong new URL-test defaults: %+v", group)
+	}
+	loaded := &CoreManager{dataDir: m.dataDir}
+	if err := loaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	fromDisk := loaded.state.Outbounds[0]
+	if fromDisk.Timeout != 8000 || fromDisk.Tolerance != 100 {
+		t.Fatalf("timeout/tolerance lost after reload: %+v", fromDisk)
+	}
+	// Existing user-customized values must survive subscription updates.
+	m.state.Outbounds[0].Timeout = 5000
+	m.state.Outbounds[0].Tolerance = 220
+	if err := m.commitOutboundSubscription(sub, []MihomoOutbound{
+		subscriptionSS("Germany", "de.example")}, false); err != nil {
+		t.Fatal(err)
+	}
+	updated := m.state.Outbounds[0]
+	if updated.Timeout != 5000 || updated.Tolerance != 220 {
+		t.Fatalf("existing editable values overwritten on refresh: %+v", updated)
+	}
+}
+
 func TestCreateSubscribedBalancerEmptyFilterDoesNotMutate(t *testing.T) {
 	state := defaultState()
 	state.Outbounds = []MihomoOutbound{subscriptionSS("Manual", "manual.example")}

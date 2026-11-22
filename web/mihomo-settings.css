@@ -561,6 +561,13 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   vertical-align:middle;white-space:nowrap;overflow-x:auto;overflow-y:hidden;
   scrollbar-width:thin;color:var(--text-strong);line-height:1.6;
 }
+
+/* Preserve regular mouse/touch text selection for outbound node names. */
+.fbs-node-name,.fbs-candidate-label,.mihomo-table .mihomo-name,
+.mihomo-table .mihomo-current-group,.mihomo-table .mihomo-current-country-label,
+.mihomo-table .mihomo-delay-result{
+  -webkit-user-select:text!important;user-select:text!important;cursor:text;
+}
 .fbs-active-candidate{font-weight:700;color:var(--teal) !important}
 .fbs-up{color:#3ec68d;font-weight:600}
 .fbs-down{color:#fb7777;font-weight:600}
