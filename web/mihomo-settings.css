@@ -585,6 +585,8 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-up{color:#3ec68d;font-weight:600}
 .fbs-down{color:#fb7777;font-weight:600}
 .fbs-row-excluded{opacity:.48}
+.fbs-table tr.fbs-row-filtered{opacity:.38;background:var(--surface-subtle)}
+.fbs-table tr.fbs-row-filtered input[type=checkbox]{cursor:not-allowed}
 .fbs-table tr:hover{background:var(--surface-hover)}
 .fbs-ping,.fbs-delay{font-variant-numeric:tabular-nums;white-space:nowrap}
 .fbs-table-actions{justify-content:space-between}

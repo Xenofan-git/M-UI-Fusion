@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
 const read=f=>fs.readFileSync('web/'+f,'utf8');
 const source=read('outbound-subscriptions.js');
 const css=[read('outbound-subscriptions.css'),read('theme-shadcn.css'),read('theme-md3.css'),read('color-skins.css')].join('\n');
-assert.ok(read('index.html').includes('static/outbound-subscriptions.css?v=114'));
+assert.ok(read('index.html').includes('static/outbound-subscriptions.css?v=119'));
 assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=114'));
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.MUI_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});

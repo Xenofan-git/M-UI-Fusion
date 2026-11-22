@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=124'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=125'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -194,6 +194,21 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.locator('.fbs-keep').fill(await page.evaluate(()=>window.__copied));
    assert.equal(await page.locator('.fbs-keep-flag-preview img').count(),1);
    assert.equal((await page.locator('.fbs-keep-flag-preview img').first().getAttribute('src')).includes('pl.svg'),true);
+   const previewRows=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(row=>({
+     name:row.dataset.node,filtered:row.classList.contains('fbs-row-filtered'),
+     disabled:row.querySelector('input[type=checkbox]').disabled
+   })));
+   assert.match(previewRows[0].name,/Польша/,'matching nodes must move to the top immediately');
+   assert.equal(previewRows[0].filtered,false);
+   assert.match(previewRows[1].name,/Россия/,'nonmatching nodes stay visible at bottom');
+   assert.equal(previewRows[1].filtered,true);
+   assert.equal(previewRows[1].disabled,true,'filtered nodes must not be selectable until filter changes');
+   assert.match(await page.locator('.fbs-show-count').innerText(),/подходит 1 · отфильтровано 1/);
+   assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),true);
+   await page.locator('.fbs-keep').fill('');
+   assert.equal(await page.locator('.fbs-table-body tr.fbs-row-filtered').count(),0);
+   assert.equal(await page.locator('.fbs-table-body input:disabled').count(),0);
+   await page.locator('.fbs-keep').fill('🇵🇱');
    assert.equal(await page.locator('.fbs-flag-picker .fbs-country-add-icon').count(),2);
    assert.equal((await page.locator('.fbs-flag-picker').first().innerText()).trim(),'Добавить страну');
    assert.equal(await page.locator('.fbs-flag-picker').first().evaluate(el=>getComputedStyle(el.querySelector('svg')).width),'14px');
@@ -221,6 +236,61 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(await page.locator('.fbs-country-menu').isHidden(),true,'choosing a country closes menu');
    assert.equal(await page.locator('.fbs-drop').inputValue(),'🇷🇺');
    assert.equal(await page.locator('.fbs-drop-flag-preview img').count(),1);
+   // Failed provider download must not discard the pending edits or pretend
+   // the filters have been stored.
+   await page.evaluate(async()=>{
+     const previous=window.fetch;
+     window.fetch=async(url,opts)=>opts?.method==='PUT'
+       ?{ok:false,json:async()=>({message:'Provider unavailable'})}
+       :previous(url,opts);
+     try{await window.MUIBalancerServers.saveSourceSettings();window.__sourceFailure='NOT_REJECTED';}
+     catch(error){window.__sourceFailure=error.message;}
+     window.fetch=previous;
+   });
+   assert.equal(await page.evaluate(()=>window.__sourceFailure),'Provider unavailable');
+   assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),true);
+   assert.equal(await page.locator('.fbs-keep').inputValue(),'🇵🇱');
+   // The modal Apply path calls this same API operation. It must persist
+   // *both* filter fields without requiring the extra subscription button.
+   await page.evaluate(async()=>{
+     const fetchBase=window.fetch;
+     window.fetch=async(url,options)=>{
+       if(options?.method==='PUT'){
+         window.__lastSourcePUT={url,body:JSON.parse(options.body)};
+         return {ok:true,json:async()=>({data:{}})};
+       }
+       return fetchBase(url,options);
+     };
+     window.__saveResult=await window.MUIBalancerServers.saveSourceSettings();
+   });
+   assert.equal(await page.evaluate(()=>window.__saveResult),true);
+   const stored=await page.evaluate(()=>window.__lastSourcePUT);
+   assert.match(stored.url,/api\/mihomo\/subscriptions\/sub1$/);
+   assert.equal(stored.body.filterKeep,'🇵🇱');
+   assert.equal(stored.body.filterExclude,'🇷🇺');
+   assert.equal(stored.body.intervalMinutes,1440);
+   assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
+   // Reopening the same existing group must show the values fetched from
+   // canonical subscription metadata, not empty editor defaults.
+   await page.evaluate(()=>{
+     const group={id:'group',name:'Foreign-quatro-vpn',kind:'group',type:'url-test',
+       proxies:['quatro-vpn | LTE - Россия','quatro-vpn | LTE - Польша'],subscriptionIds:['sub1']};
+     const outbounds=['Россия','Польша'].map((country,i)=>({
+       id:'managed'+i,kind:'proxy',type:'vless',
+       sourceSubscriptionId:'sub1',name:'quatro-vpn | LTE - '+country
+     }));
+     window.MUIBalancerServers.attach({
+       form:document.querySelector('#fake-editor'),group,
+       subs:[{id:'sub1',name:'quatro-vpn',group:group.name,enabled:true,intervalMinutes:1440,
+         filterKeep:window.__lastSourcePUT.body.filterKeep,
+         filterExclude:window.__lastSourcePUT.body.filterExclude}],
+       outbounds,updateDefaults:()=>{},isDirty:()=>false,persistedName:group.name
+     });
+   });
+   await page.locator('.fbs-tab[data-sub-pane="filters"]').click();
+   assert.equal(await page.locator('.fbs-keep').inputValue(),'🇵🇱');
+   assert.equal(await page.locator('.fbs-drop').inputValue(),'🇷🇺');
+   assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
    await page.evaluate(()=>{
       Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('insecure HTTP')}}});
       document.execCommand=()=>{window.__fallbackCopied=document.activeElement.value;return true;};

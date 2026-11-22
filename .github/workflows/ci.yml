@@ -28,6 +28,8 @@ jobs:
         run: node tests/balancer-labels.cjs
       - name: Test editable manual balancer defaults and source separation
         run: node tests/manual-balancer-defaults.cjs
+      - name: Ensure upgrades preserve subscriptions balancers and filters
+        run: node tests/installer-preserves-settings.cjs
       - name: Guard balancer flag SVG, copying, stable poll updates and Apply popup
         run: node tests/balancer-svg-flags-and-apply.cjs
       - name: Test friendly balancer dependency warning

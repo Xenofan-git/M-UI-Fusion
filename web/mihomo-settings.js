@@ -1226,6 +1226,10 @@
         const exported=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify({outbound:readOutboundForm()})});yaml=exported.yaml;
       }
       const response=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify(importRequest({yaml}))});
+      // The balancer's Apply action must also persist source filters.
+      // Previously it closed the dialog and discarded them unless a separate
+      // subscription Save button was pressed first.
+      const sourceFiltersSaved=applyingGroup?await window.MUIBalancerServers?.saveSourceSettings?.():false;
       const groupSubscriptionIDs=editingSubscriptionGroup
         ?Array.from($('#mihomo-outbound-form').elements.subscriptionIds.selectedOptions,option=>option.value):[];
       if(response.outbounds.length===1 && response.outbounds[0].kind==='group'){
@@ -1233,6 +1237,26 @@
         const exclusions=window.MUIBalancerServers?.getExcluded();
         response.outbounds[0].excludedSubscriptionMembers=editingSubscriptionGroup
           ?exclusions??editingOriginal?.excludedSubscriptionMembers??[]:[];
+      }
+      if(sourceFiltersSaved&&response.outbounds.length===1&&response.outbounds[0].kind==='group'){
+        // Source PUT can replace the managed nodes, so discard stale names
+        // before staging the group for the outer Mihomo Save action.
+        await refresh();
+        const live=app.state?.state||{};
+        const activeNodes=live.outbounds||[];
+        const byName=new Map(activeNodes.map(node=>[node.name,node]));
+        const group=response.outbounds[0];
+        const sources=new Set([...groupSubscriptionIDs,
+          ...(live.outboundSubscriptions||[]).filter(sub=>sub.group===group.name).map(sub=>sub.id)]);
+        const excluded=new Set(group.excludedSubscriptionMembers||[]);
+        const manual=(group.proxies||[]).filter(name=>{
+          const node=byName.get(name);
+          return node&&!node.sourceSubscriptionId;
+        });
+        const fresh=activeNodes.filter(node=>node.sourceSubscriptionId&&sources.has(node.sourceSubscriptionId)
+          &&!excluded.has(node.name)).map(node=>node.name);
+        group.proxies=Array.from(new Set([...manual,...fresh]));
+        if(group.native)group.native.proxies=[...group.proxies];
       }
       const next=clone(draft),index=next.outbounds.findIndex(item=>item.id===editingOutbound);
       if(index>=0){
@@ -1924,6 +1948,12 @@
   $('#mihomo-warp').onclick=openWarpModal;
   $('#mihomo-vpngate').onclick=()=>openVPNGateModal();
   $('#basics-warp').onclick=openWarpModal;
+  // Saved metadata lives on the server. Never silently discard the unsaved
+  // Mihomo editor or subscription filter inputs on browser reload.
+  window.addEventListener('beforeunload',event=>{
+    if(!dirty&&!window.MUIBalancerServers?.hasUnsavedFilterEdits?.())return;
+    event.preventDefault();event.returnValue='';
+  });
   $('#mihomo-save').onclick=saveSettings;
   $('#mihomo-restart').onclick=restartMihomoFromSettings;
 

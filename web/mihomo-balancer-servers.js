@@ -91,9 +91,12 @@
  }
  function renderStatusText(){
    if(!panel)return;
-   const count=items.length,enabled=items.filter(n=>selected.has(n.name)).length;
+   const count=items.length,enabled=items.filter(n=>selected.has(n.name)&&passesSourceFilters(n)).length;
    const down=items.filter(n=>n.member&&n.alive===false).length;
-   q('.fbs-count',panel).textContent='В пуле '+enabled+' из '+count+' · исключено '+(count-enabled)+' · недоступно '+down;
+   const filtered=items.filter(n=>!passesSourceFilters(n)).length;
+   q('.fbs-count',panel).textContent='В пуле '+enabled+' из '+count+
+     ' · исключено '+(count-enabled)+' · недоступно '+down+
+     (sourceFilterActive()?' · по фильтрам '+filtered:'');
    const candidate=q('.fbs-candidate',panel);
    if(candidate.dataset.candidate===liveCandidate)return;
    candidate.dataset.candidate=liveCandidate;
@@ -141,6 +144,31 @@
    renderStatusText();
    if(!context.subscribed)renderManualPicker();
  }
+ // HydraRoute-style preview: one term per line, OR for keep, exclude wins.
+ const filterWords=value=>String(value||'').replace(/\r\n/g,'\n').split('\n')
+   .map(word=>word.trim().toLocaleLowerCase('ru'))
+   .filter(word=>word&&!word.startsWith('#'));
+ function passesSourceFilters(item){
+   if(!context?.subscribed||!panel)return true;
+   const sourceId=q('.fbs-source',panel)?.value;
+   if(!sourceId||item.sourceId!==sourceId)return true;
+   const keep=filterWords(q('.fbs-keep',panel)?.value);
+   const drop=filterWords(q('.fbs-drop',panel)?.value);
+   const flags=window.MUICountryFlags;
+   const code=item.countryCode||flags?.read(item.name)?.code;
+   const country=flags?.byCode.get(code);
+   const haystack=[item.name,country?.flag,country?.english,country?.ru,
+     country?.code,flags?.aliases?.[country?.code]]
+     .filter(Boolean).join(' ').toLocaleLowerCase('ru');
+   return (!keep.length||keep.some(term=>haystack.includes(term)))&&
+     !drop.some(term=>haystack.includes(term));
+ }
+ function sourceFilterActive(){
+   return !!context?.subscribed&&!!panel&&(
+     filterWords(q('.fbs-keep',panel)?.value).length>0||
+     filterWords(q('.fbs-drop',panel)?.value).length>0
+   );
+ }
  function renderRows(){
    if(!panel)return;
    renderStatusText();
@@ -156,6 +184,10 @@
      }
      return true;
    }).sort((a,b)=>{
+     if(sourceFilterActive()){
+       const x=passesSourceFilters(a),y=passesSourceFilters(b);
+       if(x!==y)return x?-1:1;
+     }
      let result=0;
      if(sortBy==='latency')result=(a.delay||999999)-(b.delay||999999);
      else if(sortBy==='ping')result=(a.ping||999999)-(b.ping||999999);
@@ -200,9 +232,13 @@
        const ping=elt('td','fbs-ping');ping.title='ICMP echo до хоста (не показатель исправности VPN)';tr.append(ping);
        const delay=elt('td','fbs-delay');delay.title='Проверка HTTP-задержки через Mihomo';tr.append(delay);
      }
-     tr.classList.toggle('fbs-row-excluded',!selected.has(item.name));
+     const eligible=passesSourceFilters(item),enabled=eligible&&selected.has(item.name);
+     tr.classList.toggle('fbs-row-filtered',!eligible);
+     tr.classList.toggle('fbs-row-excluded',!enabled);
      const check=q('input[type=checkbox]',tr);
-     if(check.checked!==selected.has(item.name))check.checked=selected.has(item.name);
+     check.disabled=!eligible;
+     check.title=eligible?'Выбрать сервер':'Не подходит под текущий фильтр';
+     if(check.checked!==enabled)check.checked=enabled;
      const proto=q('.fbs-protocol',tr),protocol=item.protocol||'proxy';
      if(proto.textContent!==protocol)proto.textContent=protocol;
      const label=q('.fbs-node-name',tr),name=rowName(item);
@@ -226,7 +262,9 @@
      const row=elt('tr','fbs-empty-row'),td=elt('td','fbs-empty','Серверы не найдены');
      td.colSpan=5;row.append(td);body.append(row);
    }
-   q('.fbs-show-count',panel).textContent='Показано '+listing.length+' из '+items.length;
+   const eligible=listing.filter(passesSourceFilters).length;
+   q('.fbs-show-count',panel).textContent='Показано '+listing.length+' из '+items.length+
+     (sourceFilterActive()?' · подходит '+eligible+' · отфильтровано '+(listing.length-eligible):'');
  }
  function teardown(){
    if(context?.form?.elements.proxies){
@@ -272,7 +310,7 @@
      // Manual edits may contain unsaved additions; a remote refresh must not
      // silently remove those locally selected members.
      if(ctx.subscribed){
-       items=data.nodes.map(n=>({...n,ping:existingByName.get(n.name)?.ping||0}));
+       items=data.nodes.map(n=>({...n,sourceId:existingByName.get(n.name)?.sourceId||n.sourceId||'',ping:existingByName.get(n.name)?.ping||0}));
      }else{
        const remote=new Map((data.nodes||[]).map(node=>[node.name,node]));
        items=items.map(node=>({
@@ -306,7 +344,7 @@
    '<div class="fbs-settings-source">Источник: <select class="fbs-source" aria-label="Подписка для настройки"></select></div>'+
    '<div class="fbs-panel" data-sub-panel="update"><label class="fbs-check"><input type="checkbox" class="fbs-auto"> Обновлять подписку автоматически</label><div class="fbs-interval"><label>Интервал: <input type="number" min="0" max="168" class="fbs-hours"> ч</label><label><input type="number" min="0" max="59" class="fbs-minutes"> м</label></div></div>'+
    '<div class="fbs-panel" data-sub-panel="filters" hidden><div class="fbs-filter-fields"><label><span class="fbs-filter-field-title"><span>Оставить только</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">'+addCountryIcon+'Добавить страну</button></label><label><span class="fbs-filter-field-title"><span>Исключить</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">'+addCountryIcon+'Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
-   '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить настройки подписки</button><span class="fbs-save-hint">Ручной выбор серверов сохраняется кнопкой «Применить к конфигурации».</span></div></div>';
+   '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить настройки подписки</button><span class="fbs-save-hint">Фильтры сохраняются также при нажатии «Применить к конфигурации». Другие параметры группы — после «Сохранить».</span></div></div>';
    if(!context.subscribed){
      const toolbar=q('.fbs-toolbar',wrapper);
      q('.fbs-refresh-source',wrapper).hidden=true;
@@ -369,6 +407,50 @@
    sourceChoice.replaceChildren();
    for(const sub of sourceList)sourceChoice.add(new Option(sub.name,sub.id));
    const currentSource=()=>sourceList.find(sub=>sub.id===sourceChoice.value);
+   const pendingSources=new Map();
+   let activeSourceID=sourceChoice.value;
+   const makeSourceChange=sub=>{
+     const hours=Number(q('.fbs-hours',el).value),minutes=Number(q('.fbs-minutes',el).value);
+     const interval=hours*60+minutes;
+     if(!Number.isInteger(hours)||hours<0||hours>168||
+        !Number.isInteger(minutes)||minutes<0||minutes>59||
+        interval<5||interval>10080)throw Error('Интервал должен быть от 5 минут до 7 суток');
+     const body={...sub,enabled:q('.fbs-auto',el).checked,intervalMinutes:interval,
+       filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value};
+     const modified=['enabled','intervalMinutes','filterKeep','filterExclude']
+       .some(key=>(body[key]??'')!==(sub[key]??''));
+     return modified?body:null;
+   };
+   const captureSource=()=>{
+     const sub=sourceList.find(item=>item.id===activeSourceID);
+     if(!sub)return;
+     const update=makeSourceChange(sub);
+     if(update)pendingSources.set(sub.id,update);
+     else pendingSources.delete(sub.id);
+   };
+   const saveSourceSettings=async({refreshAfter=false}={})=>{
+     captureSource();
+     const changes=Array.from(pendingSources.values());
+     if(!changes.length)return !!context.wasSourceSaved;
+     // The backend validates every filter, re-imports from subscription URL,
+     // and atomically writes the accepted nodes and filter metadata to state.
+     for(const change of changes){
+       await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id),{
+         method:'PUT',body:JSON.stringify(change)
+       });
+       const sub=sourceList.find(item=>item.id===change.id);
+       if(sub)Object.assign(sub,change);
+       pendingSources.delete(change.id);
+       context.wasSourceSaved=true;
+     }
+     if(refreshAfter)await context.afterRefresh?.();
+     return true;
+   };
+   context.saveSourceSettings=saveSourceSettings;
+   context.hasUnsavedSourceChanges=()=>{
+     try{captureSource();return pendingSources.size>0;}
+     catch{return true;}
+   };
    function renderFilterFlagPreviews(){
      for(const [areaClass,previewClass] of [['.fbs-keep','.fbs-keep-flag-preview'],['.fbs-drop','.fbs-drop-flag-preview']]){
        const area=q(areaClass,el),parent=area.parentElement;
@@ -390,38 +472,34 @@
        }
      }
    }
-   for(const selector of ['.fbs-keep','.fbs-drop'])q(selector,el).addEventListener('input',renderFilterFlagPreviews);
+   for(const selector of ['.fbs-keep','.fbs-drop'])q(selector,el).addEventListener('input',()=>{
+     renderFilterFlagPreviews();renderRows();
+   });
    function fillSource(){
      const sub=currentSource();if(!sub)return;
-     q('.fbs-auto',el).checked=!!sub.enabled;
-     q('.fbs-hours',el).value=Math.floor((sub.intervalMinutes||1440)/60);
-     q('.fbs-minutes',el).value=(sub.intervalMinutes||1440)%60;
-     q('.fbs-keep',el).value=sub.filterKeep||'';
-     q('.fbs-drop',el).value=sub.filterExclude||'';
-     renderFilterFlagPreviews();
+     const value=pendingSources.get(sub.id)||sub;
+     q('.fbs-auto',el).checked=!!value.enabled;
+     q('.fbs-hours',el).value=Math.floor((value.intervalMinutes||1440)/60);
+     q('.fbs-minutes',el).value=(value.intervalMinutes||1440)%60;
+     q('.fbs-keep',el).value=value.filterKeep||'';
+     q('.fbs-drop',el).value=value.filterExclude||'';
+     renderFilterFlagPreviews();renderRows();
    }
-   sourceChoice.onchange=fillSource;
+   sourceChoice.onchange=()=>{
+     try{captureSource();}
+     catch(error){sourceChoice.value=activeSourceID;setStatus(error.message,true);return;}
+     activeSourceID=sourceChoice.value;fillSource();
+   };
    fillSource();
    q('.fbs-source-save',el).onclick=async()=>{
-     const sub=currentSource();if(!sub)return;
      if(context?.isDirty?.()){setStatus('Сначала сохраните изменения в Mihomo Settings',true);return;}
-     const h=Number(q('.fbs-hours',el).value),m=Number(q('.fbs-minutes',el).value);
-     const interval=h*60+m;
-     if(!Number.isInteger(h)||h<0||h>168||!Number.isInteger(m)||m<0||m>59||interval<5||interval>10080){
-       setStatus('Интервал должен быть от 5 минут до 7 суток',true);return;
-     }
-     const sourceSave=q('.fbs-source-save',el);
-     sourceSave.disabled=true;
-     setStatus('Сохранение подписки и применение фильтров…');
+     const button=q('.fbs-source-save',el);
+     button.disabled=true;setStatus('Сохранение фильтров и настроек подписки…');
      try{
-       const body={...sub,enabled:q('.fbs-auto',el).checked,intervalMinutes:interval,
-         filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value};
-       await request('/api/mihomo/subscriptions/'+encodeURIComponent(sub.id),{method:'PUT',body:JSON.stringify(body)});
-       Object.assign(sub,body);
-       await context.afterRefresh?.();
-       setStatus('Подписка сохранена, фильтры применены. Переоткройте окно для актуального состава.');
+       const changed=await saveSourceSettings({refreshAfter:true});
+       setStatus(changed?'Фильтры подписки сохранены. Переоткройте окно для актуального состава.':'Изменений для сохранения нет');
      }catch(error){setStatus(error.message,true);}
-     finally{sourceSave.disabled=false;}
+     finally{button.disabled=false;}
    };
    const countryMenu=q('.fbs-country-menu',el),countrySearch=q('.fbs-country-search',el),countryList=q('.fbs-country-list',el);
    let targetArea=null;
@@ -439,7 +517,7 @@
          const current=targetArea.value.trimEnd();
          const term=country.flag;
          if(!current.split(/\r?\n/).includes(term))targetArea.value=current+(current?'\n':'')+term;
-         renderFilterFlagPreviews();
+         targetArea.dispatchEvent(new Event('input',{bubbles:true}));
          const area=targetArea;
          closeCountryMenu();
          area.focus();
@@ -577,5 +655,7 @@
  }
  const getExcluded=()=>context?.subscribed&&panel?Array.from(excluded):null;
  const active=()=>!!panel;
- window.MUIBalancerServers={attach,teardown,getExcluded,active};
+ const hasUnsavedFilterEdits=()=>!!context?.hasUnsavedSourceChanges?.();
+ const saveSourceSettings=async()=>context?.saveSourceSettings?.()??false;
+ window.MUIBalancerServers={attach,teardown,getExcluded,active,hasUnsavedFilterEdits,saveSourceSettings};
 })();

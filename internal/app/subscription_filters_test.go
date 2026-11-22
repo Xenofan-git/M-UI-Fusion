@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -150,6 +151,50 @@ func TestCreateSubscribedURLTestDefaultsAndEditableSettings(t *testing.T) {
 	updated := m.state.Outbounds[0]
 	if updated.Timeout != 5000 || updated.Tolerance != 220 {
 		t.Fatalf("existing editable values overwritten on refresh: %+v", updated)
+	}
+}
+
+func TestEditedSubscriptionFiltersPersistAfterRestartAndRebuildGroup(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-refresh", Name: "Provider", URL: "https://example.org/sub",
+		Group: "Foreign-Pool", Enabled: true, IntervalMinutes: 1440}
+	nodes := []MihomoOutbound{
+		subscriptionSS("🇷🇺 Россия LTE", "ru.example"),
+		subscriptionSS("🇵🇱 Польша LTE", "pl.example"),
+	}
+	if err := m.commitOutboundSubscriptionWithGroup(sub, nodes, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.state.Outbounds) != 3 || len(m.state.Outbounds[0].Proxies) != 2 {
+		t.Fatal("initial subscription group must include both nodes")
+	}
+	sub.FilterKeep = "🇵🇱"
+	sub.FilterExclude = "🇷🇺"
+	if err := m.commitOutboundSubscription(sub, nodes, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.state.Outbounds) != 2 || len(m.state.Outbounds[0].Proxies) != 1 {
+		t.Fatalf("filter did not narrow the live group: %#v", m.state.Outbounds)
+	}
+	reloaded := &CoreManager{dataDir: m.dataDir}
+	if err := reloaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	if len(reloaded.state.OutboundSubscriptions) != 1 {
+		t.Fatal("subscription metadata lost")
+	}
+	got := reloaded.state.OutboundSubscriptions[0]
+	if got.FilterKeep != "🇵🇱" || got.FilterExclude != "🇷🇺" || got.IntervalMinutes != 1440 {
+		t.Fatalf("filters disappeared after state reload: %+v", got)
+	}
+	if len(reloaded.state.Outbounds) != 2 || len(reloaded.state.Outbounds[0].Proxies) != 1 {
+		t.Fatal("group membership changed after state reload")
+	}
+	if reloaded.state.Outbounds[0].Timeout != 8000 || reloaded.state.Outbounds[0].Tolerance != 100 {
+		t.Fatal("balancer settings lost when filters were saved")
+	}
+	if _, err := os.Stat(filepath.Join(m.dataDir, "config.yaml")); err != nil {
+		t.Fatal("compiled Mihomo configuration not saved", err)
 	}
 }
 

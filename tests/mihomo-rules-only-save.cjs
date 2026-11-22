@@ -2,9 +2,19 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert.ok(html.includes('static/mihomo-settings.js?v=122'));
+assert.ok(html.includes('static/mihomo-settings.js?v=123'));
 assert.ok(source.includes('lastSyncedOutbounds=clone(draft.outbounds)'));
 assert.ok(source.includes('lastSyncedBasics=clone(draft.basics)'));
+const applyStart=source.indexOf('  async function saveOutboundDraft(event){');
+const applyEnd=source.indexOf('\n  function rulePayloadHint(',applyStart);
+assert(applyStart>0&&applyEnd>applyStart);
+const applyCode=source.slice(applyStart,applyEnd);
+assert(applyCode.includes('await window.MUIBalancerServers?.saveSourceSettings?.()'),
+  'balancer Apply must save pending subscription filters before closing');
+assert(applyCode.indexOf('saveSourceSettings')<applyCode.indexOf('window.MUIBalancerServers?.teardown()'),
+  'save pending filters before tearing down the source editor');
+assert(source.includes("window.addEventListener('beforeunload'"),
+  'warn on F5 if Mihomo or subscription filter draft has not been saved');
 const start=source.indexOf('  async function saveSettings(){');
 const end=source.indexOf('\n  ensureModals();',start);
 assert.ok(start>0&&end>start);

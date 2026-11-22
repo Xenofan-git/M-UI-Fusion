@@ -30,7 +30,7 @@ assert.ok(source.includes("item.type==='MATCH'||item.type==='GEOSITE'"));
 assert.ok(source.includes("for(const option of select.options)option.textContent=ruleTypeDisplayLabel(option.value,true)"));
 assert.ok(source.includes("typeSelect.disabled=item.type==='MATCH'"),'MATCH guard must stay');
 assert.ok(source.includes("return ruleTypeDisplayLabel(window.MUIRuleLists?.decode(rule)?'LIST':rule.type)"));
-assert.ok(index.includes('mihomo-settings.js?v=122')&&index.includes('i18n-locales.js?v=119')&&index.includes('i18n.js?v=119'));
+assert.ok(index.includes('mihomo-settings.js?v=123')&&index.includes('i18n-locales.js?v=119')&&index.includes('i18n.js?v=119'));
 assert.ok(locales.includes('«ВЕСЬ ОСТАЛЬНОЙ ТРАФИК» всегда находится последним'));
 assert.ok(i18n.includes("'mh.ruleNoConditions':'Условий нет: весь оставшийся трафик"));
 console.log('PASS: '+types.length+' Mihomo types localized in Russian, original codes in other languages, protected MATCH and stable cache versions');

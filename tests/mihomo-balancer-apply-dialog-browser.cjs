@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert(html.includes('static/mihomo-settings.js?v=122'));
+assert(html.includes('static/mihomo-settings.js?v=123'));
 const slice=(start,end)=>{
  const a=source.indexOf(start),b=source.indexOf(end,a+start.length);
  assert(a>=0&&b>a,'cannot extract '+start);
@@ -78,7 +78,47 @@ const dict={
    assert.equal(await page.evaluate(()=>document.querySelector('#mihomo-outbound-modal').classList.contains('open')),true);
    await page.keyboard.press('Escape');
    assert.equal(await status.count(),0);
-   console.log('PASS',width,'Apply group: centered pending/success/error, draft notice (not server save), no false success');
+   // The filter transaction is part of Apply: failure must keep the dialog
+   // open, not report success or discard the unsaved fields.
+   await page.evaluate(()=>{
+     window.MUIBalancerServers.saveSourceSettings=async()=>{throw Error('Filter rejected')};
+     window.__marked=0;
+   });
+   await page.locator('#launch').click();
+   await page.evaluate(async()=>{
+     window.__resolve({outbounds:[{kind:'group',name:'FOREIGN',type:'url-test',proxies:['Old']}]});
+     await window.__pending;
+   });
+   assert.equal(await status.getAttribute('data-phase'),'error');
+   assert.equal(await page.locator('#mihomo-operation-message').innerText(),'Filter rejected');
+   assert.equal(await page.evaluate(()=>window.__marked),0);
+   assert.equal(await page.evaluate(()=>document.querySelector('#mihomo-outbound-modal').classList.contains('open')),true);
+   await page.locator('.mui-mihomo-status-actions button').click();
+   // Successful filter save re-bases the group on fresh subscription
+   // members. Stale members removed by the filter must not be restored.
+   await page.evaluate(()=>{
+     window.editingSubscriptionGroup=true;
+     document.querySelector('#mihomo-outbound-form').insertAdjacentHTML('beforeend',
+       '<select name="subscriptionIds" multiple><option value="sub1" selected>Source</option></select>');
+     window.MUIBalancerServers.saveSourceSettings=async()=>true;
+     window.MUIBalancerServers.getExcluded=()=>[];
+     window.app={state:{state:{
+       outbounds:[{kind:'proxy',name:'Live',sourceSubscriptionId:'sub1'}],
+       outboundSubscriptions:[{id:'sub1',group:'FOREIGN'}]
+     }}};
+     window.refresh=async()=>{};
+     window.__marked=0;
+   });
+   await page.locator('#launch').click();
+   await page.evaluate(async()=>{
+     window.__resolve({outbounds:[{kind:'group',name:'FOREIGN',type:'url-test',proxies:['Old']}]});
+     await window.__pending;
+   });
+   assert.equal(await status.getAttribute('data-phase'),'success');
+   assert.deepEqual(await page.evaluate(()=>window.draft.outbounds[0].proxies),['Live'],
+     'old source members must be removed after filter updates');
+   assert.equal(await page.evaluate(()=>window.__marked),1);
+   console.log('PASS',width,'Apply group: modal success/error, source filters persisted, stale members rebased');
    await page.close();
   }
  }finally{await browser.close()}
