@@ -1845,7 +1845,7 @@
         event.stopPropagation();
         close();
       }else if(event.key==='Tab'){
-        if(busy){event.preventDefault();return;}
+        if(busy||backdrop.dataset.phase==='success'){event.preventDefault();return;}
         event.preventDefault();
         dismiss.focus();
       }
@@ -1865,8 +1865,12 @@
         phase==='success'?(kind==='save'?'mh.operationSaveTitle':kind==='apply'?'mh.operationApplyTitle':'mh.operationRestartTitle'):
         (kind==='save'?'mh.operationSaving':kind==='apply'?'mh.operationApplying':'mh.operationRestarting'));
       detail.textContent=String(message||'');
-      dismiss.disabled=busy;
-      if(!busy)dismiss.focus({preventScroll:true});
+      // Pending/success notifications have no close button; success
+      // disappears after 2.5 s. Errors keep an accessible Close action.
+      footer.hidden=phase!=='error';
+      dismiss.disabled=phase!=='error';
+      if(phase==='error')dismiss.focus({preventScroll:true});
+      else panel.focus({preventScroll:true});
       // Successful saves/apply/restarts dismiss themselves; errors stay visible
       // until explicitly closed. The timer is canceled on manual dismissal.
       if(phase==='success')successDismissTimer=setTimeout(close,2500);

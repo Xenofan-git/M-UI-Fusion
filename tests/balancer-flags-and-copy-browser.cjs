@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=125'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=126'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -203,7 +203,54 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.match(previewRows[1].name,/Россия/,'nonmatching nodes stay visible at bottom');
    assert.equal(previewRows[1].filtered,true);
    assert.equal(previewRows[1].disabled,true,'filtered nodes must not be selectable until filter changes');
+   assert.equal(await page.locator('.fbs-filtered-divider .fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
+   assert.equal(await page.locator('.fbs-filtered-divider .fbs-filtered-toggle').getAttribute('aria-expanded'),'true');
+   const struck=await page.locator('.fbs-row-filtered .fbs-node-name').evaluate(el=>({
+     decoration:getComputedStyle(el).textDecorationLine, color:getComputedStyle(el).color
+   }));
+   assert.match(struck.decoration,/line-through/,'filtered name must be struck through');
+   assert.notEqual(struck.color,'rgb(255, 255, 255)','struck-through server must be muted');
+   await page.locator('.fbs-filtered-divider button').click();
+   assert.equal(await page.locator('tr[data-node*="Польша"]').evaluate(el=>el.classList.contains('fbs-row-filtered')),false,'matching row must never become struck-through on redraw');
+   assert.equal(await page.locator('tr[data-node*="Россия"]').isHidden(),true,'excluded list may be collapsed explicitly');
+   await page.locator('.fbs-filtered-divider button').click();
+   assert.equal(await page.locator('tr.fbs-row-filtered').isVisible(),true,'excluded rows shown by default');
    assert.match(await page.locator('.fbs-show-count').innerText(),/подходит 1 · отфильтровано 1/);
+   // Every filter textarea needs real editable text selection, Ctrl+C,
+   // Ctrl+X and Delete; a bright selection must remain legible in dark mode.
+   for(const selector of ['.fbs-keep','.fbs-drop']){
+     const area=page.locator(selector);
+     const original=await area.inputValue();
+     await area.fill('Москва МСК');
+     const style=await area.evaluate(el=>({
+       select:getComputedStyle(el).userSelect,
+       background:getComputedStyle(el,'::selection').backgroundColor,
+       foreground:getComputedStyle(el,'::selection').color
+     }));
+     assert.equal(style.select,'text',selector);
+     assert.equal(style.background,'rgb(77, 214, 174)',selector);
+     assert.equal(style.foreground,'rgb(7, 28, 24)',selector);
+     const box=await area.boundingBox();
+     await page.mouse.move(box.x+11,box.y+15);
+     await page.mouse.down();
+     await page.mouse.move(box.x+85,box.y+15,{steps:9});
+     await page.mouse.up();
+     const range=await area.evaluate(el=>({start:el.selectionStart,end:el.selectionEnd}));
+     assert(range.end>range.start,'mouse drag must select text: '+selector+JSON.stringify(range));
+     await page.evaluate(()=>document.addEventListener('copy',()=>{
+       window.__filterCopy=document.activeElement.value.slice(
+         document.activeElement.selectionStart,document.activeElement.selectionEnd);
+     },{once:true}));
+     await page.keyboard.press('Control+c');
+     assert((await page.evaluate(()=>window.__filterCopy)).length>0,'Ctrl+C captures text in '+selector);
+     await page.keyboard.press('Control+x');
+     assert((await area.inputValue()).length<'Москва МСК'.length,'Ctrl+X cuts selected text in '+selector);
+     await area.fill('Москва МСК');
+     await area.evaluate(el=>{el.focus();el.setSelectionRange(0,6)});
+     await page.keyboard.press('Delete');
+     assert.equal(await area.inputValue(),' МСК','Delete removes only selected condition in '+selector);
+     await area.fill(original);
+   }
    assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),true);
    await page.locator('.fbs-keep').fill('');
    assert.equal(await page.locator('.fbs-table-body tr.fbs-row-filtered').count(),0);
@@ -273,12 +320,30 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    // Reopening the same existing group must show the values fetched from
    // canonical subscription metadata, not empty editor defaults.
    await page.evaluate(()=>{
+     // Simulate reopening a legacy filtered subscription: its excluded proxy
+     // no longer exists among persisted active Outbounds on the NanoPi.
+     const prior=window.fetch;
+     window.fetch=async(url,options)=>{
+       if(String(url).includes('/api/mihomo/subscriptions/preview')){
+         window.__legacyPreviewCalls=(window.__legacyPreviewCalls||0)+1;
+         return {ok:true,json:async()=>({data:{nodes:[
+           {name:'LTE - Россия',protocol:'vless',countryCode:'RU',included:false},
+           {name:'LTE - Польша',protocol:'vless',countryCode:'PL',included:true}
+         ]}})};
+       }
+       if(String(url).includes('/api/mihomo/balancers/status'))
+         return {ok:true,json:async()=>({data:{
+           candidate:'quatro-vpn | LTE - Польша',available:true,nodes:[
+             {name:'quatro-vpn | LTE - Польша',sourceId:'sub1',protocol:'vless',
+              member:true,countryCode:'PL',alive:true,delay:33}
+           ]
+         }})};
+       return prior(url,options);
+     };
      const group={id:'group',name:'Foreign-quatro-vpn',kind:'group',type:'url-test',
-       proxies:['quatro-vpn | LTE - Россия','quatro-vpn | LTE - Польша'],subscriptionIds:['sub1']};
-     const outbounds=['Россия','Польша'].map((country,i)=>({
-       id:'managed'+i,kind:'proxy',type:'vless',
-       sourceSubscriptionId:'sub1',name:'quatro-vpn | LTE - '+country
-     }));
+       proxies:['quatro-vpn | LTE - Польша'],subscriptionIds:['sub1']};
+     const outbounds=[{id:'managed-pl',kind:'proxy',type:'vless',
+       sourceSubscriptionId:'sub1',name:'quatro-vpn | LTE - Польша'}];
      window.MUIBalancerServers.attach({
        form:document.querySelector('#fake-editor'),group,
        subs:[{id:'sub1',name:'quatro-vpn',group:group.name,enabled:true,intervalMinutes:1440,
@@ -291,6 +356,17 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(await page.locator('.fbs-keep').inputValue(),'🇵🇱');
    assert.equal(await page.locator('.fbs-drop').inputValue(),'🇷🇺');
    assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
+   await page.waitForFunction(()=>document.querySelectorAll('.fbs-table-body tr[data-node]').length===2);
+   assert.equal(await page.evaluate(()=>window.__legacyPreviewCalls),1,'load legacy filtered names read-only');
+   assert.equal(await page.locator('.fbs-row-filtered .fbs-node-name').innerText(),'quatro-vpn | LTE - Россия');
+   assert.match(await page.locator('.fbs-row-filtered .fbs-node-name').evaluate(el=>getComputedStyle(el).textDecorationLine),/line-through/);
+   assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
+   await page.locator('.fbs-select-all').click();
+   assert.equal(await page.locator('.fbs-row-filtered input[type=checkbox]').isChecked(),false,
+     'bulk select must never activate a filtered preview-only proxy');
+   await page.evaluate(()=>window.__fbsDebug.refreshStatus());
+   assert.equal(await page.locator('.fbs-table-body tr[data-node]').count(),2,
+      'persisted filtered server should remain visible across status polls');
    await page.evaluate(()=>{
       Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('insecure HTTP')}}});
       document.execCommand=()=>{window.__fallbackCopied=document.activeElement.value;return true;};

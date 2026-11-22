@@ -4,7 +4,7 @@
 (() => {
  'use strict';
  let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
- let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all';
+ let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all',filteredCollapsed=false;
  let dismissCountryPicker=null,removeVisibilityListener=null,statusRequestPromise=null;
  const statusPollIntervalMs=60000;
  const q=(s,parent=document)=>parent.querySelector(s);
@@ -91,9 +91,9 @@
  }
  function renderStatusText(){
    if(!panel)return;
-   const count=items.length,enabled=items.filter(n=>selected.has(n.name)&&passesSourceFilters(n)).length;
+   const count=items.length,enabled=items.filter(n=>selected.has(n.name)&&!isFilteredRow(n)).length;
    const down=items.filter(n=>n.member&&n.alive===false).length;
-   const filtered=items.filter(n=>!passesSourceFilters(n)).length;
+   const filtered=items.filter(isFilteredRow).length;
    q('.fbs-count',panel).textContent='В пуле '+enabled+' из '+count+
      ' · исключено '+(count-enabled)+' · недоступно '+down+
      (sourceFilterActive()?' · по фильтрам '+filtered:'');
@@ -163,6 +163,11 @@
    return (!keep.length||keep.some(term=>haystack.includes(term)))&&
      !drop.some(term=>haystack.includes(term));
  }
+ const isFilteredRow=item=>Boolean(
+   !passesSourceFilters(item)||
+   ((item.filtered||item.previewOnly)&&!sourceFilterActive())||
+   (item.filtered&&item.sourceId&&item.sourceId!==q('.fbs-source',panel)?.value)
+ );
  function sourceFilterActive(){
    return !!context?.subscribed&&!!panel&&(
      filterWords(q('.fbs-keep',panel)?.value).length>0||
@@ -184,10 +189,8 @@
      }
      return true;
    }).sort((a,b)=>{
-     if(sourceFilterActive()){
-       const x=passesSourceFilters(a),y=passesSourceFilters(b);
-       if(x!==y)return x?-1:1;
-     }
+     const x=isFilteredRow(a),y=isFilteredRow(b);
+     if(x!==y)return x?1:-1;
      let result=0;
      if(sortBy==='latency')result=(a.delay||999999)-(b.delay||999999);
      else if(sortBy==='ping')result=(a.ping||999999)-(b.ping||999999);
@@ -195,6 +198,8 @@
      return ascending?result:-result;
    });
    const body=q('.fbs-table-body',panel);
+   // The divider is presentation only. Remove before stable row reordering.
+   body.querySelector(':scope > tr.fbs-filtered-divider')?.remove();
    // Even at a 60-second poll, reuse tr/img nodes: preserve text selection and SVG flags.
    // replacing tbody children caused the flag SVGs to blink after each poll.
    const existing=new Map([...body.querySelectorAll(':scope > tr[data-node]')].map(tr=>[tr.dataset.node,tr]));
@@ -232,12 +237,15 @@
        const ping=elt('td','fbs-ping');ping.title='ICMP echo до хоста (не показатель исправности VPN)';tr.append(ping);
        const delay=elt('td','fbs-delay');delay.title='Проверка HTTP-задержки через Mihomo';tr.append(delay);
      }
-     const eligible=passesSourceFilters(item),enabled=eligible&&selected.has(item.name);
-     tr.classList.toggle('fbs-row-filtered',!eligible);
-     tr.classList.toggle('fbs-row-excluded',!enabled);
+     const filtered=isFilteredRow(item);
+     const enabled=!filtered&&selected.has(item.name);
+     tr.classList.toggle('fbs-row-filtered',filtered);
+     tr.classList.toggle('fbs-row-excluded',filtered||!enabled);
+     tr.hidden=filtered&&filteredCollapsed;
      const check=q('input[type=checkbox]',tr);
-     check.disabled=!eligible;
-     check.title=eligible?'Выбрать сервер':'Не подходит под текущий фильтр';
+     check.disabled=filtered||!!item.filtered||!!item.previewOnly;
+     check.title=filtered?'Исключён фильтром':
+       (item.filtered||item.previewOnly?'Будет доступен после применения изменений':'Выбрать сервер');
      if(check.checked!==enabled)check.checked=enabled;
      const proto=q('.fbs-protocol',tr),protocol=item.protocol||'proxy';
      if(proto.textContent!==protocol)proto.textContent=protocol;
@@ -262,9 +270,21 @@
      const row=elt('tr','fbs-empty-row'),td=elt('td','fbs-empty','Серверы не найдены');
      td.colSpan=5;row.append(td);body.append(row);
    }
-   const eligible=listing.filter(passesSourceFilters).length;
+   const filteredCount=listing.filter(isFilteredRow).length;
+   if(filteredCount){
+     const first=body.querySelector('tr.fbs-row-filtered');
+     const divider=elt('tr','fbs-filtered-divider');
+     const td=elt('td');td.colSpan=5;
+     const toggle=elt('button','fbs-filtered-toggle',
+       (filteredCollapsed?'▸ ':'▾ ')+'Скрыто фильтрами · '+filteredCount);
+     toggle.type='button';
+     toggle.setAttribute('aria-expanded',String(!filteredCollapsed));
+     toggle.onclick=()=>{filteredCollapsed=!filteredCollapsed;renderRows();};
+     td.append(toggle);divider.append(td);
+     if(first)body.insertBefore(divider,first);
+   }
    q('.fbs-show-count',panel).textContent='Показано '+listing.length+' из '+items.length+
-     (sourceFilterActive()?' · подходит '+eligible+' · отфильтровано '+(listing.length-eligible):'');
+     ' · подходит '+(listing.length-filteredCount)+' · отфильтровано '+filteredCount;
  }
  function teardown(){
    if(context?.form?.elements.proxies){
@@ -310,7 +330,11 @@
      // Manual edits may contain unsaved additions; a remote refresh must not
      // silently remove those locally selected members.
      if(ctx.subscribed){
-       items=data.nodes.map(n=>({...n,sourceId:existingByName.get(n.name)?.sourceId||n.sourceId||'',ping:existingByName.get(n.name)?.ping||0}));
+       const names=new Set((data.nodes||[]).map(n=>n.name));
+       const extra=(ctx.previewNodes||[]).filter(n=>!names.has(n.name));
+       items=[...(data.nodes||[]),...extra].map(n=>({...n,
+         sourceId:existingByName.get(n.name)?.sourceId||n.sourceId||'',
+         ping:existingByName.get(n.name)?.ping||0}));
      }else{
        const remote=new Map((data.nodes||[]).map(node=>[node.name,node]));
        items=items.map(node=>({
@@ -329,6 +353,39 @@
      renderRows();
    }catch(error){
      if(panel&&ctx===context){setStatus(error.message,true);renderRows();}
+   }
+ }
+ // Existing subscriptions created before display-only filtered metadata was
+ // introduced can still show excluded names immediately. This is a read-only
+ // preview request: no proxy credentials or routes are modified.
+ async function loadLegacyFilteredPreview(ctx){
+   if(!ctx.subscribed)return;
+   ctx.previewNodes=[];
+   const linked=new Set(selectedSources(ctx.group,ctx.subs));
+   for(const sub of ctx.subs.filter(x=>linked.has(x.id))){
+     if(sub.filteredNodes?.length||
+        (!filterWords(sub.filterKeep).length&&!filterWords(sub.filterExclude).length&&
+         !(sub.excludedNodeKeys||[]).length))continue;
+     try{
+       const response=await request('/api/mihomo/subscriptions/preview',{
+         method:'POST',body:JSON.stringify(sub)
+       });
+       if(context!==ctx)return;
+       const existing=new Set(items.map(n=>n.name));
+       for(const node of response.nodes||[]){
+         if(node.included)continue;
+         const name=sub.name+' | '+node.name;
+         if(existing.has(name))continue;
+         existing.add(name);
+         ctx.previewNodes.push({name,protocol:node.protocol,
+           countryCode:node.countryCode,sourceId:sub.id,
+           member:false,filtered:true,previewOnly:true,alive:null,delay:0,ping:0});
+       }
+       items.push(...ctx.previewNodes.filter(n=>!items.some(row=>row.name===n.name)));
+       renderRows();
+     }catch(error){
+       if(context===ctx)setStatus('Список исключённых узлов временно недоступен: '+error.message,true);
+     }
    }
  }
  function renderMarkup(){
@@ -370,12 +427,16 @@
      if(sortBy===key)ascending=!ascending;else{sortBy=key;ascending=true;}
      renderRows();
    };
+   const selectable=item=>!isFilteredRow(item)&&!item.filtered&&!item.previewOnly;
    q('.fbs-toggle-all',el).onchange=e=>{
-     if(e.target.checked)for(const item of items)selected.add(item.name);
-     else for(const item of items)selected.delete(item.name);
+     if(e.target.checked){for(const item of items)if(selectable(item))selected.add(item.name);}
+     else{for(const item of items)selected.delete(item.name);}
      updateSelection();renderRows();
    };
-   q('.fbs-select-all',el).onclick=()=>{for(const item of items)selected.add(item.name);updateSelection();renderRows();};
+   q('.fbs-select-all',el).onclick=()=>{
+     for(const item of items)if(selectable(item))selected.add(item.name);
+     updateSelection();renderRows();
+   };
    q('.fbs-select-none',el).onclick=()=>{for(const item of items)selected.delete(item.name);updateSelection();renderRows();};
    q('.fbs-exclude-offline',el).onclick=()=>{
      const bad=items.filter(n=>n.alive===false&&n.member);
@@ -473,7 +534,7 @@
      }
    }
    for(const selector of ['.fbs-keep','.fbs-drop'])q(selector,el).addEventListener('input',()=>{
-     renderFilterFlagPreviews();renderRows();
+     renderFilterFlagPreviews();filteredCollapsed=false;renderRows();
    });
    function fillSource(){
      const sub=currentSource();if(!sub)return;
@@ -483,7 +544,7 @@
      q('.fbs-minutes',el).value=(value.intervalMinutes||1440)%60;
      q('.fbs-keep',el).value=value.filterKeep||'';
      q('.fbs-drop',el).value=value.filterExclude||'';
-     renderFilterFlagPreviews();renderRows();
+     renderFilterFlagPreviews();filteredCollapsed=false;renderRows();
    }
    sourceChoice.onchange=()=>{
      try{captureSource();}
@@ -623,6 +684,7 @@
      .map(option=>byName.get(option.value)||{
        kind:'builtin',name:option.value,type:'builtin'
      });
+   filteredCollapsed=false;
    context={form,group,subs,outbounds,available,subscribed,updateDefaults,afterRefresh,
      isDirty,persistedName:persistedName||'',selectionInitialized:false};
    const initial=contextNodes();
@@ -646,6 +708,7 @@
    renderRows();
    // Immediate initial read; recurring reads only while the dialog is visible.
    void refreshStatus();
+   void loadLegacyFilteredPreview(context);
    const pollVisibleStatus=()=>{if(!probing&&statusPanelVisible())void refreshStatus();};
    refreshTimer=setInterval(pollVisibleStatus,statusPollIntervalMs);
    const onVisibilityChange=()=>{if(!document.hidden)pollVisibleStatus();};

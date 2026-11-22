@@ -5,7 +5,7 @@ const html=fs.readFileSync('web/index.html','utf8');
 const sourceStart=source.indexOf('  // Reuse the existing centered M-UI dialog design');
 const sourceEnd=source.indexOf('\n  ensureModals();',sourceStart);
 assert(sourceStart>=0&&sourceEnd>sourceStart,'status dialog code missing');
-assert(html.includes('static/mihomo-settings.js?v=123')&&html.includes('static/mihomo-settings.css?v=126'));
+assert(html.includes('static/mihomo-settings.js?v=124')&&html.includes('static/mihomo-settings.css?v=127'));
 const snippet=source.slice(sourceStart,sourceEnd)+'\nwindow.__ops={saveSettings,restartMihomoFromSettings};';
 const inlineCSS=[...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
 const css=[inlineCSS,fs.readFileSync('web/mihomo-settings.css','utf8'),fs.readFileSync('web/color-skins.css','utf8')].join('\n');
@@ -64,27 +64,10 @@ async function launchTest(browser,theme,width){
  assert.equal(await status.getAttribute('data-phase'),'success');
  assert.equal(await page.locator('#mihomo-operation-title').textContent(),words['mh.operationSaveTitle']);
  assert.equal(await page.locator('#mihomo-operation-message').textContent(),words['mh.settingsSaved']);
- assert.equal(await page.locator('.mui-mihomo-status-actions button').isEnabled(),true);
+ assert.equal(await page.locator('.mui-mihomo-status-actions').isHidden(),true,
+   'success notification has no Close button');
  assert.equal(await page.evaluate(()=>window.__toasts.length),0);
- const action=page.locator('.mui-mihomo-status-actions button');
- const defaultColor=await action.evaluate(button=>({
-   background:getComputedStyle(button).backgroundColor,
-   foreground:getComputedStyle(button).color,
-   textFill:getComputedStyle(button).webkitTextFillColor
- }));
- await action.hover();
- await page.waitForTimeout(210); // allow the 160 ms hover transition to complete
- const hoverColor=await action.evaluate(button=>({
-   background:getComputedStyle(button).backgroundColor,
-   foreground:getComputedStyle(button).color,
-   textFill:getComputedStyle(button).webkitTextFillColor
- }));
- assert.equal(hoverColor.foreground,'rgb(255, 255, 255)','hover text must be legible');
- assert.equal(hoverColor.background,'rgb(8, 127, 100)','hover must have high-contrast emerald surface');
- assert.equal(hoverColor.textFill,'rgb(255, 255, 255)','webkit text must be legible');
- assert.notEqual(defaultColor.background,hoverColor.background,'hover must visibly highlight action');
- await page.locator('.mui-mihomo-status-actions button').click();
- assert.equal(await status.count(),0);
+ await status.waitFor({state:'detached',timeout:4500});
  await page.evaluate(()=>{window.dirty=false;window.__pending=window.__ops.restartMihomoFromSettings()});
  await status.waitFor({state:'visible'});
  assert.equal(await status.getAttribute('data-phase'),'pending');
@@ -106,6 +89,17 @@ async function launchTest(browser,theme,width){
  assert.equal(await status.getAttribute('data-phase'),'error');
  await page.waitForTimeout(2700);
  assert.equal(await status.count(),1,'error dialog must stay until closed manually');
+ assert.equal(await page.locator('.mui-mihomo-status-actions').isVisible(),true,
+   'errors retain an accessible Close button');
+ const errorButton=page.locator('.mui-mihomo-status-actions button');
+ await errorButton.hover();
+ await page.waitForTimeout(210);
+ const hoverColor=await errorButton.evaluate(button=>({
+   background:getComputedStyle(button).backgroundColor,
+   foreground:getComputedStyle(button).color
+ }));
+ assert.equal(hoverColor.foreground,'rgb(255, 255, 255)');
+ assert.equal(hoverColor.background,'rgb(8, 127, 100)');
  assert.equal(await page.locator('#mihomo-operation-title').textContent(),words['mh.operationFailureTitle']);
  assert.equal(await page.locator('#mihomo-operation-message').textContent(),dangerous);
  assert.equal(await status.locator('img').count(),0,'error must render as textContent not HTML');

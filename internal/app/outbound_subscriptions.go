@@ -30,20 +30,31 @@ const (
 	maxSubscriptionNodes = 2000
 )
 
+// FilteredSubscriptionNode holds display-only information, never a proxy
+// credential. Excluded providers remain visible in the balancer editor
+// after a restart without being passed to Mihomo as active outbounds.
+type FilteredSubscriptionNode struct {
+	Name        string `json:"name"`
+	Protocol    string `json:"protocol"`
+	CountryCode string `json:"countryCode,omitempty"`
+	Flag        string `json:"flag,omitempty"`
+}
+
 type OutboundSubscription struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	URL              string   `json:"url"`
-	Enabled          bool     `json:"enabled"`
-	IntervalMinutes  int      `json:"intervalMinutes"`
-	Group            string   `json:"group,omitempty"` // optional existing proxy-group
-	FilterKeep       string   `json:"filterKeep,omitempty"`
-	FilterExclude    string   `json:"filterExclude,omitempty"`
-	ExcludedNodeKeys []string `json:"excludedNodeKeys,omitempty"`
-	LastAttempt      string   `json:"lastAttempt,omitempty"`
-	LastUpdated      string   `json:"lastUpdated,omitempty"`
-	LastError        string   `json:"lastError,omitempty"`
-	NodeCount        int      `json:"nodeCount"`
+	ID               string                     `json:"id"`
+	Name             string                     `json:"name"`
+	URL              string                     `json:"url"`
+	Enabled          bool                       `json:"enabled"`
+	IntervalMinutes  int                        `json:"intervalMinutes"`
+	Group            string                     `json:"group,omitempty"` // optional existing proxy-group
+	FilterKeep       string                     `json:"filterKeep,omitempty"`
+	FilterExclude    string                     `json:"filterExclude,omitempty"`
+	ExcludedNodeKeys []string                   `json:"excludedNodeKeys,omitempty"`
+	FilteredNodes    []FilteredSubscriptionNode `json:"filteredNodes,omitempty"`
+	LastAttempt      string                     `json:"lastAttempt,omitempty"`
+	LastUpdated      string                     `json:"lastUpdated,omitempty"`
+	LastError        string                     `json:"lastError,omitempty"`
+	NodeCount        int                        `json:"nodeCount"`
 }
 
 func normalizeOutboundSubscription(s OutboundSubscription) (OutboundSubscription, error) {
@@ -581,6 +592,8 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 			changes.LastUpdated = current.LastUpdated
 			changes.LastError = current.LastError
 			changes.NodeCount = current.NodeCount
+			// Client cannot inject arbitrary filtered-node labels.
+			changes.FilteredNodes = current.FilteredNodes
 			changes, err = normalizeOutboundSubscription(changes)
 		}
 		if err == nil {
@@ -632,6 +645,8 @@ func (m *CoreManager) updateOutboundSubscriptionMetadata(sub OutboundSubscriptio
 	copySubs := append([]OutboundSubscription(nil), before.OutboundSubscriptions...)
 	for idx := range copySubs {
 		if copySubs[idx].ID == sub.ID {
+			// A metadata-only update must never erase saved filtered labels.
+			sub.FilteredNodes = copySubs[idx].FilteredNodes
 			copySubs[idx] = sub
 		}
 	}
@@ -663,9 +678,19 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 			return fmt.Errorf("неподдерживаемый тип балансировщика %q", groupType)
 		}
 	}
-	selected, _, err := filterSubscriptionNodes(sub, nodes)
+	selected, preview, err := filterSubscriptionNodes(sub, nodes)
 	if err != nil {
 		return err
+	}
+	// Persist only filtered display labels. Never retain their credentials,
+	// addresses, or transport configuration in the metadata.
+	sub.FilteredNodes = nil
+	for _, item := range preview.Nodes {
+		if !item.Included {
+			sub.FilteredNodes = append(sub.FilteredNodes, FilteredSubscriptionNode{
+				Name: item.Name, Protocol: item.Protocol, CountryCode: item.CountryCode, Flag: item.Flag,
+			})
+		}
 	}
 	m.mu.Lock()
 	before := m.state

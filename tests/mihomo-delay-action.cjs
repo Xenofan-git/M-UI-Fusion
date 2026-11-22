@@ -19,5 +19,5 @@ assert.ok(i18n.includes('"mh.testUnavailable": "Этот исходящий не
 assert.ok(css.includes('#mihomo-settings-root .mihomo-actionbar #mihomo-save:is(:hover,:focus-visible):not(:disabled)'),'Save hover must be legible');
 assert.ok(css.includes('#mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled'),'disabled Save must remain visible');
 assert.ok(html.includes('static/color-skins.css?v=114'));
-assert.ok(html.includes('static/mihomo-settings.js?v=123'));
+assert.ok(html.includes('static/mihomo-settings.js?v=124'));
 console.log('PASS: saved outbounds testable with dirty draft, unsupported nodes blocked, Save visible');

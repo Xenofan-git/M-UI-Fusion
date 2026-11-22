@@ -190,6 +190,35 @@ func TestEditedSubscriptionFiltersPersistAfterRestartAndRebuildGroup(t *testing.
 	if len(reloaded.state.Outbounds) != 2 || len(reloaded.state.Outbounds[0].Proxies) != 1 {
 		t.Fatal("group membership changed after state reload")
 	}
+	if len(got.FilteredNodes) != 1 || !strings.Contains(got.FilteredNodes[0].Name, "Россия") {
+		t.Fatalf("filtered names must survive restart without proxy credentials: %+v", got.FilteredNodes)
+	}
+	if got.FilteredNodes[0].Protocol != "ss" {
+		t.Fatalf("protocol lost: %+v", got.FilteredNodes[0])
+	}
+	if got.FilteredNodes[0].Name == "ru.example" {
+		t.Fatal("server address exposed in display metadata")
+	}
+	group, sources, members, ok := balancerSubscriptionSnapshot(reloaded.state, "Foreign-Pool")
+	if !ok {
+		t.Fatal("linked group missing")
+	}
+	status := buildBalancerStatus(group, sources, members, nil, false)
+	if len(status.Nodes) != 2 {
+		t.Fatalf("crossed-out excluded node absent from status: %+v", status.Nodes)
+	}
+	filteredCount := 0
+	for _, item := range status.Nodes {
+		if item.Filtered {
+			filteredCount++
+			if item.Member || item.Delay != 0 || !strings.Contains(item.Name, "Россия") {
+				t.Fatalf("filtered preview erroneously active: %+v", item)
+			}
+		}
+	}
+	if filteredCount != 1 {
+		t.Fatalf("expected 1 crossed-out node; got %d", filteredCount)
+	}
 	if reloaded.state.Outbounds[0].Timeout != 8000 || reloaded.state.Outbounds[0].Tolerance != 100 {
 		t.Fatal("balancer settings lost when filters were saved")
 	}

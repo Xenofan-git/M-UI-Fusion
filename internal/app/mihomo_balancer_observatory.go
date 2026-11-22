@@ -32,6 +32,7 @@ type balancerStatusNode struct {
 	Flag        string `json:"flag,omitempty"`
 	CountryCode string `json:"countryCode,omitempty"`
 	Member      bool   `json:"member"`
+	Filtered    bool   `json:"filtered,omitempty"`
 	Alive       *bool  `json:"alive,omitempty"`
 	Delay       int    `json:"delay,omitempty"`
 	CheckedAt   string `json:"checkedAt,omitempty"`
@@ -171,6 +172,25 @@ func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, n
 			}
 		}
 		result.Nodes = append(result.Nodes, item)
+	}
+	// Excluded nodes are intentionally absent from the executable Mihomo
+	// configuration, but their non-secret display labels remain visible.
+	seen := make(map[string]bool, len(result.Nodes))
+	for _, node := range result.Nodes {
+		seen[node.Name] = true
+	}
+	for _, source := range sources {
+		for index, filtered := range source.FilteredNodes {
+			name := subscriptionOutboundName(source, filtered.Name, index+1)
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			result.Nodes = append(result.Nodes, balancerStatusNode{
+				Name: name, Protocol: filtered.Protocol, SourceID: source.ID,
+				CountryCode: filtered.CountryCode, Flag: filtered.Flag, Filtered: true,
+			})
+		}
 	}
 	return result
 }

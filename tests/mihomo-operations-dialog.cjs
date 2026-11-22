@@ -19,6 +19,7 @@ assert(js.includes("$('#mihomo-restart').onclick=restartMihomoFromSettings"));
 assert(js.includes("if(mihomoActionBusy)return"),'prevent double execution');
 assert(js.includes("if(busy)return"),'pending dialog cannot be dismissed');
 assert(js.includes("if(phase==='success')successDismissTimer=setTimeout(close,2500)"),'successful dialog auto-dismisses after 2.5 s');
+assert(js.includes("footer.hidden=phase!=='error'"),'only error dialogs should show the Close button');
 assert(js.includes('clearTimeout(successDismissTimer)'),'manual close must cancel timer');
 const paletteCSS=fs.readFileSync('web/color-skins.css','utf8');
 assert(paletteCSS.includes('html body .modal-backdrop:is(.mui-dialog,.mui-balancer-use-backdrop) .modal-footer'),'consistent dialog hover across skins');
@@ -26,7 +27,7 @@ assert(paletteCSS.includes('-webkit-text-fill-color:#fff!important'),'older Chro
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="pending"]'));
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="error"]'));
 assert(css.includes('background:linear-gradient(160deg,#009B77,#08795E)'));
-for(const [asset,version] of [['mihomo-settings.js','123'],['mihomo-settings.css','126'],['i18n.js','119'],['i18n-locales.js','119']])
+for(const [asset,version] of [['mihomo-settings.js','124'],['mihomo-settings.css','127'],['i18n.js','119'],['i18n-locales.js','119']])
  assert(html.includes('static/'+asset+'?v='+version),asset+' cache version');
 const keys=['mh.operationSaving','mh.operationSaveTitle','mh.operationRestarting','mh.operationRestartTitle','mh.operationFailureTitle','mh.operationRestartSuccess'];
 for(const key of keys){

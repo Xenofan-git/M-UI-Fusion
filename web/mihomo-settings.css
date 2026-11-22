@@ -585,8 +585,20 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-up{color:#3ec68d;font-weight:600}
 .fbs-down{color:#fb7777;font-weight:600}
 .fbs-row-excluded{opacity:.48}
-.fbs-table tr.fbs-row-filtered{opacity:.38;background:var(--surface-subtle)}
+.fbs-table tr.fbs-row-filtered{opacity:.62;background:var(--surface-subtle)}
+.fbs-table tr.fbs-row-filtered .fbs-node-name{
+  text-decoration:line-through!important;text-decoration-thickness:1.5px!important;
+  text-decoration-color:var(--muted)!important;color:var(--muted)!important;
+}
+.fbs-table tr.fbs-row-filtered .fbs-protocol,
+.fbs-table tr.fbs-row-filtered .fbs-ping,
+.fbs-table tr.fbs-row-filtered .fbs-delay{color:var(--muted)!important}
 .fbs-table tr.fbs-row-filtered input[type=checkbox]{cursor:not-allowed}
+.fbs-filtered-divider td{background:var(--surface-subtle);border-bottom:1px solid var(--stroke);}
+.fbs-filtered-toggle{background:none;border:0;color:var(--muted);font:inherit;
+  font-weight:650;cursor:pointer;padding:4px 6px;text-align:left}
+.fbs-filtered-toggle:hover,.fbs-filtered-toggle:focus-visible{color:var(--text-strong)}
+.fbs-table tr[hidden]{display:none!important}
 .fbs-table tr:hover{background:var(--surface-hover)}
 .fbs-ping,.fbs-delay{font-variant-numeric:tabular-nums;white-space:nowrap}
 .fbs-table-actions{justify-content:space-between}
@@ -650,8 +662,15 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   width:100%;min-height:86px;resize:vertical;
   border:1px solid var(--stroke);border-radius:8px;
   padding:8px;color:var(--text-strong);background:var(--surface-strong);
-  font:inherit;
+  font:inherit;cursor:text!important;caret-color:var(--teal);
+  user-select:text!important;-webkit-user-select:text!important;
+  touch-action:auto!important;
 }
+.fbs-filter-fields textarea::selection{
+  background:#4dd6ae!important;color:#071c18!important;
+  -webkit-text-fill-color:#071c18!important;
+}
+.fbs-filter-fields textarea::-moz-selection{background:#4dd6ae;color:#071c18}
 .fbs-filter-fields .fbs-flag-picker{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;padding:7px 10px;font-size:12px}
 .fbs-country-add-icon{width:14px;height:14px;flex:none}
 .fbs-country-menu{display:flex;flex-direction:column;gap:5px;max-width:430px;border:1px solid var(--stroke);border-radius:10px;padding:10px;background:var(--surface-strong)}
@@ -1127,3 +1146,6 @@ html body .mihomo-rule-switch:has(input:disabled){opacity:1;cursor:not-allowed}
 .fbs-filter-flags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 3px}
 .fbs-filter-flag-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--stroke);border-radius:5px;padding:3px 6px;font-size:11px;color:var(--text-strong)}
 .fbs-filter-flag-chip img{width:16px;height:11px;object-fit:cover;flex:none}
+
+/* Hide the action entirely while successful notifications auto-dismiss. */
+html body .mui-mihomo-status-actions[hidden]{display:none!important}
