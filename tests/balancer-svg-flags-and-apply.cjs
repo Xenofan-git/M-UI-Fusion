@@ -15,6 +15,7 @@ assert(!js.slice(js.indexOf(' function renderRows(){'),js.indexOf(' function tea
 assert(js.includes('body.children[index]!==tr'),'do not reattach stable rows');
 assert(js.includes('if(candidate.dataset.candidate===liveCandidate)return'),'candidate flag must be preserved');
 assert(js.includes('flag.onclick=async()=>'), 'flag should be clickable');
+assert(js.includes('Просто нажмите на флаг, чтобы он скопировался для вставки в фильтр'),'hover must explain click-to-copy');
 assert(js.includes("navigator.clipboard?.writeText"),'modern Clipboard API');
 assert(js.includes("document.execCommand?.('copy')"),'HTTP/Windows legacy fallback');
 assert(js.includes('term=country.flag'),'country picker must insert real flag, not only translated name');
@@ -31,7 +32,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','119'],['mihomo-settings.js','119'],['mihomo-settings.css','119'],
+ ['mihomo-balancer-servers.js','120'],['mihomo-settings.js','119'],['mihomo-settings.css','119'],
  ['outbound-subscriptions.css','119'],['i18n.js','119'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

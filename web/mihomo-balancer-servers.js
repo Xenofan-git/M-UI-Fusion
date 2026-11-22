@@ -183,7 +183,7 @@
        const flag=elt('button','fbs-flag fbs-copy-flag');
        flag.type='button';
        flag.setAttribute('aria-label','Копировать флаг страны узла '+item.name);
-       flag.title='Нажмите, чтобы скопировать флаг для фильтров';
+       flag.title='Просто нажмите на флаг, чтобы он скопировался для вставки в фильтр';
        addFlag(flag,item);
        flag.onclick=async()=>{
          const flags=window.MUICountryFlags;

@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=119'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=120'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -57,6 +57,7 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Обновление');
    assert.equal((await page.locator('.fbs-tab').nth(1).innerText()).trim(),'Фильтры');
    assert.equal(await page.locator('.fbs-table-body > tr[data-node]').count(),2);
+   assert.equal(await page.locator('.fbs-table-body .fbs-copy-flag').first().getAttribute('title'),'Просто нажмите на флаг, чтобы он скопировался для вставки в фильтр');
    await page.waitForFunction(()=>[...document.querySelectorAll('.fbs-node .fbs-flag img')].every(e=>e.complete&&e.naturalWidth>0));
    await page.evaluate(()=>{
      window.__row=document.querySelector('.fbs-table-body > tr');
