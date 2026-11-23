@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=133'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=134'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
  .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');
@@ -57,7 +57,7 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    await page.goto(pathToFileURL(tmp).href);
    await page.evaluate(({names,records,filtered})=>{
      window.__statusRequests=0;window.__putRequests=0;
-     window.__diagnostics=[];
+     window.__diagnostics=[];window.__serverFiltersUSA=false;
      window.fetch=async(url,options)=>{
        if(String(url).includes('/diagnostics/filter-preview')){
          window.__diagnostics.push(JSON.parse(options.body));
@@ -65,13 +65,21 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
        }
        if(options?.method==='PUT'){
          window.__putRequests++;
+         const saved=JSON.parse(options.body||'{}').filterExclude||'';
+         window.__serverFiltersUSA=/США|🇺🇸/.test(saved);
          return {ok:true,json:async()=>({data:{}})};
        }
        if(String(url).includes('/subscriptions/preview'))
          return {ok:true,json:async()=>({data:{nodes:[]}})};
        window.__statusRequests++;
+       const active=window.__serverFiltersUSA
+         ?records.filter(n=>!/США|🇺🇸/.test(n.name))
+         :records;
+       const savedUSA=window.__serverFiltersUSA
+         ?records.filter(n=>/США|🇺🇸/.test(n.name)).map(n=>({...n,filtered:true,member:false}))
+         :[];
        return {ok:true,json:async()=>({data:{
-         candidate:names[0],available:true,nodes:[...records,...filtered]
+         candidate:names[0],available:true,nodes:[...active,...savedUSA,...filtered]
        }})};
      };
    },{names,records,filtered});
@@ -111,6 +119,10 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    assert.match((await page.locator('.fbs-show-count').innerText()),/отфильтровано 14/);
    const firstUSA=page.locator('tr[data-node*="США"]').first();
    assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-filtered')),false);
+   // A manually unchecked German server must remain unchecked through both
+   // provider saves; only formerly-filtered US nodes may auto-select.
+   const manualOff=page.locator('tr[data-node*="Германия"]').first();
+   await manualOff.locator('input[type=checkbox]').uncheck();
    const existingRows=await page.locator('tr[data-node]').evaluateAll(rows=>rows.map(row=>row.dataset.node));
    const inputExclude=async value=>page.locator('.fbs-drop').fill(value);
    // Actual keyboard input (not synthetic dispatchEvent), including the
@@ -186,6 +198,44 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
      'after successful Save excluded members are now grouped');
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31);
    assert.equal(await page.evaluate(()=>window.__putRequests),1);
+   assert.equal(await page.evaluate(()=>window.__serverFiltersUSA),true);
+   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-filtered')),true);
+   assert.equal(await firstUSA.locator('input[type=checkbox]').isDisabled(),true);
+   // Regression: removing USA again must restore the *server-side* proxy,
+   // not merely erase the saved filter text. The old editor kept the
+   // filtered:true status and stale selected=false after successful PUT.
+   const statusBeforeRestore=await page.evaluate(()=>window.__statusRequests);
+   await inputExclude(savedRU);
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14,
+     'removing USA should preview 17 restored rows immediately');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0);
+   await page.evaluate(()=>window.MUIBalancerServers.saveSourceSettings());
+   assert.equal(await page.evaluate(()=>window.__serverFiltersUSA),false,
+     'provider accepted removal of USA from the excluded filter');
+   assert.equal(await page.evaluate(()=>window.__putRequests),2,
+     'exactly one PUT must be sent for each saved filter edit');
+   assert((await page.evaluate(()=>window.__statusRequests))>statusBeforeRestore,
+     'editor must reload the authoritative server status after saving');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14,
+     '14 RU nodes remain excluded; 17 US nodes must be restored');
+   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-excluded')),false,
+     'restored USA must not remain visually dimmed');
+   assert.equal(await firstUSA.evaluate(el=>
+     getComputedStyle(el.querySelector('.fbs-node-name')).textDecorationLine.includes('line-through')),false,
+     'restored USA must have no strike-through after save');
+   assert.equal(await firstUSA.locator('input[type=checkbox]').isEnabled(),true);
+   assert.equal(await firstUSA.locator('input[type=checkbox]').isChecked(),true,
+     'restored member should be selected as it is now an active proxy');
+   assert.equal(await manualOff.locator('input[type=checkbox]').isChecked(),false,
+     'save must preserve unrelated manual per-node uncheck');
+   assert.equal(await manualOff.evaluate(el=>el.classList.contains('fbs-row-excluded')),true,
+     'unrelated manually unchecked member must remain dimmed by user choice');
+   assert.equal(await page.locator('.fbs-filtered-divider button').innerText(),
+     '▾ Скрыто фильтрами · 14','only original RU exclusions remain grouped');
+   assert.equal(await page.evaluate(firstName=>[...window.__filterDebug.context().form.elements.proxies.options]
+     .find(o=>o.value===firstName)?.selected,names[0]),true,
+     'restored proxy must also be selected in the parent group form');
+   assert.equal(await page.evaluate(()=>window.__filterDebug.context().subs[0].filterExclude),savedRU);
    // Reproduce REAL Windows telemetry: linked source id exists in the
    // group but the source selection options are empty (source=false).
    // No subscription metadata has been loaded yet. The single-provider
@@ -209,7 +259,7 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
      'missing-source preview must not rebuild rows while typing');
    assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
      'preview must not group excluded rows before Apply');
-   assert.equal(await page.evaluate(()=>window.__putRequests),1,
+   assert.equal(await page.evaluate(()=>window.__putRequests),2,
      'fallback preview must never save subscription without metadata');
    assert.equal(errors.length,0,JSON.stringify(errors));
    console.log('PASS initial editor attach in '+initialPerf.elapsed.toFixed(1)+'ms and '+initialPerf.lookups+

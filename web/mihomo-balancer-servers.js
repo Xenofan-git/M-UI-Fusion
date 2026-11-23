@@ -238,8 +238,10 @@
      term.text.length>=3&&display.includes(term.text));
    if(draft){
      const selectedSource=activeFilterSourceID();
+     const linked=selectedSources(context.group,context.subs);
+     const singleSource=linked.length===1&&linked[0]===selectedSource;
      return Boolean(!passes||textExclusion||
-       ((item.filtered||item.previewOnly)&&item.sourceId!==selectedSource));
+       ((item.filtered||item.previewOnly)&&!singleSource&&item.sourceId!==selectedSource));
    }
    return Boolean(item.filtered||item.previewOnly||!passes);
  };
@@ -426,11 +428,11 @@
    const ctx=context;
    if(!ctx.persistedName||ctx.persistedName!==ctx.group.name){
      setStatus('Измерения будут доступны после сохранения балансировщика.');
-     return;
+     return false;
    }
    try{
      const data=await request('/api/mihomo/balancers/status?group='+encodeURIComponent(ctx.persistedName));
-     if(!panel||context!==ctx)return;
+     if(!panel||context!==ctx)return false;
      liveCandidate=data.candidate||'';
      const existingByName=new Map(items.map(n=>[n.name,n]));
      // The chosen group scope, never all Outbounds, controls the table.
@@ -440,8 +442,34 @@
        const names=new Set((data.nodes||[]).map(n=>n.name));
        const extra=(ctx.previewNodes||[]).filter(n=>!names.has(n.name));
        items=[...(data.nodes||[]),...extra].map(n=>({...n,
-         sourceId:existingByName.get(n.name)?.sourceId||n.sourceId||'',
+         // The authoritative saved source ID wins. Never let a stale
+         // pre-save runtime ID keep a restored node in filtered styling.
+         sourceId:n.sourceId||existingByName.get(n.name)?.sourceId||'',
          ping:existingByName.get(n.name)?.ping||0}));
+       if(ctx.filterSavePreviousNodes){
+         // Restore only nodes which were previously filtered and are now
+         // ACTIVE members according to the authoritative saved server state.
+         // Never auto-select unrelated nodes the user manually unchecked.
+         const before=ctx.filterSavePreviousNodes;
+         const formSelect=ctx.form.elements.proxies;
+         const blocked=new Set(ctx.group.excludedSubscriptionMembers||[]);
+         for(const node of items){
+           const old=before.get(node.name);
+           if(node.filtered){
+             selected.delete(node.name);
+             const option=[...formSelect.options].find(o=>o.value===node.name);
+             if(option)option.selected=false;
+           }else if(old&&(old.filtered||old.previewOnly)&&node.member&&!blocked.has(node.name)){
+             selected.add(node.name);
+             let option=[...formSelect.options].find(o=>o.value===node.name);
+             if(!option){option=new Option(node.name,node.name);formSelect.add(option);}
+             option.selected=true;
+           }
+         }
+         ctx.filterSavePreviousNodes=null;
+         excluded=new Set(items.filter(node=>node.member&&!node.filtered&&!selected.has(node.name))
+           .map(node=>node.name));
+       }
      }else{
        const remote=new Map((data.nodes||[]).map(node=>[node.name,node]));
        items=items.map(node=>({
@@ -458,8 +486,10 @@
      if(data.message)setStatus(data.message,true);
      else setStatus(data.available?'Состояние Mihomo обновлено':'Нет текущих измерений');
      renderRows();
+     return true;
    }catch(error){
      if(panel&&ctx===context){setStatus(error.message,true);renderRows();}
+     return false;
    }
  }
  // Existing subscriptions created before display-only filtered metadata was
@@ -633,8 +663,28 @@
        pendingSources.delete(change.id);
        context.wasSourceSaved=true;
      }
-     if(refreshAfter)await context.afterRefresh?.();
-     if(panel){filteredCollapsed=false;renderRows();}
+     // The PUT re-imports subscription nodes and can turn previously
+     // excluded display-only rows into live proxies (or the reverse).
+     // Old item.filtered/previewOnly flags must NOT survive this save.
+     // Reconcile restored member checkboxes only after receiving new server
+     // status, so an old snapshot never activates an excluded server.
+     const ctx=context;
+     if(ctx&&panel){
+       ctx.filterSavePreviousNodes=new Map(items.map(node=>[
+         node.name,{filtered:!!node.filtered,previewOnly:!!node.previewOnly}
+       ]));
+       ctx.previewNodes=[];
+     }
+     if(refreshAfter)await ctx?.afterRefresh?.();
+     if(ctx&&panel&&context===ctx){
+       // A health poll started before the PUT may still be in flight.
+       // Wait for it and ALWAYS make a new status request after the PUT.
+       if(statusRequestPromise)await statusRequestPromise;
+       const synced=await refreshStatus();
+       if(!synced)setStatus('Фильтры сохранены, но список не обновился. Переоткройте окно.',true);
+       filteredCollapsed=false;
+       renderRows();
+     }
      return true;
    };
    context.saveSourceSettings=saveSourceSettings;

@@ -19,7 +19,7 @@ for(const name of [
  'quatro-vpn | 🇺🇸 ⭐ LTE Авто - США'
 ])assert.equal(flags.read(name)?.code,'US',name);
 assert.equal(flags.read('quatro-vpn | 🇩🇪 LTE Германия')?.code,'DE');
-assert(html.includes('static/mihomo-balancer-servers.js?v=133'),'updated JS must bypass browser cache');
+assert(html.includes('static/mihomo-balancer-servers.js?v=134'),'updated JS must bypass browser cache');
 assert(script.includes('function repaintFilterRowsInPlace()'),
  'textarea must repaint existing table rows synchronously');
 assert(script.includes('function activeFilterSourceID()')&&
