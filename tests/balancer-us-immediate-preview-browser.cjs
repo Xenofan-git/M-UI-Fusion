@@ -1,0 +1,119 @@
+'use strict';
+// Regression for an actual field report: USA nodes stay bright after adding
+// "США" below already-saved RU exclusions. No backend writes before Apply.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require('playwright-core');
+const web=path.resolve(__dirname,'../web');
+const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
+const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
+assert(html.includes('static/mihomo-balancer-servers.js?v=128'));
+const script=source.replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items};})();');
+assert(script!==source,'cannot inject test');
+const savedRU='🇷🇺\nМосква\nМСК\nСанкт-Петербург\nРоссия';
+const names=Array.from({length:119},(_,i)=>
+  i<17
+  ?'quatro-vpn | 🇺🇸 ⭐ LTE №'+String(i+63)+' - США· Атланта'
+  :'quatro-vpn | 🇩🇪 LTE №'+String(i+1)+' - Германия');
+const filtered=Array.from({length:14},(_,i)=>({
+ name:'quatro-vpn | 🇷🇺 LTE №'+(i+1)+' - Россия',
+ protocol:'vless',sourceId:'sub1',countryCode:'RU',member:false,
+ filtered:true,alive:null
+}));
+const records=names.map((name,index)=>({
+ name,protocol:'vless',
+ // One server without an upstream sourceId must still be filtered via
+ // the unambiguous provider prefix in a single-subscription group.
+ sourceId:index===0?'':'sub1',countryCode:index<17?'US':'DE',
+ member:true,alive:true,delay:25
+}));
+const nodeOutbounds=names.slice(1).map(name=>({
+ id:'n-'+name,kind:'proxy',type:'vless',name,sourceSubscriptionId:'sub1'
+}));
+const group={id:'g1',name:'FOREIGN',kind:'group',type:'url-test',
+ proxies:names,subscriptionIds:['sub1']};
+const sub={id:'sub1',name:'quatro-vpn',group:'FOREIGN',filterKeep:'',
+ filterExclude:savedRU,enabled:true,intervalMinutes:1440};
+const tmp=path.join(web,'.usa-filter-preview-test.html');
+(async()=>{
+ let browser;
+ fs.writeFileSync(tmp,'<!DOCTYPE html><html><head><meta charset="utf-8">'+
+ '<link rel="stylesheet" href="mihomo-settings.css"></head><body class="dark">'+
+ '<form id="editor"><label class="mihomo-field"><span>Узлы</span>'+
+ '<select name="proxies" multiple></select></label></form>'+
+ '<script src="country-flags.js"></script></body></html>');
+ try{
+  browser=await chromium.launch({executablePath:process.env.MUI_CHROMIUM||'/usr/bin/chromium',
+   headless:true,args:['--no-sandbox','--allow-file-access-from-files']});
+  for(const width of [390,1440]){
+   const page=await browser.newPage({viewport:{width,height:900}});
+   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.goto(pathToFileURL(tmp).href);
+   await page.evaluate(({names,records,filtered})=>{
+     window.__statusRequests=0;window.__putRequests=0;
+     window.fetch=async(url,options)=>{
+       if(options?.method==='PUT'){
+         window.__putRequests++;
+         return {ok:true,json:async()=>({data:{}})};
+       }
+       if(String(url).includes('/subscriptions/preview'))
+         return {ok:true,json:async()=>({data:{nodes:[]}})};
+       window.__statusRequests++;
+       return {ok:true,json:async()=>({data:{
+         candidate:names[0],available:true,nodes:[...records,...filtered]
+       }})};
+     };
+   },{names,records,filtered});
+   await page.addScriptTag({content:script});
+   await page.evaluate(({group,sub,nodes,names})=>{
+     const form=document.querySelector('#editor');
+     for(const name of names){
+       const opt=new Option(name,name);opt.selected=true;
+       form.elements.proxies.add(opt);
+     }
+     window.MUIBalancerServers.attach({
+       form,group,subs:[sub],outbounds:nodes,isDirty:()=>false,
+       persistedName:group.name,updateDefaults:()=>{},afterRefresh:async()=>{}
+     });
+   },{group,sub,nodes:nodeOutbounds,names});
+   await page.waitForFunction(()=>document.querySelectorAll('tr[data-node]').length===133);
+   await page.locator('[data-sub-pane=filters]').click();
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14);
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),1);
+   assert.match((await page.locator('.fbs-show-count').innerText()),/отфильтровано 14/);
+   const firstUSA=page.locator('tr[data-node*="США"]').first();
+   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-filtered')),false);
+   const existingRows=await page.locator('tr[data-node]').evaluateAll(rows=>rows.map(row=>row.dataset.node));
+   const inputExclude=async value=>page.locator('.fbs-drop').evaluate((el,v)=>{
+     el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));
+   },value);
+   await inputExclude(savedRU+'\nСША');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31,
+     '17 USA plus 14 RU must immediately turn muted/struck-through');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'do not regroup until Apply');
+   assert.deepEqual(await page.locator('tr[data-node]').evaluateAll(rows=>rows.map(row=>row.dataset.node)),existingRows,
+     'no nodes may change their order during typing');
+   assert.equal(await firstUSA.evaluate(el=>getComputedStyle(el.querySelector('.fbs-node-name')).textDecorationLine.includes('line-through')),true);
+   assert.match(await page.locator('.fbs-show-count').innerText(),/отфильтровано 31.*предпросмотр/);
+   assert.equal(await page.evaluate(()=>window.__putRequests),0);
+   await inputExclude(savedRU);
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14,
+     'removing USA restores 17 US nodes immediately');
+   await inputExclude(savedRU+'\n🇺🇸');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31,
+     'Unicode USA flag must behave like USA/RU country aliases');
+   await inputExclude(savedRU+'\nСША');
+   await page.evaluate(()=>window.MUIBalancerServers.saveSourceSettings());
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),1,
+     'after successful Save excluded members are now grouped');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31);
+   assert.equal(await page.evaluate(()=>window.__putRequests),1);
+   assert.equal(errors.length,0,JSON.stringify(errors));
+   console.log('PASS USA immediate preview 133 nodes (17 US + 14 RU excluded), no reorder before Apply',width);
+   await page.close();
+  }
+ }finally{await browser?.close();fs.rmSync(tmp,{force:true})}
+})().catch(e=>{console.error(e);process.exitCode=1});

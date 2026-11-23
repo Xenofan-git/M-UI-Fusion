@@ -30,6 +30,8 @@ jobs:
         run: node tests/manual-balancer-defaults.cjs
       - name: Ensure upgrades preserve subscriptions balancers and filters
         run: node tests/installer-preserves-settings.cjs
+      - name: Validate live USA filter input and in-place preview
+        run: node tests/balancer-live-filter-input.cjs
       - name: Guard balancer flag SVG, copying, stable poll updates and Apply popup
         run: node tests/balancer-svg-flags-and-apply.cjs
       - name: Test friendly balancer dependency warning

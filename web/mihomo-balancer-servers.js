@@ -152,7 +152,13 @@
  function passesSourceFilters(item){
    if(!context?.subscribed||!panel)return true;
    const sourceId=q('.fbs-source',panel)?.value;
-   if(!sourceId||item.sourceId!==sourceId)return true;
+   if(!sourceId)return true;
+   const source=context.subs.find(sub=>sub.id===sourceId);
+   // Runtime rows may not carry sourceId (older Mihomo/status snapshots).
+   // Trust the explicit ID when present; for missing IDs use only an
+   // unambiguous provider-name prefix, never an unrelated proxy.
+   if(item.sourceId&&item.sourceId!==sourceId)return true;
+   if(!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
    const keep=filterWords(q('.fbs-keep',panel)?.value);
    const drop=filterWords(q('.fbs-drop',panel)?.value);
    const flags=window.MUICountryFlags;
@@ -161,8 +167,14 @@
    const haystack=[item.name,country?.flag,country?.english,country?.ru,
      country?.code,flags?.aliases?.[country?.code]]
      .filter(Boolean).join(' ').toLocaleLowerCase('ru');
-   return (!keep.length||keep.some(term=>haystack.includes(term)))&&
-     !drop.some(term=>haystack.includes(term));
+   const matches=term=>{
+     const exactCountry=flags?.fromFilterLine?.(term);
+     // A country name, flag or ISO code refers to THAT country, not
+     // to an accidental substring (e.g. US must not match "Russia").
+     if(exactCountry)return exactCountry.code===country?.code;
+     return haystack.includes(term);
+   };
+   return (!keep.length||keep.some(matches))&&!drop.some(matches);
  }
  // Preview only changes appearance. Stored provider exclusions and
  // display-only nodes are never selectable before the user applies a change.
@@ -573,9 +585,52 @@
        }
      }
    }
-   for(const selector of ['.fbs-keep','.fbs-drop'])q(selector,el).addEventListener('input',()=>{
-     renderFilterFlagPreviews();filteredCollapsed=false;renderRows();
-   });
+   // Give immediate visual feedback even when a later full table redraw is
+   // delayed by runtime-status polling or a preview SVG. Do not mutate the
+   // server or reorder DOM nodes until the user presses Apply.
+   function repaintFilterRowsInPlace(){
+     const body=q('.fbs-table-body',el);
+     if(!body)return;
+     const pending=unsavedFilterPreview();
+     if(pending&&!previewRowOrder)
+       previewRowOrder=new Map([...body.querySelectorAll(':scope > tr[data-node]')]
+         .map((row,index)=>[row.dataset.node,index]));
+     const byName=new Map(items.map(item=>[item.name,item]));
+     let visible=0,filtered=0;
+     for(const row of body.querySelectorAll(':scope > tr[data-node]')){
+       const item=byName.get(row.dataset.node);
+       if(!item)continue;
+       visible++;
+       const blocked=isFilteredRow(item);
+       if(blocked)filtered++;
+       row.classList.toggle('fbs-row-filtered',blocked);
+       row.classList.toggle('fbs-row-excluded',blocked||!selected.has(item.name));
+       if(pending)row.hidden=false;
+       const check=q('input[type=checkbox]',row);
+       if(check){
+         check.disabled=blocked||!!item.filtered||!!item.previewOnly;
+         check.checked=!blocked&&selected.has(item.name);
+       }
+     }
+     if(pending){
+       body.querySelector(':scope > tr.fbs-filtered-divider')?.remove();
+       const counter=q('.fbs-show-count',el);
+       if(counter)counter.textContent='Показано '+visible+' из '+items.length+
+         ' · подходит '+(visible-filtered)+' · отфильтровано '+filtered+
+         ' · предпросмотр до «Применить»';
+     }
+   }
+   const previewInput=()=>{
+     filteredCollapsed=false;
+     repaintFilterRowsInPlace();
+     renderFilterFlagPreviews();
+     renderRows();
+   };
+   for(const selector of ['.fbs-keep','.fbs-drop']){
+     const area=q(selector,el);
+     area.addEventListener('input',previewInput);
+     area.addEventListener('change',previewInput);
+   }
    function fillSource(){
      const sub=currentSource();if(!sub)return;
      const value=pendingSources.get(sub.id)||sub;
