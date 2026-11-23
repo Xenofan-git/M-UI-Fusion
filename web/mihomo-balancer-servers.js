@@ -3,7 +3,7 @@
    only selected members and have a separate any-Outbound add picker. */
 (() => {
  'use strict';
- let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
+ let panel=null, context=null, items=[],selected=new Set(),excluded=new Set(),selectionOverrides=new Map();
  let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all',filteredCollapsed=false;
  let previewRowOrder=null,previewSortRequested=false;
  // Editor baselines must not follow mutable app.state/subscription objects.
@@ -320,7 +320,7 @@
        const selectCol=elt('td');
        const check=elt('input');check.type='checkbox';
        check.setAttribute('aria-label','Использовать сервер '+item.name);
-       check.onchange=()=>{if(check.checked)selected.add(item.name);else selected.delete(item.name);updateSelection();renderRows();};
+       check.onchange=()=>{if(check.checked)selected.add(item.name);else selected.delete(item.name);if(context?.subscribed)selectionOverrides.set(item.name,check.checked);updateSelection();renderRows();};
        selectCol.append(check);tr.append(selectCol);
        tr.append(elt('td','fbs-protocol'));
        const name=elt('td','fbs-node');name.title=item.name;
@@ -406,7 +406,7 @@
    if(dismissCountryPicker){dismissCountryPicker();dismissCountryPicker=null;}
    controller?.abort();controller=null;probing=false;
    if(panel){panel.remove();panel=null;}
-   context=null;items=[];selected.clear();excluded.clear();liveCandidate='';
+   context=null;items=[];selected.clear();excluded.clear();selectionOverrides.clear();liveCandidate='';
    compiledFilter=null;filterEditBaseline.clear();filterDraftTouched.clear();
    previewRowOrder=null;previewSortRequested=false;
  }
@@ -446,29 +446,42 @@
          // pre-save runtime ID keep a restored node in filtered styling.
          sourceId:n.sourceId||existingByName.get(n.name)?.sourceId||'',
          ping:existingByName.get(n.name)?.ping||0}));
-       if(ctx.filterSavePreviousNodes){
-         // Restore only nodes which were previously filtered and are now
-         // ACTIVE members according to the authoritative saved server state.
-         // Never auto-select unrelated nodes the user manually unchecked.
-         const before=ctx.filterSavePreviousNodes;
+       if(ctx.reconcileMembersAfterSourceSave||!unsavedFilterPreview()){
+         // Reconcile against the live group on every normal status fetch,
+         // including an editor opened with a stale cached group selection.
+         // Never overwrite an active unsaved filter preview, though.
+         // The live group membership is authoritative after subscription PUT.
+         // Some browsers have already cleared item.filtered during a status
+         // update, so comparing against old filtered flags is insufficient:
+         // they still retain selected=false and look dimmed. Rebuild every
+         // subscription member from the new backend status. Preserve only
+         // explicit user checkbox overrides made in this open editor.
          const formSelect=ctx.form.elements.proxies;
-         const blocked=new Set(ctx.group.excludedSubscriptionMembers||[]);
+         const options=new Map([...formSelect.options].map(o=>[o.value,o]));
+         const next=new Set();
          for(const node of items){
-           const old=before.get(node.name);
-           if(node.filtered){
-             selected.delete(node.name);
-             const option=[...formSelect.options].find(o=>o.value===node.name);
-             if(option)option.selected=false;
-           }else if(old&&(old.filtered||old.previewOnly)&&node.member&&!blocked.has(node.name)){
-             selected.add(node.name);
-             let option=[...formSelect.options].find(o=>o.value===node.name);
-             if(!option){option=new Option(node.name,node.name);formSelect.add(option);}
-             option.selected=true;
+           const permitted=!node.filtered&&!node.previewOnly;
+           const member=selectionOverrides.has(node.name)
+             ?selectionOverrides.get(node.name):!!node.member;
+           const wanted=permitted&&member;
+           if(wanted)next.add(node.name);
+           let option=options.get(node.name);
+           if(!option&&wanted){
+             option=new Option(node.name,node.name);
+             formSelect.add(option);
+             options.set(node.name,option);
            }
+           if(option)option.selected=wanted;
          }
-         ctx.filterSavePreviousNodes=null;
+         // A provider update can also remove names from the subscription.
+         for(const option of formSelect.options)
+           if(!items.some(node=>node.name===option.value)&&!selectionOverrides.has(option.value))
+             option.selected=false;
+         selected=next;
+         ctx.reconcileMembersAfterSourceSave=false;
          excluded=new Set(items.filter(node=>node.member&&!node.filtered&&!selected.has(node.name))
            .map(node=>node.name));
+         ctx.updateDefaults?.();
        }
      }else{
        const remote=new Map((data.nodes||[]).map(node=>[node.name,node]));
@@ -569,18 +582,24 @@
    };
    const selectable=item=>!isFilteredRow(item)&&!item.filtered&&!item.previewOnly;
    q('.fbs-toggle-all',el).onchange=e=>{
-     if(e.target.checked){for(const item of items)if(selectable(item))selected.add(item.name);}
-     else{for(const item of items)selected.delete(item.name);}
+     if(e.target.checked){for(const item of items)if(selectable(item)){
+       selected.add(item.name);if(context?.subscribed)selectionOverrides.set(item.name,true);
+     }}
+     else{for(const item of items)if(selectable(item)){
+       selected.delete(item.name);if(context?.subscribed)selectionOverrides.set(item.name,false);
+     }}
      updateSelection();renderRows();
    };
    q('.fbs-select-all',el).onclick=()=>{
-     for(const item of items)if(selectable(item))selected.add(item.name);
+     for(const item of items)if(selectable(item)){
+       selected.add(item.name);if(context?.subscribed)selectionOverrides.set(item.name,true);
+     }
      updateSelection();renderRows();
    };
-   q('.fbs-select-none',el).onclick=()=>{for(const item of items)selected.delete(item.name);updateSelection();renderRows();};
+   q('.fbs-select-none',el).onclick=()=>{for(const item of items)if(selectable(item)){selected.delete(item.name);if(context?.subscribed)selectionOverrides.set(item.name,false);}updateSelection();renderRows();};
    q('.fbs-exclude-offline',el).onclick=()=>{
      const bad=items.filter(n=>n.alive===false&&n.member);
-     for(const item of bad)selected.delete(item.name);
+     for(const item of bad){selected.delete(item.name);if(context?.subscribed)selectionOverrides.set(item.name,false);}
      updateSelection();renderRows();setStatus('Исключено недоступных узлов: '+bad.length+'. Нажмите «Применить к конфигурации».');
    };
    q('.fbs-refresh-source',el).onclick=async()=>{
@@ -670,9 +689,7 @@
      // status, so an old snapshot never activates an excluded server.
      const ctx=context;
      if(ctx&&panel){
-       ctx.filterSavePreviousNodes=new Map(items.map(node=>[
-         node.name,{filtered:!!node.filtered,previewOnly:!!node.previewOnly}
-       ]));
+       ctx.reconcileMembersAfterSourceSave=true;
        ctx.previewNodes=[];
      }
      if(refreshAfter)await ctx?.afterRefresh?.();
@@ -970,6 +987,7 @@
        kind:'builtin',name:option.value,type:'builtin'
      });
    filteredCollapsed=false;
+   selectionOverrides.clear();
    context={form,group,subs,outbounds,available,subscribed,updateDefaults,afterRefresh,
      isDirty,persistedName:persistedName||'',selectionInitialized:false};
    const initial=contextNodes();

@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=134'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=135'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
  .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');
@@ -209,6 +209,24 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14,
      'removing USA should preview 17 restored rows immediately');
    assert.equal(await page.locator('.fbs-filtered-divider').count(),0);
+   // Actual Windows regression: a concurrent poll has already set
+   // filtered=false on the rows but selected=false still lingers from the
+   // earlier excluded subscription state. The old implementation only
+   // restored "old.filtered" rows and left all US nodes dim.
+   await page.evaluate(()=>{
+     for(const node of window.__filterDebug.items()){
+       if(!/США|🇺🇸/.test(node.name))continue;
+       node.filtered=false;
+       node.previewOnly=false;
+       node.member=true;
+     }
+     window.__filterDebug.renderRows();
+   });
+   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-filtered')),false,
+     'backend already considers US nodes unfiltered');
+   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-excluded')),true,
+     'reproduce persistent dimming caused only by stale selected=false');
+   assert.equal(await firstUSA.locator('input[type=checkbox]').isChecked(),false);
    await page.evaluate(()=>window.MUIBalancerServers.saveSourceSettings());
    assert.equal(await page.evaluate(()=>window.__serverFiltersUSA),false,
      'provider accepted removal of USA from the excluded filter');
@@ -261,6 +279,22 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
      'preview must not group excluded rows before Apply');
    assert.equal(await page.evaluate(()=>window.__putRequests),2,
      'fallback preview must never save subscription without metadata');
+   // A newly opened form may be populated from stale draft.proxies. Live
+   // backend knows the 17 USA are all active members. The initial status GET
+   // must correct their visual selection even without another filter Save.
+   await page.evaluate(({group,nodes,source})=>{
+     const stale={...group,proxies:group.proxies.filter(name=>!/США|🇺🇸/.test(name))};
+     window.MUIBalancerServers.attach({
+       form:document.querySelector('#editor'),group:stale,subs:[source],
+       outbounds:nodes,isDirty:()=>false,persistedName:group.name,
+       updateDefaults:()=>{},afterRefresh:async()=>{}
+     });
+   },{group,nodes:nodeOutbounds,source:sub});
+   await page.waitForFunction(()=>document.querySelectorAll('tr[data-node]').length===133);
+   await page.waitForFunction(()=>[...document.querySelectorAll('tr[data-node*="США"]')]
+     .every(row=>!row.classList.contains('fbs-row-excluded')&&row.querySelector('input[type=checkbox]')?.checked));
+   assert.equal(await page.locator('tr[data-node*="США"].fbs-row-excluded').count(),0,
+     'stale group draft must be corrected from backend membership on first status GET');
    assert.equal(errors.length,0,JSON.stringify(errors));
    console.log('PASS initial editor attach in '+initialPerf.elapsed.toFixed(1)+'ms and '+initialPerf.lookups+
      ' country lookups; USA filter preview 133 nodes, no reorder before Apply',width);
