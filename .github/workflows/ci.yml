@@ -45,7 +45,7 @@ jobs:
       - name: Guard calm Login and Save press feedback and reduced-motion support
         run: node tests/action-button-feedback.cjs
       - name: Check Mihomo tab and subscription filter button typography
-        run: node tests/mihomo-tabs-size-browser.cjs
+        run: node tests/mihomo-tabs-size.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
       - name: Test centered Mihomo Save and Restart operation dialogs
