@@ -610,3 +610,66 @@ html body #mihomo-operation-status.modal-backdrop.mui-mihomo-status-backdrop[dat
   border-color:#64d9ba!important;filter:none!important;
   box-shadow:0 0 0 2px rgba(32,184,151,.35)!important;
 }
+
+/* M-UI Fusion: readable icon actions across Liquid, Shadcn and MD3.
+   Scope to the Mihomo table; no changes to other panel action buttons. */
+html body #mihomo-settings-root .mihomo-table .mihomo-actions
+button.mihomo-icon:not(:disabled):is(:hover,:focus-visible),
+html body #mihomo-settings-root .mihomo-table .mihomo-actions
+button.mihomo-icon:not(:disabled):is(:active){
+  color:#17bc91!important;-webkit-text-fill-color:#17bc91!important;
+  border:1px solid #17bc91!important;
+  background:rgba(15,141,104,.15)!important;background-color:rgba(15,141,104,.15)!important;
+  box-shadow:inset 0 0 0 1px rgba(23,188,145,.22)!important;
+  opacity:1!important;
+}
+html body #mihomo-settings-root .mihomo-table .mihomo-actions
+button.mihomo-icon.danger:not(:disabled):is(:hover,:focus-visible,:active){
+  color:#ff5367!important;-webkit-text-fill-color:#ff5367!important;
+  border-color:#ff5367!important;
+  background:rgba(230,56,76,.12)!important;background-color:rgba(230,56,76,.12)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,83,103,.22)!important;
+}
+html body #mihomo-settings-root .mihomo-table button.mihomo-icon[data-test-outbound]:is(:hover,:focus-visible,:active),
+html body #mihomo-settings-root .mihomo-table button.mihomo-icon[data-test-outbound].mihomo-test-running{
+  color:#ffca45!important;-webkit-text-fill-color:#ffca45!important;
+  border:1px solid #ffca45!important;
+  background:rgba(201,148,12,.15)!important;background-color:rgba(201,148,12,.15)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,202,69,.25)!important;
+  opacity:1!important;
+}
+/* Symbol paths inherit the same green / red / yellow as the icon frame. */
+html body #mihomo-settings-root .mihomo-table .mihomo-actions button.mihomo-icon:is(:hover,:focus-visible,:active) .sf-symbol,
+html body #mihomo-settings-root .mihomo-table button.mihomo-icon[data-test-outbound]:is(:hover,:focus-visible,:active) .sf-symbol,
+html body #mihomo-settings-root .mihomo-table button.mihomo-icon.mihomo-test-running .sf-symbol{
+  color:inherit!important;-webkit-text-fill-color:currentColor!important;
+}
+
+/* A wider, genuinely visible scroll thumb in dialogs and long server tables.
+   Unlike the tab bars, these areas deliberately keep working scrollbars. */
+html body :is(.mihomo-modal,.modal-content,.mihomo-table-wrap,.fbs-table-wrap,
+  .fbs-country-list,.fbs-add-results,.mihomo-geo-picker-list,.fbs-filter-fields textarea){
+  scrollbar-width:auto!important;
+  scrollbar-color:#8197ac rgba(123,147,178,.16)!important;
+}
+html body.dark :is(.mihomo-modal,.modal-content,.mihomo-table-wrap,.fbs-table-wrap,
+  .fbs-country-list,.fbs-add-results,.mihomo-geo-picker-list,.fbs-filter-fields textarea){
+  scrollbar-color:#94adbf rgba(123,147,178,.2)!important;
+}
+html body :is(.mihomo-modal,.modal-content,.mihomo-table-wrap,.fbs-table-wrap,
+  .fbs-country-list,.fbs-add-results,.mihomo-geo-picker-list,.fbs-filter-fields textarea)::-webkit-scrollbar{
+  width:12px!important;height:12px!important;background:rgba(123,147,178,.10)!important;
+}
+html body :is(.mihomo-modal,.modal-content,.mihomo-table-wrap,.fbs-table-wrap,
+  .fbs-country-list,.fbs-add-results,.mihomo-geo-picker-list,.fbs-filter-fields textarea)::-webkit-scrollbar-track{
+  background:rgba(123,147,178,.17)!important;border-radius:9px;
+}
+html body :is(.mihomo-modal,.modal-content,.mihomo-table-wrap,.fbs-table-wrap,
+  .fbs-country-list,.fbs-add-results,.mihomo-geo-picker-list,.fbs-filter-fields textarea)::-webkit-scrollbar-thumb{
+  border-radius:9px!important;border:2px solid transparent!important;
+  background:#8197ac!important;background-clip:padding-box!important;
+}
+html body :is(.mihomo-modal,.modal-content,.mihomo-table-wrap,.fbs-table-wrap,
+  .fbs-country-list,.fbs-add-results,.mihomo-geo-picker-list,.fbs-filter-fields textarea)::-webkit-scrollbar-thumb:hover{
+  background:#15b58a!important;background-clip:padding-box!important;
+}

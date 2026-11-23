@@ -5,6 +5,7 @@
  'use strict';
  let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
  let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all',filteredCollapsed=false;
+ let previewRowOrder=null,previewSortRequested=false;
  let dismissCountryPicker=null,removeVisibilityListener=null,statusRequestPromise=null;
  const statusPollIntervalMs=60000;
  const q=(s,parent=document)=>parent.querySelector(s);
@@ -163,11 +164,29 @@
    return (!keep.length||keep.some(term=>haystack.includes(term)))&&
      !drop.some(term=>haystack.includes(term));
  }
- const isFilteredRow=item=>Boolean(
-   !passesSourceFilters(item)||
-   ((item.filtered||item.previewOnly)&&!sourceFilterActive())||
-   (item.filtered&&item.sourceId&&item.sourceId!==q('.fbs-source',panel)?.value)
- );
+ // Preview only changes appearance. Stored provider exclusions and
+ // display-only nodes are never selectable before the user applies a change.
+ const isFilteredRow=item=>{
+   if(unsavedFilterPreview()){
+     // A formerly excluded server can become visually un-crossed when the
+     // user removes its filter. It is still NOT selectable until Apply has
+     // imported it again into Mihomo.
+     const selectedSource=q('.fbs-source',panel)?.value;
+     return Boolean(!passesSourceFilters(item)||
+       ((item.filtered||item.previewOnly)&&item.sourceId!==selectedSource));
+   }
+   return Boolean(item.filtered||item.previewOnly||!passesSourceFilters(item));
+ };
+ // A filter textarea edited since its last server save must NOT rearrange
+ // nodes yet: strike them in place and only group them after Apply/Save.
+ function unsavedFilterPreview(){
+   if(!context?.subscribed||!panel)return false;
+   const id=q('.fbs-source',panel)?.value;
+   const sub=context.subs.find(source=>source.id===id);
+   if(!sub)return false;
+   return q('.fbs-keep',panel).value!==(sub.filterKeep||'')||
+     q('.fbs-drop',panel).value!==(sub.filterExclude||'');
+ }
  function sourceFilterActive(){
    return !!context?.subscribed&&!!panel&&(
      filterWords(q('.fbs-keep',panel)?.value).length>0||
@@ -178,6 +197,15 @@
    if(!panel)return;
    renderStatusText();
    const lower=searchText.toLocaleLowerCase('ru');
+   const body=q('.fbs-table-body',panel);
+   const pendingPreview=unsavedFilterPreview();
+   // Freeze visual row order at the first unsaved keystroke. Previously
+   // existing applied exclusions jumped back into alphabetical order while
+   // typing, which looked like Apply had already run.
+   if(pendingPreview&&!previewRowOrder&&!previewSortRequested)
+     previewRowOrder=new Map([...body.querySelectorAll(':scope > tr[data-node]')]
+       .map((row,index)=>[row.dataset.node,index]));
+   if(!pendingPreview)previewRowOrder=null;
    const listing=items.filter(n=>{
      if(showOnly==='online'&&n.alive!==true)return false;
      if(showOnly==='offline'&&n.alive!==false)return false;
@@ -189,15 +217,21 @@
      }
      return true;
    }).sort((a,b)=>{
-     const x=isFilteredRow(a),y=isFilteredRow(b);
-     if(x!==y)return x?1:-1;
+     if(pendingPreview&&previewRowOrder&&!previewSortRequested){
+       const x=previewRowOrder.get(a.name)??Number.MAX_SAFE_INTEGER;
+       const y=previewRowOrder.get(b.name)??Number.MAX_SAFE_INTEGER;
+       if(x!==y)return x-y;
+     }
+     if(!pendingPreview){
+       const x=isFilteredRow(a),y=isFilteredRow(b);
+       if(x!==y)return x?1:-1;
+     }
      let result=0;
      if(sortBy==='latency')result=(a.delay||999999)-(b.delay||999999);
      else if(sortBy==='ping')result=(a.ping||999999)-(b.ping||999999);
      else result=a.name.localeCompare(b.name,'ru');
      return ascending?result:-result;
    });
-   const body=q('.fbs-table-body',panel);
    // The divider is presentation only. Remove before stable row reordering.
    body.querySelector(':scope > tr.fbs-filtered-divider')?.remove();
    // Even at a 60-second poll, reuse tr/img nodes: preserve text selection and SVG flags.
@@ -271,7 +305,7 @@
      td.colSpan=5;row.append(td);body.append(row);
    }
    const filteredCount=listing.filter(isFilteredRow).length;
-   if(filteredCount){
+   if(filteredCount&&!pendingPreview){
      const first=body.querySelector('tr.fbs-row-filtered');
      const divider=elt('tr','fbs-filtered-divider');
      const td=elt('td');td.colSpan=5;
@@ -284,7 +318,8 @@
      if(first)body.insertBefore(divider,first);
    }
    q('.fbs-show-count',panel).textContent='Показано '+listing.length+' из '+items.length+
-     ' · подходит '+(listing.length-filteredCount)+' · отфильтровано '+filteredCount;
+     ' · подходит '+(listing.length-filteredCount)+' · отфильтровано '+filteredCount+
+     (pendingPreview?' · предпросмотр до «Применить»':'');
  }
  function teardown(){
    if(context?.form?.elements.proxies){
@@ -300,6 +335,7 @@
    controller?.abort();controller=null;probing=false;
    if(panel){panel.remove();panel=null;}
    context=null;items=[];selected.clear();excluded.clear();liveCandidate='';
+   previewRowOrder=null;previewSortRequested=false;
  }
  const statusPanelVisible=()=>{
    if(!panel?.isConnected||document.hidden)return false;
@@ -425,7 +461,10 @@
    for(const button of el.querySelectorAll('[data-sort]'))button.onclick=()=>{
      const key=button.dataset.sort;
      if(sortBy===key)ascending=!ascending;else{sortBy=key;ascending=true;}
-     renderRows();
+     previewSortRequested=true;renderRows();previewSortRequested=false;
+     if(unsavedFilterPreview())
+       previewRowOrder=new Map([...q('.fbs-table-body',panel).querySelectorAll(':scope > tr[data-node]')]
+         .map((row,index)=>[row.dataset.node,index]));
    };
    const selectable=item=>!isFilteredRow(item)&&!item.filtered&&!item.previewOnly;
    q('.fbs-toggle-all',el).onchange=e=>{
@@ -505,6 +544,7 @@
        context.wasSourceSaved=true;
      }
      if(refreshAfter)await context.afterRefresh?.();
+     if(panel){filteredCollapsed=false;renderRows();}
      return true;
    };
    context.saveSourceSettings=saveSourceSettings;
@@ -544,6 +584,7 @@
      q('.fbs-minutes',el).value=(value.intervalMinutes||1440)%60;
      q('.fbs-keep',el).value=value.filterKeep||'';
      q('.fbs-drop',el).value=value.filterExclude||'';
+     previewRowOrder=null;
      renderFilterFlagPreviews();filteredCollapsed=false;renderRows();
    }
    sourceChoice.onchange=()=>{

@@ -121,7 +121,18 @@
     if(divider<1)return value;
     const provider=value.slice(0,divider).trim().toLowerCase();
     const group=String(groupName||'').toLowerCase();
-    return provider&&(group===provider||group.endsWith('-'+provider))?value.slice(divider+3):value;
+    const sourceGroups=(typeof app!=='undefined'&&app?.state?.state?.outboundSubscriptions)||[];
+    const cachedSources=typeof balancerSubscriptions==='undefined'?[]:balancerSubscriptions||[];
+    const groupEntry=typeof draft==='undefined'?null:draft?.outbounds?.find(x=>x.kind==='group'&&x.name===groupName);
+    const linked=new Set(groupEntry?.subscriptionIds||[]);
+    const fromKnownSubscription=[...sourceGroups,...cachedSources].some(sub=>
+      String(sub?.name||'').trim().toLowerCase()===provider&&
+      (String(sub.group||'').toLowerCase()===group||linked.has(sub.id))
+    );
+    // Only remove a *known provider* prefix, never a protocol/region prefix
+    // such as "INT |" if it identifies the actual outbound.
+    return provider&&(group===provider||group.endsWith('-'+provider)||fromKnownSubscription)
+      ?value.slice(divider+3):value;
   }
   // UI-only: use the same local SVG country flags as the subscription
   // node list. Regional-indicator emoji show as plain LV/RU letters on
@@ -305,7 +316,9 @@
       const item=byName.get(button.dataset.testOutbound);
       if(!item)return;
       const reason=outboundTestUnavailableReason(item);
-      button.disabled=!!reason;
+      const testing=delayResults.get(button.dataset.testOutbound)==='Testing';
+      button.disabled=!!reason||testing;
+      button.classList.toggle('mihomo-test-running',testing);
       const title=reason||muiT('mh.testOutbound');
       if(button.title!==title)button.title=title;
     });

@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=126'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=127'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -191,6 +191,10 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
      assert.equal(parts.length,2);
      assert.equal(await parts[1].evaluate(el=>getComputedStyle(el).color!==getComputedStyle(el.parentElement).color),true,'inline hint should be muted');
    }
+   // Descending name order deliberately places RU before PL. Typing a PL
+   // condition must strike RU immediately *without* moving either row.
+   await page.locator('[data-sort="name"]').click();
+   assert.match(await page.locator('.fbs-table-body > tr[data-node]').first().getAttribute('data-node'),/Россия/);
    await page.locator('.fbs-keep').fill(await page.evaluate(()=>window.__copied));
    assert.equal(await page.locator('.fbs-keep-flag-preview img').count(),1);
    assert.equal((await page.locator('.fbs-keep-flag-preview img').first().getAttribute('src')).includes('pl.svg'),true);
@@ -198,24 +202,23 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
      name:row.dataset.node,filtered:row.classList.contains('fbs-row-filtered'),
      disabled:row.querySelector('input[type=checkbox]').disabled
    })));
-   assert.match(previewRows[0].name,/Польша/,'matching nodes must move to the top immediately');
-   assert.equal(previewRows[0].filtered,false);
-   assert.match(previewRows[1].name,/Россия/,'nonmatching nodes stay visible at bottom');
-   assert.equal(previewRows[1].filtered,true);
-   assert.equal(previewRows[1].disabled,true,'filtered nodes must not be selectable until filter changes');
-   assert.equal(await page.locator('.fbs-filtered-divider .fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
-   assert.equal(await page.locator('.fbs-filtered-divider .fbs-filtered-toggle').getAttribute('aria-expanded'),'true');
+   assert.match(previewRows[0].name,/Россия/,'RU must not move while the filter draft is being typed');
+   assert.equal(previewRows[0].filtered,true,'RU is crossed out immediately');
+   assert.equal(previewRows[0].disabled,true,'crossed-out draft preview cannot be selected');
+   assert.match(previewRows[1].name,/Польша/,'PL keeps its original sort position');
+   assert.equal(previewRows[1].filtered,false);
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'do not create the excluded group until filters are applied');
+   assert.match(await page.locator('.fbs-show-count').innerText(),/предпросмотр до «Применить»/);
    const struck=await page.locator('.fbs-row-filtered .fbs-node-name').evaluate(el=>({
-     decoration:getComputedStyle(el).textDecorationLine, color:getComputedStyle(el).color
+     decoration:getComputedStyle(el).textDecorationLine,color:getComputedStyle(el).color
    }));
-   assert.match(struck.decoration,/line-through/,'filtered name must be struck through');
-   assert.notEqual(struck.color,'rgb(255, 255, 255)','struck-through server must be muted');
-   await page.locator('.fbs-filtered-divider button').click();
-   assert.equal(await page.locator('tr[data-node*="Польша"]').evaluate(el=>el.classList.contains('fbs-row-filtered')),false,'matching row must never become struck-through on redraw');
-   assert.equal(await page.locator('tr[data-node*="Россия"]').isHidden(),true,'excluded list may be collapsed explicitly');
-   await page.locator('.fbs-filtered-divider button').click();
-   assert.equal(await page.locator('tr.fbs-row-filtered').isVisible(),true,'excluded rows shown by default');
-   assert.match(await page.locator('.fbs-show-count').innerText(),/подходит 1 · отфильтровано 1/);
+   assert.match(struck.decoration,/line-through/,'filtered name is immediately struck through');
+   assert.notEqual(struck.color,'rgb(255, 255, 255)','excluded name is dimmed');
+   await page.evaluate(()=>window.__fbsDebug.refreshStatus());
+   assert.match(await page.locator('.fbs-table-body tr[data-node]').first().getAttribute('data-node'),/Россия/,
+     'status polling cannot regroup unsaved filtered rows');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0);
    // Every filter textarea needs real editable text selection, Ctrl+C,
    // Ctrl+X and Delete; a bright selection must remain legible in dark mode.
    for(const selector of ['.fbs-keep','.fbs-drop']){
@@ -317,6 +320,27 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(stored.body.filterExclude,'🇷🇺');
    assert.equal(stored.body.intervalMinutes,1440);
    assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
+   const appliedRows=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>({
+     name:r.dataset.node,filtered:r.classList.contains('fbs-row-filtered')
+   })));
+   assert.match(appliedRows[0].name,/Польша/,'only Apply may move matching nodes to the top');
+   assert.equal(appliedRows[0].filtered,false);
+   assert.match(appliedRows[1].name,/Россия/);
+   assert.equal(appliedRows[1].filtered,true);
+   assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
+   await page.locator('.fbs-filtered-divider button').click();
+   assert.equal(await page.locator('tr[data-node*="Россия"]').isHidden(),true);
+   await page.locator('.fbs-filtered-divider button').click();
+   assert.equal(await page.locator('tr[data-node*="Россия"]').isVisible(),true);
+   const beforeEditingApplied=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>r.dataset.node));
+   await page.locator('.fbs-keep').fill('🇷🇺');
+   assert.deepEqual(await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>r.dataset.node)),
+     beforeEditingApplied,'editing an already-applied filter cannot reorder existing table rows');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'applied divider hidden during new unsaved filter preview');
+   await page.locator('.fbs-keep').fill('🇵🇱');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),1,
+     'saved applied grouping returns once the input matches persisted fields');
    // Reopening the same existing group must show the values fetched from
    // canonical subscription metadata, not empty editor defaults.
    await page.evaluate(()=>{
@@ -361,6 +385,21 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(await page.locator('.fbs-row-filtered .fbs-node-name').innerText(),'quatro-vpn | LTE - Россия');
    assert.match(await page.locator('.fbs-row-filtered .fbs-node-name').evaluate(el=>getComputedStyle(el).textDecorationLine),/line-through/);
    assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
+   await page.locator('.fbs-keep').fill('');
+   await page.locator('.fbs-drop').fill('');
+   const reenabled=page.locator('tr[data-node*="Россия"]');
+   assert.equal(await reenabled.evaluate(el=>el.classList.contains('fbs-row-filtered')),false,
+     'removing a filter must visually restore a formerly excluded name immediately');
+   assert.equal(await reenabled.locator('input[type=checkbox]').isDisabled(),true,
+     'the restored preview must not become active until Apply reimports it');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'removing the filter must not regroup before Apply');
+   await page.locator('.fbs-keep').fill('🇵🇱');
+   await page.locator('.fbs-drop').fill('🇷🇺');
+   assert.equal(await reenabled.evaluate(el=>el.classList.contains('fbs-row-filtered')),true,
+     'typing the excluded term again must cross the server out immediately');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),1,
+     'returning to the saved filter should restore the applied divider');
    await page.locator('.fbs-select-all').click();
    assert.equal(await page.locator('.fbs-row-filtered input[type=checkbox]').isChecked(),false,
      'bulk select must never activate a filtered preview-only proxy');

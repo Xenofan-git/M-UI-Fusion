@@ -34,6 +34,20 @@ assert.equal(russia.code,'RU');
 assert.equal(russia.label,'0.1X - LTE №65 - Москва');
 assert.equal(meta('FOREIGN','FI 🟢 ⚡ ⭐ 0.1X - LTE №8 - Финляндия').label,'🟢 ⚡ ⭐ 0.1X - LTE №8 - Финляндия');
 assert.equal(meta('Foreign-quatro-vpn','quatro-vpn | se 🟢 ⚡ LTE №1').label,'🟢 ⚡ LTE №1');
+const subscribedSandbox={window:{MUICountryFlags:flags},app:{state:{state:{
+  outboundSubscriptions:[{id:'s1',name:'quatro-vpn',group:'Renamed-Foreign'}]
+}}},balancerSubscriptions:[],draft:{outbounds:[{kind:'group',name:'Renamed-Foreign',subscriptionIds:['s1']}]}};
+vm.createContext(subscribedSandbox);
+vm.runInContext(source.slice(start,end),subscribedSandbox);
+assert.equal(subscribedSandbox.displayedCurrentNode('Renamed-Foreign',
+  'quatro-vpn | 🇪🇪 🟩 ⚡ ⭐ 0.1X - LTE №78 - Эстония'),
+  '🇪🇪 🟩 ⚡ ⭐ 0.1X - LTE №78 - Эстония');
+assert.equal(subscribedSandbox.displayedCurrentNode('Renamed-Foreign',
+  'INT | lv 🟩 ⚡ LTE - Латвия'),'INT | lv 🟩 ⚡ LTE - Латвия',
+  'a genuine region prefix must not be deleted');
+assert.equal(subscribedSandbox.currentNodeMeta('Renamed-Foreign',
+  'quatro-vpn | 🇷🇺 🟢 LTE - Москва').label,'🟢 LTE - Москва');
+
 assert.equal(meta('FOREIGN','INT | NL 🟢 LTE Авто').code,'NL');
 assert.equal(meta('FOREIGN','INT | NL 🟢 LTE Авто').label,'🟢 LTE Авто');
 assert.equal(meta('FOREIGN','🇩🇪 DE 🟢 Германия').label,'🟢 Германия');
@@ -105,7 +119,7 @@ assert.equal(node('Russia','RU Moscow #5'),'RU Moscow #5');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 assert.ok(css.includes('.mihomo-current-country-flag'));
-assert.ok(html.includes('mihomo-settings.js?v=125'));
+assert.ok(html.includes('mihomo-settings.js?v=126'));
 assert.ok(html.includes('mihomo-settings.css?v=127'));
 for(const code of ['lv','ru','fi','de']){
   const svg=fs.readFileSync('web/flags/'+code+'.svg','utf8');

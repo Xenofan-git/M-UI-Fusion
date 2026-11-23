@@ -30,7 +30,8 @@ assert(js.includes('statusRequestPromise'),'deduplicate concurrent status reads'
 assert(js.includes('const saveSourceSettings=async('),'balancer must persist source filters on Apply');
 assert(js.includes('context.saveSourceSettings=saveSourceSettings'),'Apply must have a source-save callback');
 assert(js.includes('fbs-row-filtered'),'live filtering must visually mark mismatching servers');
-assert(js.includes('if(x!==y)return x?1:-1'),'matched servers should be sorted ahead in preview');
+assert(js.includes('if(!pendingPreview)'),'filter input must cross out in place until Apply');
+assert(js.includes('previewRowOrder=new Map('),'unsaved filter must freeze original row order');
 assert(css.includes('.fbs-node-name,.fbs-candidate-label,.mihomo-table .mihomo-name,'),
  'outbound node names must be selectable as normal text');
 assert(css.includes('.fbs-node-name::selection'),'selection appearance must be explicitly defined');
@@ -53,7 +54,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','126'],['mihomo-settings.js','125'],['mihomo-settings.css','127'],
+ ['mihomo-balancer-servers.js','127'],['mihomo-settings.js','126'],['mihomo-settings.css','127'],
  ['outbound-subscriptions.css','119'],['i18n.js','119'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');
