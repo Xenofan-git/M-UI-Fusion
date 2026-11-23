@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=130'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=131'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -339,8 +339,11 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
      'applied divider hidden during new unsaved filter preview');
    await page.locator('.fbs-keep').fill('🇵🇱');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'an edited filter remains in preview until explicit Apply even if text returns to saved value');
+   await page.evaluate(()=>window.MUIBalancerServers.saveSourceSettings());
    assert.equal(await page.locator('.fbs-filtered-divider').count(),1,
-     'saved applied grouping returns once the input matches persisted fields');
+     'explicit Apply restores the saved grouping when no field differs');
    // Reopening the same existing group must show the values fetched from
    // canonical subscription metadata, not empty editor defaults.
    await page.evaluate(()=>{
@@ -398,8 +401,11 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.locator('.fbs-drop').fill('🇷🇺');
    assert.equal(await reenabled.evaluate(el=>el.classList.contains('fbs-row-filtered')),true,
      'typing the excluded term again must cross the server out immediately');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'previously changed filters remain ungrouped until explicitly applied');
+   await page.evaluate(()=>window.MUIBalancerServers.saveSourceSettings());
    assert.equal(await page.locator('.fbs-filtered-divider').count(),1,
-     'returning to the saved filter should restore the applied divider');
+     'saving the restored filter should regroup excluded nodes');
    await page.locator('.fbs-select-all').click();
    assert.equal(await page.locator('.fbs-row-filtered input[type=checkbox]').isChecked(),false,
      'bulk select must never activate a filtered preview-only proxy');

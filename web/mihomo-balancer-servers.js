@@ -6,6 +6,9 @@
  let panel=null, context=null, items=[],selected=new Set(),excluded=new Set();
  let liveCandidate='',refreshTimer=0,controller=null,probing=false,sortBy='name',ascending=true,searchText='',showOnly='all',filteredCollapsed=false;
  let previewRowOrder=null,previewSortRequested=false;
+ // Editor baselines must not follow mutable app.state/subscription objects.
+ // A live store refresh may replace or update them while the user types.
+ let filterEditBaseline=new Map(),filterDraftTouched=new Set();
  let dismissCountryPicker=null,removeVisibilityListener=null,statusRequestPromise=null;
  const statusPollIntervalMs=60000;
  const q=(s,parent=document)=>parent.querySelector(s);
@@ -211,25 +214,33 @@
  // Preview only changes appearance. Stored provider exclusions and
  // display-only nodes are never selectable before the user applies a change.
  const isFilteredRow=item=>{
-   if(unsavedFilterPreview()){
-     // A formerly excluded server can become visually un-crossed when the
-     // user removes its filter. It is still NOT selectable until Apply has
-     // imported it again into Mihomo.
+   const passes=passesSourceFilters(item);
+   const draft=unsavedFilterPreview();
+   // A single-provider group is already restricted to that subscription.
+   // Explicit user-entered strings must match the *visible row name*
+   // even if runtime metadata is inconsistent. Avoid treating short ISO
+   // codes as arbitrary substrings (US inside Russia, etc.).
+   const spec=draft?sourceFilterSpec():null;
+   const display=String(item.name||'').toLocaleLowerCase('ru');
+   const textExclusion=!!spec?.drop.some(term=>
+     term.text.length>=3&&display.includes(term.text));
+   if(draft){
      const selectedSource=q('.fbs-source',panel)?.value;
-     return Boolean(!passesSourceFilters(item)||
+     return Boolean(!passes||textExclusion||
        ((item.filtered||item.previewOnly)&&item.sourceId!==selectedSource));
    }
-   return Boolean(item.filtered||item.previewOnly||!passesSourceFilters(item));
+   return Boolean(item.filtered||item.previewOnly||!passes);
  };
  // A filter textarea edited since its last server save must NOT rearrange
  // nodes yet: strike them in place and only group them after Apply/Save.
  function unsavedFilterPreview(){
    if(!context?.subscribed||!panel)return false;
    const id=q('.fbs-source',panel)?.value;
-   const sub=context.subs.find(source=>source.id===id);
-   if(!sub)return false;
-   return q('.fbs-keep',panel).value!==(sub.filterKeep||'')||
-     q('.fbs-drop',panel).value!==(sub.filterExclude||'');
+   if(filterDraftTouched.has(id))return true;
+   const baseline=filterEditBaseline.get(id);
+   if(!baseline)return false;
+   return q('.fbs-keep',panel).value!==baseline.keep||
+     q('.fbs-drop',panel).value!==baseline.drop;
  }
  function sourceFilterActive(){
    return !!context?.subscribed&&!!panel&&(
@@ -379,7 +390,8 @@
    controller?.abort();controller=null;probing=false;
    if(panel){panel.remove();panel=null;}
    context=null;items=[];selected.clear();excluded.clear();liveCandidate='';
-   compiledFilter=null;previewRowOrder=null;previewSortRequested=false;
+   compiledFilter=null;filterEditBaseline.clear();filterDraftTouched.clear();
+   previewRowOrder=null;previewSortRequested=false;
  }
  const statusPanelVisible=()=>{
    if(!panel?.isConnected||document.hidden)return false;
@@ -548,6 +560,9 @@
    }
    const sourceChoice=q('.fbs-source',el);
    const sourceList=context.subs.filter(src=>selectedSources(context.group,context.subs).includes(src.id));
+   filterEditBaseline=new Map(sourceList.map(src=>[src.id,{
+     keep:String(src.filterKeep||''),drop:String(src.filterExclude||'')
+   }]));
    sourceChoice.replaceChildren();
    for(const sub of sourceList)sourceChoice.add(new Option(sub.name,sub.id));
    const currentSource=()=>sourceList.find(sub=>sub.id===sourceChoice.value);
@@ -575,7 +590,11 @@
    const saveSourceSettings=async({refreshAfter=false}={})=>{
      captureSource();
      const changes=Array.from(pendingSources.values());
-     if(!changes.length)return !!context.wasSourceSaved;
+     if(!changes.length){
+       filterDraftTouched.delete(activeSourceID);
+       if(panel)renderRows();
+       return !!context.wasSourceSaved;
+     }
      // The backend validates every filter, re-imports from subscription URL,
      // and atomically writes the accepted nodes and filter metadata to state.
      for(const change of changes){
@@ -584,6 +603,10 @@
        });
        const sub=sourceList.find(item=>item.id===change.id);
        if(sub)Object.assign(sub,change);
+       filterEditBaseline.set(change.id,{
+         keep:String(change.filterKeep||''),drop:String(change.filterExclude||'')
+       });
+       filterDraftTouched.delete(change.id);
        pendingSources.delete(change.id);
        context.wasSourceSaved=true;
      }
@@ -652,18 +675,29 @@
      // Keep the heading in sync with the rows without reordering them.
      renderStatusText();
    }
+   let lastPreviewInput=null;
    const previewInput=()=>{
+     const activeID=q('.fbs-source',el)?.value;
+     if(activeID)filterDraftTouched.add(activeID);
+     const state=activeID+'\0'+
+       q('.fbs-keep',el)?.value+'\0'+q('.fbs-drop',el)?.value;
+     if(state===lastPreviewInput)return;
+     lastPreviewInput=state;
      filteredCollapsed=false;
+     // Do this before flag chips: the user sees the strike-through on the
+     // current keystroke, even without a browser animation frame.
      repaintFilterRowsInPlace();
      renderFilterFlagPreviews();
    };
-   // Delegate on the stable editor, not a potentially replaced textarea.
-   // Capture phase also handles browsers/extensions that stop bubbling.
-   const onFilterEdit=event=>{
-     if(event.target?.matches?.('.fbs-keep,.fbs-drop'))previewInput();
-   };
-   el.addEventListener('input',onFilterEdit,true);
-   el.addEventListener('change',onFilterEdit,true);
+   // Bind to the ACTUAL textareas. A legacy browser can stop input events
+   // from bubbling; keyup handles IME/keyboard fallbacks, change handles
+   // paste/autofill. Repeated events are deduplicated above.
+   for(const selector of ['.fbs-keep','.fbs-drop']){
+     const area=q(selector,el);
+     area.addEventListener('input',previewInput);
+     area.addEventListener('change',previewInput);
+     area.addEventListener('keyup',previewInput);
+   }
    function fillSource(){
      const sub=currentSource();if(!sub)return;
      const value=pendingSources.get(sub.id)||sub;
@@ -672,7 +706,7 @@
      q('.fbs-minutes',el).value=(value.intervalMinutes||1440)%60;
      q('.fbs-keep',el).value=value.filterKeep||'';
      q('.fbs-drop',el).value=value.filterExclude||'';
-     previewRowOrder=null;
+     previewRowOrder=null;lastPreviewInput=null;
      renderFilterFlagPreviews();filteredCollapsed=false;renderRows();
    }
    sourceChoice.onchange=()=>{

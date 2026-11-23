@@ -19,15 +19,21 @@ for(const name of [
  'quatro-vpn | 🇺🇸 ⭐ LTE Авто - США'
 ])assert.equal(flags.read(name)?.code,'US',name);
 assert.equal(flags.read('quatro-vpn | 🇩🇪 LTE Германия')?.code,'DE');
-assert(html.includes('static/mihomo-balancer-servers.js?v=130'),'updated JS must bypass browser cache');
+assert(html.includes('static/mihomo-balancer-servers.js?v=131'),'updated JS must bypass browser cache');
 assert(script.includes('function repaintFilterRowsInPlace()'),
  'textarea must repaint existing table rows synchronously');
 assert(script.includes('row.classList.toggle(\'fbs-row-filtered\',blocked)'),
  'input must immediately strike excluded rows');
-assert(!script.slice(script.indexOf('const previewInput='),script.indexOf('const onFilterEdit=')).includes('renderRows();'),
+assert(!script.slice(script.indexOf('const previewInput='),script.indexOf('function fillSource(){')).includes('renderRows();'),
  'typing must never rebuild/reorder the server table');
-assert(script.includes("el.addEventListener('input',onFilterEdit,true)"),'native text input must repaint in capture phase');
-assert(script.includes("el.addEventListener('change',onFilterEdit,true)"),'committed changes must repaint in capture phase');
+assert(script.includes("area.addEventListener('input',previewInput)"),'native textarea input must repaint directly');
+assert(script.includes("area.addEventListener('change',previewInput)"),'paste or blur must repaint directly');
+assert(script.includes("area.addEventListener('keyup',previewInput)"),'legacy keyboard event must repaint directly');
+assert(script.includes('filterEditBaseline=new Map(sourceList.map('),
+ 'filter preview must compare against immutable initial subscription baseline');
+assert(script.includes('filterDraftTouched.add(activeID)')&&
+  script.includes('filterDraftTouched.delete(change.id)'),
+ 'input edits must hold preview until Apply, even if live metadata changes');
 assert(script.includes('term.code===country?.code||'),
  'US must not accidentally match Russia via substring');
 assert(script.includes('if(!pending){renderRows();return;}')&&script.includes("' · предпросмотр до «Применить»'"),

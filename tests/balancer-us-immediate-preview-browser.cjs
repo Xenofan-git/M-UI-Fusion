@@ -9,10 +9,10 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=130'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=131'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
- .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items};})();');
+ .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');
 assert(script!==source,'cannot inject test');
 const savedRU='🇷🇺\nМосква\nМСК\nСанкт-Петербург\nРоссия';
 const names=Array.from({length:119},(_,i)=>
@@ -124,6 +124,38 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    assert.equal(await firstUSA.evaluate(el=>getComputedStyle(el.querySelector('.fbs-node-name')).textDecorationLine.includes('line-through')),true);
    assert.match(await page.locator('.fbs-show-count').innerText(),/отфильтровано 31.*предпросмотр/);
    assert.equal(await page.evaluate(()=>window.__putRequests),0);
+   // A live /api/state refresh can mutate an in-memory subscription object
+   // while the filter editor is open. Preview must compare against the
+   // independent baseline captured on opening, not this object.
+   await page.evaluate(()=>{
+     const sub=window.__filterDebug.context().subs[0];
+     sub.filterExclude=document.querySelector('.fbs-drop').value;
+     window.__filterDebug.setBaseline(sub.id,document.querySelector('.fbs-keep').value,
+       document.querySelector('.fbs-drop').value);
+     window.__filterDebug.renderRows();
+   });
+   assert.equal(await page.evaluate(()=>window.__filterDebug.pending()),true,
+     'editor baseline must survive a mutated live state subscription');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31);
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0);
+   await page.evaluate(value=>{
+     const sub=window.__filterDebug.context().subs[0];
+     sub.filterExclude=value;
+     window.__filterDebug.setBaseline(sub.id,'',value);
+   },savedRU);
+   // Some older Windows input methods change a textarea value before
+   // emitting keyup. Even without an input event the preview must repaint.
+   await page.locator('.fbs-drop').evaluate((el,v)=>{
+     el.value=v;
+     el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Backspace'}));
+   },savedRU);
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14);
+   await page.locator('.fbs-drop').evaluate((el,v)=>{
+     el.value=v;
+     el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'А'}));
+   },savedRU+'\nСША');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31,
+     'legacy keyboard event should repaint even without an input event');
    await inputExclude(savedRU);
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14,
      'removing USA restores 17 US nodes immediately');
