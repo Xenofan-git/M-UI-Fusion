@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=131'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=132'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -61,12 +61,12 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
      });
    });
    await page.waitForFunction(()=>document.querySelector('.fbs-status')?.textContent==='Состояние Mihomo обновлено');
-   assert.deepEqual(await page.evaluate(()=>window.__pollIntervals.map(i=>i.ms)),[60000],
-     'one 60-second status timer, not a 7.5-second request');
+   assert.deepEqual(await page.evaluate(()=>window.__pollIntervals.map(i=>i.ms)),[500,60000],
+     '60-second network status timer plus local 500ms diagnostic watchdog (no network until USA input)');
    const initialCalls=await page.evaluate(()=>window.__serverCalls);
    assert.equal(initialCalls,1,'opening a balancer must fetch status immediately');
    // An invisible browser tab or hidden modal must not send background requests.
-   await page.evaluate(()=>{window.__forceHidden=true;window.__pollIntervals[0].callback();document.dispatchEvent(new Event('visibilitychange'));});
+   await page.evaluate(()=>{window.__forceHidden=true;window.__pollIntervals.find(i=>i.ms===60000).callback();document.dispatchEvent(new Event('visibilitychange'));});
    assert.equal(await page.evaluate(()=>window.__serverCalls),initialCalls,'background status requests must stop');
    await page.evaluate(()=>{window.__forceHidden=false;document.dispatchEvent(new Event('visibilitychange'));});
    await page.waitForFunction(()=>window.__serverCalls===2);
@@ -80,9 +80,9 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
        await new Promise(resolve=>{window.__serverDelay=resolve;});
        return oldFetch(...args);
      };
-     window.__pollIntervals[0].callback();
-     window.__pollIntervals[0].callback();
-     window.__pollIntervals[0].callback();
+     window.__pollIntervals.find(i=>i.ms===60000).callback();
+     window.__pollIntervals.find(i=>i.ms===60000).callback();
+     window.__pollIntervals.find(i=>i.ms===60000).callback();
    });
    // A pending status request is one request even if many polls fire.
    assert.equal(await page.evaluate(()=>window.__serverCalls),beforeOverlap);

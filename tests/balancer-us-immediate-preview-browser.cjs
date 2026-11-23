@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=131'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=132'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
  .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');
@@ -57,7 +57,12 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    await page.goto(pathToFileURL(tmp).href);
    await page.evaluate(({names,records,filtered})=>{
      window.__statusRequests=0;window.__putRequests=0;
+     window.__diagnostics=[];
      window.fetch=async(url,options)=>{
+       if(String(url).includes('/diagnostics/filter-preview')){
+         window.__diagnostics.push(JSON.parse(options.body));
+         return {ok:true,json:async()=>({data:{}})};
+       }
        if(options?.method==='PUT'){
          window.__putRequests++;
          return {ok:true,json:async()=>({data:{}})};
@@ -124,6 +129,19 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    assert.equal(await firstUSA.evaluate(el=>getComputedStyle(el.querySelector('.fbs-node-name')).textDecorationLine.includes('line-through')),true);
    assert.match(await page.locator('.fbs-show-count').innerText(),/отфильтровано 31.*предпросмотр/);
    assert.equal(await page.evaluate(()=>window.__putRequests),0);
+   await page.waitForFunction(()=>window.__diagnostics.some(e=>e.phase==='after'));
+   const reports=await page.evaluate(()=>window.__diagnostics);
+   const initialAfter=reports.find(e=>e.phase==='after');
+   assert.equal(initialAfter.rows,133,'diagnostic must count live visible rows');
+   assert.equal(initialAfter.usRows,17,'diagnostic must count only US rows');
+   assert.equal(initialAfter.crossedUs,17,'diagnostic should observe applied CSS class');
+   assert.equal(initialAfter.cssCrossedUs,17,'diagnostic should observe computed strike-through');
+   assert.equal(initialAfter.draft,true);
+   assert.equal(initialAfter.touched,true);
+   assert.equal(initialAfter.sourceMatches,true);
+   assert.equal(initialAfter.inputs,1);
+   assert(!reports.some(e=>Object.keys(e).some(k=>/name|filter|url|proxy|key|token/i.test(k))),
+     'only aggregate booleans and counts may leave the browser');
    // A live /api/state refresh can mutate an in-memory subscription object
    // while the filter editor is open. Preview must compare against the
    // independent baseline captured on opening, not this object.

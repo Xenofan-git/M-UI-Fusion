@@ -10,6 +10,7 @@
  // A live store refresh may replace or update them while the user types.
  let filterEditBaseline=new Map(),filterDraftTouched=new Set();
  let dismissCountryPicker=null,removeVisibilityListener=null,statusRequestPromise=null;
+ let diagnosticTimer=null,diagnosticSent=0,diagnosticNoticed=false,diagnosticInputLogged=false;
  const statusPollIntervalMs=60000;
  const q=(s,parent=document)=>parent.querySelector(s);
  const elt=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
@@ -383,6 +384,8 @@
      context.form.elements.proxies.classList.remove('fbs-native-members');
    }
    if(refreshTimer){clearInterval(refreshTimer);refreshTimer=0;}
+   if(diagnosticTimer){clearInterval(diagnosticTimer);diagnosticTimer=null;}
+   diagnosticSent=0;diagnosticNoticed=false;diagnosticInputLogged=false;
    if(removeVisibilityListener){removeVisibilityListener();removeVisibilityListener=null;}
    // A pending request belongs to the previous context; it must not block a new modal.
    statusRequestPromise=null;
@@ -675,19 +678,68 @@
      // Keep the heading in sync with the rows without reordering them.
      renderStatusText();
    }
+   // Narrow, short-lived, authenticated telemetry for diagnosing real
+   // Windows browser behavior. No filter text, node names, URLs, keys,
+   // user-agent or other identifying information leaves the browser.
+   function emitUSADiagnostic(phase,event='none',error=false){
+     try{
+       if(!panel||panel!==el||diagnosticSent>=6)return;
+       const value=q('.fbs-drop',el)?.value||'';
+       if(!/сша|🇺🇸/i.test(value))return;
+       const rows=[...el.querySelectorAll('.fbs-table-body tr[data-node]')];
+       const usaRows=rows.filter(row=>/сша|🇺🇸/i.test(row.dataset.node||''));
+       const crossed=row=>row.classList.contains('fbs-row-filtered');
+       const id=q('.fbs-source',el)?.value||'';
+       const report={
+         phase,event,usa:true,hasSource:!!id,
+         sourceMatches:!!context?.subs?.some(src=>src.id===id),
+         draft:unsavedFilterPreview(),touched:filterDraftTouched.has(id),
+         rows:rows.length,usRows:usaRows.length,
+         crossed:rows.filter(crossed).length,
+         crossedUs:usaRows.filter(crossed).length,
+         cssCrossedUs:usaRows.filter(row=>{
+           const label=q('.fbs-node-name',row);
+           return !!label&&getComputedStyle(label).textDecorationLine.includes('line-through');
+         }).length,
+         inputs:el.querySelectorAll('.fbs-drop').length,error
+       };
+       diagnosticSent++;
+       // Do not wait for the logger or allow it to affect filtering.
+       void request('/api/mihomo/diagnostics/filter-preview',{
+         method:'POST',body:JSON.stringify(report)
+       }).catch(()=>{});
+     }catch{/* Diagnostics must never disrupt editor input. */}
+   }
+   // The watchdog notices the text even if input/change/keyup never fire.
+   diagnosticTimer=setInterval(()=>{
+     if(!diagnosticNoticed&&/сша|🇺🇸/i.test(q('.fbs-drop',el)?.value||'')){
+       diagnosticNoticed=true;
+       emitUSADiagnostic('noticed','watch');
+       setTimeout(()=>{if(panel===el)emitUSADiagnostic('later','watch');},1250);
+     }
+   },500);
    let lastPreviewInput=null;
-   const previewInput=()=>{
+   const previewInput=(event)=>{
      const activeID=q('.fbs-source',el)?.value;
      if(activeID)filterDraftTouched.add(activeID);
      const state=activeID+'\0'+
        q('.fbs-keep',el)?.value+'\0'+q('.fbs-drop',el)?.value;
      if(state===lastPreviewInput)return;
      lastPreviewInput=state;
+     const track=!diagnosticInputLogged&&/сша|🇺🇸/i.test(q('.fbs-drop',el)?.value||'');
+     const eventType=['input','change','keyup'].includes(event?.type)?event.type:'none';
+     if(track){diagnosticInputLogged=true;emitUSADiagnostic('before',eventType);}
      filteredCollapsed=false;
      // Do this before flag chips: the user sees the strike-through on the
      // current keystroke, even without a browser animation frame.
-     repaintFilterRowsInPlace();
-     renderFilterFlagPreviews();
+     try{
+       repaintFilterRowsInPlace();
+       renderFilterFlagPreviews();
+       if(track)emitUSADiagnostic('after',eventType);
+     }catch(error){
+       if(track)emitUSADiagnostic('error',eventType,true);
+       throw error;
+     }
    };
    // Bind to the ACTUAL textareas. A legacy browser can stop input events
    // from bubbling; keyup handles IME/keyboard fallbacks, change handles
