@@ -151,8 +151,8 @@
 }
 .mihomo-tab{
   display:inline-flex;align-items:center;gap:8px;height:auto;
-  margin:0;padding:7px 16px;border:0;border-radius:8px;
-  background:transparent;color:var(--muted);font-size:13px;font-weight:500;
+  margin:0;padding:8px 17px;border:0;border-radius:8px;
+  background:transparent;color:var(--muted);font-size:14.5px;font-weight:470;
   cursor:pointer;box-shadow:none;transition:all .2s var(--ease);
 }
 .mihomo-tab-label{white-space:nowrap}
@@ -164,7 +164,7 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
 }
 .mihomo-tabs .mihomo-tab-icon{
   display:inline-flex;align-items:center;justify-content:center;
-  flex:0 0 27px;width:27px;height:27px;line-height:1;
+  flex:0 0 29px;width:29px;height:29px;line-height:1;
   border-radius:9px;
   color:var(--teal,#a78bfa);
   background:color-mix(in srgb,var(--teal,#a78bfa) 11%,transparent);
@@ -172,7 +172,7 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
   transition:background .2s var(--ease),border-color .2s var(--ease),transform .2s var(--ease);
 }
 .mihomo-tabs .mihomo-tab-icon .mihomo-tab-glyph{
-  display:block;width:19px;height:19px;flex:none;overflow:visible;
+  display:block;width:20px;height:20px;flex:none;overflow:visible;
   fill:none;stroke:currentColor;
 }
 .mihomo-tabs .mihomo-tab:hover .mihomo-tab-icon{
@@ -393,7 +393,7 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
   .basics-row{grid-template-columns:1fr;gap:10px}
   .basics-row p{font-size:12px}
   .mihomo-tabs{gap:3px;display:flex;width:100%}
-  .mihomo-tab{flex:1;justify-content:center;padding:8px 10px;font-size:12px}
+  .mihomo-tab{flex:1 1 auto;justify-content:center;padding:9px 11px;font-size:13.5px}
 }
 
 /* ---- Form / YAML 编辑器标签页 ---- */
@@ -613,8 +613,8 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .fbs-options{display:flex;flex-wrap:wrap;gap:8px;margin-top:3px}
 .fbs-tab{
   background:var(--surface-strong);color:var(--text-strong);
-  border:1px solid var(--stroke);border-radius:8px;padding:8px 13px;
-  cursor:pointer;font-size:12px;
+  border:1px solid var(--stroke);border-radius:8px;padding:9px 17px;
+  cursor:pointer;font-size:14px;font-weight:500;
 }
 .fbs-tab:hover,.fbs-tab.active{border-color:var(--teal);background:var(--surface-hover)}
 .fbs-panel{flex-basis:100%;font-size:12px;color:var(--muted);line-height:1.5}
@@ -1137,7 +1137,7 @@ html body .mihomo-rule-switch:has(input:disabled){opacity:1;cursor:not-allowed}
 
 /* Country flags match the cap-height of the node names, not emoji height. */
 .fbs-tab{display:inline-flex;align-items:center;justify-content:center;gap:8px}
-.fbs-tab-icon{width:16px;height:16px;flex:none}
+.fbs-tab-icon{width:18px;height:18px;flex:none}
 .fbs-copy-flag{
   border:0;background:transparent;padding:0;margin:0 6px 0 0;
   min-width:18px;min-height:20px;cursor:copy;color:inherit;
