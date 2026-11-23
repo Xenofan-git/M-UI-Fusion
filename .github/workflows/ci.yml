@@ -42,6 +42,8 @@ jobs:
         run: node tests/russian-localization-quality.cjs
       - name: Test button hover colors and contrast across layout themes
         run: node tests/button-hover-colors.cjs
+      - name: Guard calm Login and Save press feedback and reduced-motion support
+        run: node tests/action-button-feedback.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
       - name: Test centered Mihomo Save and Restart operation dialogs
