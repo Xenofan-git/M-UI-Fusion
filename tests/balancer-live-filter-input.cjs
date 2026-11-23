@@ -19,7 +19,7 @@ for(const name of [
  'quatro-vpn | 🇺🇸 ⭐ LTE Авто - США'
 ])assert.equal(flags.read(name)?.code,'US',name);
 assert.equal(flags.read('quatro-vpn | 🇩🇪 LTE Германия')?.code,'DE');
-assert(html.includes('static/mihomo-balancer-servers.js?v=128'),'updated JS must bypass browser cache');
+assert(html.includes('static/mihomo-balancer-servers.js?v=129'),'updated JS must bypass browser cache');
 assert(script.includes('function repaintFilterRowsInPlace()'),
  'textarea must repaint existing table rows synchronously');
 assert(script.includes('row.classList.toggle(\'fbs-row-filtered\',blocked)'),
@@ -29,7 +29,7 @@ assert(script.indexOf('repaintFilterRowsInPlace();',script.indexOf('const previe
  'fast in-place repaint must happen before full redraw');
 assert(script.includes("area.addEventListener('input',previewInput)"),'native text input must repaint');
 assert(script.includes("area.addEventListener('change',previewInput)"),'committed changes must repaint');
-assert(script.includes('if(exactCountry)return exactCountry.code===country?.code'),
+assert(script.includes('term.code?term.code===country?.code:haystack.includes(term.text)'),
  'US must not accidentally match Russia via substring');
 assert(script.includes('if(pending){')&&script.includes("' · предпросмотр до «Применить»'"),
  'draft mode must be visually distinguished from saved filtering');

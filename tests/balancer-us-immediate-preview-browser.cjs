@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=128'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=129'));
 const script=source.replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items};})();');
 assert(script!==source,'cannot inject test');
 const savedRU='🇷🇺\nМосква\nМСК\nСанкт-Петербург\nРоссия';
@@ -67,18 +67,35 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
      };
    },{names,records,filtered});
    await page.addScriptTag({content:script});
-   await page.evaluate(({group,sub,nodes,names})=>{
+   await page.evaluate(()=>{
+     window.__countryLookupCalls=0;
+     const flags=window.MUICountryFlags;
+     const original=flags.fromFilterLine;
+     flags.fromFilterLine=function(...args){
+       window.__countryLookupCalls++;
+       return original.apply(this,args);
+     };
+   });
+   const initialPerf=await page.evaluate(({group,sub,nodes,names})=>{
      const form=document.querySelector('#editor');
      for(const name of names){
        const opt=new Option(name,name);opt.selected=true;
        form.elements.proxies.add(opt);
      }
+     const start=performance.now();
      window.MUIBalancerServers.attach({
        form,group,subs:[sub],outbounds:nodes,isDirty:()=>false,
        persistedName:group.name,updateDefaults:()=>{},afterRefresh:async()=>{}
      });
+     return {elapsed:performance.now()-start,lookups:window.__countryLookupCalls};
    },{group,sub,nodes:nodeOutbounds,names});
+   assert(initialPerf.elapsed<2500,
+     'opening 119-node balancer must not block Chromium for seconds: '+JSON.stringify(initialPerf));
+   assert(initialPerf.lookups<=20,
+     'country conditions must be compiled once, not once per comparison: '+JSON.stringify(initialPerf));
    await page.waitForFunction(()=>document.querySelectorAll('tr[data-node]').length===133);
+   assert((await page.evaluate(()=>window.__countryLookupCalls))<=20,
+     'runtime refresh must use the same compiled condition cache');
    await page.locator('[data-sub-pane=filters]').click();
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),14);
    assert.equal(await page.locator('.fbs-filtered-divider').count(),1);
@@ -112,7 +129,8 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31);
    assert.equal(await page.evaluate(()=>window.__putRequests),1);
    assert.equal(errors.length,0,JSON.stringify(errors));
-   console.log('PASS USA immediate preview 133 nodes (17 US + 14 RU excluded), no reorder before Apply',width);
+   console.log('PASS initial editor attach in '+initialPerf.elapsed.toFixed(1)+'ms and '+initialPerf.lookups+
+     ' country lookups; USA filter preview 133 nodes, no reorder before Apply',width);
    await page.close();
   }
  }finally{await browser?.close();fs.rmSync(tmp,{force:true})}

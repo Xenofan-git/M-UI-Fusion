@@ -1018,8 +1018,16 @@
       &&currentTab==='subscriptions';
     balancerSubscriptions=[];
     if(editingSubscriptionGroup){
-      try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
-      catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
+      // /api/mihomo/subscriptions returns exactly the records already present
+      // in /api/state, which this view polls every five seconds. Do not make
+      // the pencil click wait on another round trip before opening the modal.
+      const cached=app.state?.state?.outboundSubscriptions;
+      if(Array.isArray(cached))balancerSubscriptions=clone(cached);
+      else{
+        // Only an incomplete initial state needs the older network fallback.
+        try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
+        catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
+      }
     }
     if(draft.outbounds.find(item=>item.id===id)?.vpngate){await openVPNGateModal(id);return;}
     window.MUIBalancerServers?.teardown();

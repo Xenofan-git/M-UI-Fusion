@@ -149,31 +149,47 @@
  const filterWords=value=>String(value||'').replace(/\r\n/g,'\n').split('\n')
    .map(word=>word.trim().toLocaleLowerCase('ru'))
    .filter(word=>word&&!word.startsWith('#'));
- function passesSourceFilters(item){
-   if(!context?.subscribed||!panel)return true;
+ // A country lookup scans the directory and its aliases. Doing that for
+ // each term in each row on every sort comparison took several seconds on
+ // the live 119-node group. Compile terms once per actual textarea change.
+ let compiledFilter=null;
+ function sourceFilterSpec(){
+   if(!context?.subscribed||!panel)return null;
    const sourceId=q('.fbs-source',panel)?.value;
-   if(!sourceId)return true;
-   const source=context.subs.find(sub=>sub.id===sourceId);
+   if(!sourceId)return null;
+   const keepText=q('.fbs-keep',panel)?.value||'';
+   const dropText=q('.fbs-drop',panel)?.value||'';
+   if(compiledFilter&&compiledFilter.sourceId===sourceId&&
+     compiledFilter.keepText===keepText&&compiledFilter.dropText===dropText)
+     return compiledFilter;
+   const flags=window.MUICountryFlags;
+   const compile=value=>filterWords(value).map(term=>({
+     text:term,code:flags?.fromFilterLine?.(term)?.code||''
+   }));
+   compiledFilter={sourceId,keepText,dropText,
+     source:context.subs.find(sub=>sub.id===sourceId),
+     keep:compile(keepText),drop:compile(dropText)};
+   return compiledFilter;
+ }
+ function passesSourceFilters(item){
+   const spec=sourceFilterSpec();
+   if(!spec)return true;
+   const {sourceId,source,keep,drop}=spec;
    // Runtime rows may not carry sourceId (older Mihomo/status snapshots).
    // Trust the explicit ID when present; for missing IDs use only an
    // unambiguous provider-name prefix, never an unrelated proxy.
    if(item.sourceId&&item.sourceId!==sourceId)return true;
    if(!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
-   const keep=filterWords(q('.fbs-keep',panel)?.value);
-   const drop=filterWords(q('.fbs-drop',panel)?.value);
+   if(!keep.length&&!drop.length)return true;
    const flags=window.MUICountryFlags;
    const code=item.countryCode||flags?.read(item.name)?.code;
    const country=flags?.byCode.get(code);
-   const haystack=[item.name,country?.flag,country?.english,country?.ru,
-     country?.code,flags?.aliases?.[country?.code]]
-     .filter(Boolean).join(' ').toLocaleLowerCase('ru');
-   const matches=term=>{
-     const exactCountry=flags?.fromFilterLine?.(term);
-     // A country name, flag or ISO code refers to THAT country, not
-     // to an accidental substring (e.g. US must not match "Russia").
-     if(exactCountry)return exactCountry.code===country?.code;
-     return haystack.includes(term);
-   };
+   // Country-only filters require no search string assembly.
+   const haystack=keep.some(term=>!term.code)||drop.some(term=>!term.code)
+     ?[item.name,country?.flag,country?.english,country?.ru,
+       country?.code,flags?.aliases?.[country?.code]]
+       .filter(Boolean).join(' ').toLocaleLowerCase('ru'):'';
+   const matches=term=>term.code?term.code===country?.code:haystack.includes(term.text);
    return (!keep.length||keep.some(matches))&&!drop.some(matches);
  }
  // Preview only changes appearance. Stored provider exclusions and
@@ -347,7 +363,7 @@
    controller?.abort();controller=null;probing=false;
    if(panel){panel.remove();panel=null;}
    context=null;items=[];selected.clear();excluded.clear();liveCandidate='';
-   previewRowOrder=null;previewSortRequested=false;
+   compiledFilter=null;previewRowOrder=null;previewSortRequested=false;
  }
  const statusPanelVisible=()=>{
    if(!panel?.isConnected||document.hidden)return false;
