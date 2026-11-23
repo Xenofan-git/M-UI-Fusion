@@ -588,3 +588,25 @@ html body .modal-backdrop:is(.mui-dialog,.mui-balancer-use-backdrop) .modal-foot
 html body .modal-backdrop:is(.mui-dialog,.mui-balancer-use-backdrop) .modal-footer :is(button.primary-btn,button.outline-btn):focus-visible{
   outline:2px solid #72e9c9!important;outline-offset:2px;
 }
+
+/* Error dialog stays open until acknowledged. Specificity above shadcn/MD3
+   and the generic modal button rules prevents the blank white button seen
+   on dark Windows browsers. Successful dialogs have no action button. */
+html body #mihomo-operation-status.modal-backdrop.mui-mihomo-status-backdrop[data-phase="error"]
+  .modal-footer.mui-mihomo-status-actions button.mui-status-error-close:not(:disabled){
+  appearance:none!important;-webkit-appearance:none!important;
+  background:#076b55!important;background-color:#076b55!important;
+  background-image:none!important;
+  color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+  border:1px solid #3da98d!important;
+  filter:none!important;opacity:1!important;
+  box-shadow:none!important;
+}
+html body #mihomo-operation-status.modal-backdrop.mui-mihomo-status-backdrop[data-phase="error"]
+  .modal-footer.mui-mihomo-status-actions button.mui-status-error-close:is(:hover,:focus,:focus-visible):not(:disabled){
+  background:#087f64!important;background-color:#087f64!important;
+  background-image:none!important;
+  color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;
+  border-color:#64d9ba!important;filter:none!important;
+  box-shadow:0 0 0 2px rgba(32,184,151,.35)!important;
+}

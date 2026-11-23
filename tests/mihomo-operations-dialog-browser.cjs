@@ -5,10 +5,10 @@ const html=fs.readFileSync('web/index.html','utf8');
 const sourceStart=source.indexOf('  // Reuse the existing centered M-UI dialog design');
 const sourceEnd=source.indexOf('\n  ensureModals();',sourceStart);
 assert(sourceStart>=0&&sourceEnd>sourceStart,'status dialog code missing');
-assert(html.includes('static/mihomo-settings.js?v=124')&&html.includes('static/mihomo-settings.css?v=127'));
+assert(html.includes('static/mihomo-settings.js?v=125')&&html.includes('static/mihomo-settings.css?v=127'));
 const snippet=source.slice(sourceStart,sourceEnd)+'\nwindow.__ops={saveSettings,restartMihomoFromSettings};';
 const inlineCSS=[...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n');
-const css=[inlineCSS,fs.readFileSync('web/mihomo-settings.css','utf8'),fs.readFileSync('web/color-skins.css','utf8')].join('\n');
+const css=[fs.readFileSync('web/liquid-glass.css','utf8'),fs.readFileSync('web/mihomo-settings.css','utf8'),inlineCSS,fs.readFileSync('web/theme-shadcn.css','utf8'),fs.readFileSync('web/theme-md3.css','utf8'),fs.readFileSync('web/color-skins.css','utf8')].join('\n');
 const words={
  'common.close':'Закрыть','mh.operationSaving':'Сохранение конфигурации Mihomo…',
  'mh.operationSaveTitle':'Конфигурация сохранена',
@@ -92,6 +92,16 @@ async function launchTest(browser,theme,width){
  assert.equal(await page.locator('.mui-mihomo-status-actions').isVisible(),true,
    'errors retain an accessible Close button');
  const errorButton=page.locator('.mui-mihomo-status-actions button');
+ await errorButton.evaluate(button=>button.blur());
+ await page.waitForTimeout(220);
+ const normalColor=await errorButton.evaluate(button=>({
+   background:getComputedStyle(button).backgroundColor,
+   foreground:getComputedStyle(button).color,
+   fill:getComputedStyle(button).webkitTextFillColor
+ }));
+ assert.equal(normalColor.background,'rgb(7, 107, 85)',theme+' '+width+' plain error button');
+ assert.equal(normalColor.foreground,'rgb(255, 255, 255)',theme+' '+width+' plain error text');
+ assert.equal(normalColor.fill,'rgb(255, 255, 255)',theme+' '+width+' WebKit foreground');
  await errorButton.hover();
  await page.waitForTimeout(210);
  const hoverColor=await errorButton.evaluate(button=>({

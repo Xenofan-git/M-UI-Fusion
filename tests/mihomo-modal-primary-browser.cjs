@@ -16,7 +16,7 @@ const fg=read('web/i18n-locales.js');
 const js=read('web/mihomo-settings.js');
 assert.ok(js.includes('data-i18n="mh.applyToDraft">Apply</button>'),'actual Mihomo modal buttons must use short label');
 assert.ok(fg.includes('"mh.applyToDraft": "Применить"'),'Russian action label must be short');
-assert.ok(index.includes('static/color-skins.css?v=114'),'updated CSS must bypass browser cache');
+assert.ok(index.includes('static/color-skins.css?v=115'),'updated CSS must bypass browser cache');
 assert.ok(index.includes('static/i18n-locales.js?v=119'),'updated translation must bypass browser cache');
 const sample=async(page,id)=>page.locator('#'+id+' button.primary-btn').evaluate(button=>{
   const style=getComputedStyle(button);

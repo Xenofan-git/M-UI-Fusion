@@ -1825,7 +1825,7 @@
     footer.className='modal-footer mui-balancer-use-actions mui-mihomo-status-actions';
     const dismiss=document.createElement('button');
     dismiss.type='button';
-    dismiss.className='primary-btn';
+    dismiss.className='primary-btn mui-status-error-close';
     dismiss.textContent=muiT('common.close');
     dismiss.disabled=true;
     footer.append(dismiss);
@@ -1905,7 +1905,13 @@
       // edit (e.g. deleting FOREIGN). The server applies only changed IDs
       // against its live subscription snapshot under one mutex.
       const same= (a,b)=>JSON.stringify(a)===JSON.stringify(b);
-      const changedOutbounds=!same(draft.outbounds,lastSyncedOutbounds);
+      // The subscription service owns proxy nodes. Their current/previous
+      // snapshots can diverge while an editor draft is open (refresh, filter,
+      // status updates). Never send these read-only entries to editor PUT.
+      const editable=items=>items.filter(item=>!item.sourceSubscriptionId);
+      const lastEditable=editable(lastSyncedOutbounds);
+      const currentEditable=editable(draft.outbounds);
+      const changedOutbounds=!same(currentEditable,lastEditable);
       const changedBasics=!same(draft.basics,lastSyncedBasics);
       const changedRules=!same(draft.routingRules,lastSyncedRules);
       const routingOnly=!changedOutbounds&&!changedBasics;
@@ -1913,14 +1919,14 @@
       if(routingOnly){
         response=await api('/api/mihomo/rules',{method:'PUT',body:JSON.stringify({routingRules:draft.routingRules})});
       }else{
-        const previous=new Map(lastSyncedOutbounds.map(item=>[item.id,item]));
-        const current=new Set(draft.outbounds.map(item=>item.id));
-        const deleteIds=lastSyncedOutbounds.filter(item=>!current.has(item.id)).map(item=>item.id);
-        const upserts=draft.outbounds.filter(item=>!previous.has(item.id)||!same(item,previous.get(item.id)));
-        const manualOrder=items=>items.filter(item=>!item.sourceSubscriptionId).map(item=>item.id);
-        const order=manualOrder(draft.outbounds);
+        const previous=new Map(lastEditable.map(item=>[item.id,item]));
+        const current=new Set(currentEditable.map(item=>item.id));
+        const deleteIds=lastEditable.filter(item=>!current.has(item.id)).map(item=>item.id);
+        const upserts=currentEditable.filter(item=>!previous.has(item.id)||!same(item,previous.get(item.id)));
+        const manualOrder=items=>items.map(item=>item.id);
+        const order=manualOrder(currentEditable);
         const changes={upserts,deleteIds};
-        if(!same(order,manualOrder(lastSyncedOutbounds)))changes.order=order;
+        if(!same(order,manualOrder(lastEditable)))changes.order=order;
         if(changedRules)changes.routingRules=draft.routingRules;
         if(changedBasics)changes.basics=draft.basics;
         response=await api('/api/mihomo/editor',{method:'PUT',body:JSON.stringify(changes)});

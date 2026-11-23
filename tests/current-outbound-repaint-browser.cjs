@@ -8,7 +8,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-settings.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-settings.js?v=124'));
+assert(html.includes('static/mihomo-settings.js?v=125'));
 assert(html.includes('static/mihomo-settings.css?v=127'));
 const chunk=(a,b)=>{
  const start=source.indexOf(a),end=source.indexOf(b,start);

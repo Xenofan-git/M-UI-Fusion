@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert.ok(html.includes('static/mihomo-settings.js?v=124'));
+assert.ok(html.includes('static/mihomo-settings.js?v=125'));
 assert.ok(source.includes('lastSyncedOutbounds=clone(draft.outbounds)'));
 assert.ok(source.includes('lastSyncedBasics=clone(draft.basics)'));
 const applyStart=source.indexOf('  async function saveOutboundDraft(event){');
@@ -27,7 +27,7 @@ const rules=[
   {id:'geoip',type:'GEOIP',payload:'RU',target:'Russia'},
   {id:'match',type:'MATCH',target:'FOREIGN'}
 ];
-async function scenario({changeRules=false,changeOutbounds=false,deleteForeign=false,changeBasics=false,reorder=false,reject=false}){
+async function scenario({changeRules=false,changeOutbounds=false,deleteForeign=false,changeBasics=false,reorder=false,reject=false,renameSubscribedGroup=false}){
  const foreign={id:'group-foreign',name:'FOREIGN',kind:'group',type:'url-test',proxies:[]};
  const draft={outbounds:[copy(oldNode),copy(foreign)],routingRules:copy(rules),basics:{mode:'rule',ipv6:true}};
  const lastSyncedOutbounds=copy(draft.outbounds),lastSyncedBasics=copy(draft.basics),lastSyncedRules=copy(draft.routingRules);
@@ -44,6 +44,16 @@ async function scenario({changeRules=false,changeOutbounds=false,deleteForeign=f
    draft.outbounds.unshift(draft.outbounds.pop());
  }
  if(changeBasics)draft.basics.ipv6=false;
+ if(renameSubscribedGroup){
+   // Browser editor is open while the managed source has refreshed; user
+   // renames ONLY the subscribed balancer, never its managed proxies.
+   draft.outbounds[1].name='Renamed-Subscribed-Balancer';
+   draft.outbounds[1].subscriptionIds=['sub-1'];
+   draft.outbounds[1].proxies=['Latvia'];
+   // Simulate an incidental subscription-node field from an older draft.
+   draft.outbounds[0].name='Outdated subscription proxy label';
+   draft.routingRules[2].target='Renamed-Subscribed-Balancer';
+ }
  const requests=[],messages=[],classes=[],dialogEvents=[];
  const button={disabled:false};
  const scope={
@@ -96,6 +106,16 @@ async function scenario({changeRules=false,changeOutbounds=false,deleteForeign=f
  const combined=await scenario({changeRules:true,deleteForeign:true});
  assert.equal(combined.calls[0].body.routingRules.length,2);
  assert.deepEqual(combined.calls[0].body.deleteIds,['group-foreign']);
+ const renamed=await scenario({renameSubscribedGroup:true});
+ assert.equal(renamed.calls.length,1);
+ assert.equal(renamed.calls[0].url,'/api/mihomo/editor');
+ assert.deepEqual(renamed.calls[0].body.upserts.map(item=>item.id),['group-foreign'],
+   'renaming a subscribed balancer must not upload its managed proxy nodes');
+ assert.deepEqual(renamed.calls[0].body.deleteIds,[]);
+ assert.equal(renamed.calls[0].body.upserts[0].name,'Renamed-Subscribed-Balancer');
+ assert.equal(renamed.calls[0].body.routingRules[2].target,'Renamed-Subscribed-Balancer');
+ assert(!JSON.stringify(renamed.calls[0].body).includes('Outdated subscription proxy label'),
+   'incidental old source proxy must not be sent to the editor API');
  const rejected=await scenario({changeRules:true,reject:true});
  assert.equal(rejected.scope.dirty,true,'rejected rules must stay editable');
  assert.equal(rejected.state.routingRules.length,3,'server rejection must not fake a save');

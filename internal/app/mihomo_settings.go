@@ -268,6 +268,7 @@ func (m *CoreManager) updateMihomoEditorChanges(changes mihomoEditorDelta) error
 	}
 	upserts := make(map[string]MihomoOutbound, len(changes.Upserts))
 	changedIDs := make(map[string]bool, len(changes.Upserts))
+	groupRenames := make(map[string]string)
 	for _, item := range changes.Upserts {
 		if item.ID == "" {
 			return fmt.Errorf("Outbound ID обязателен")
@@ -281,8 +282,16 @@ func (m *CoreManager) updateMihomoEditorChanges(changes mihomoEditorDelta) error
 		if _, exists := upserts[item.ID]; exists {
 			return fmt.Errorf("повторное изменение Outbound %q", item.ID)
 		}
-		if old, exists := byID[item.ID]; exists && old.SourceSubscriptionID != "" {
-			return fmt.Errorf("узлы подписок изменяются только в разделе Подписки")
+		if old, exists := byID[item.ID]; exists {
+			if old.SourceSubscriptionID != "" {
+				return fmt.Errorf("узлы подписок изменяются только в разделе Подписки")
+			}
+			if old.Kind == "group" && old.Name != item.Name {
+				if item.Kind != "group" {
+					return fmt.Errorf("нельзя преобразовать переименованный балансировщик в узел")
+				}
+				groupRenames[old.Name] = item.Name
+			}
 		}
 		upserts[item.ID] = item
 		changedIDs[item.ID] = true
@@ -347,8 +356,18 @@ func (m *CoreManager) updateMihomoEditorChanges(changes mihomoEditorDelta) error
 			}
 		}
 	}
-	// Rebuild automatic subscription memberships from the live state.
-	materialized, err := materializeGroupSubscriptions(m.state, next)
+	// Keep the subscription's group binding in sync with the renamed
+	// balancer, atomically and without altering managed proxy nodes.
+	working := m.state
+	if len(groupRenames) > 0 {
+		working.OutboundSubscriptions = append([]OutboundSubscription(nil), m.state.OutboundSubscriptions...)
+		for i := range working.OutboundSubscriptions {
+			if name, ok := groupRenames[working.OutboundSubscriptions[i].Group]; ok {
+				working.OutboundSubscriptions[i].Group = name
+			}
+		}
+	}
+	materialized, err := materializeGroupSubscriptions(working, next)
 	if err != nil {
 		return err
 	}
@@ -387,6 +406,7 @@ func (m *CoreManager) updateMihomoEditorChanges(changes mihomoEditorDelta) error
 	}
 	previous := m.state
 	m.state.Outbounds, m.state.RoutingRules, m.state.MihomoBasics = outbounds, rules, &basics
+	m.state.OutboundSubscriptions = working.OutboundSubscriptions
 	m.state.Settings.Mode, m.state.Settings.LogLevel = basics.Mode, basics.LogLevel
 	if err = m.saveLocked(); err != nil {
 		m.state = previous

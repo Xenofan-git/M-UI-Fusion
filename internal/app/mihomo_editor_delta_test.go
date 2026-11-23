@@ -105,6 +105,103 @@ func TestEditorDeltaDeletesForeignAfterSubscriptionRefresh(t *testing.T) {
 	t.Log("unrelated manual FOREIGN removed; fresh subscription nodes and routing rules unchanged")
 }
 
+func TestEditorDeltaRenameSubscribedBalancerKeepsNodesAndLinks(t *testing.T) {
+	state := deltaSubscriptionFixture(t)
+	m := &CoreManager{dataDir: t.TempDir(), state: state}
+	beforeNodes := make(map[string]MihomoOutbound)
+	var old MihomoOutbound
+	for _, item := range state.Outbounds {
+		if item.SourceSubscriptionID != "" {
+			beforeNodes[item.ID] = item
+		}
+		if item.ID == "managed-group" {
+			old = item
+		}
+	}
+	if old.Name != "Foreign-quatro-vpn" {
+		t.Fatal("fixture is not the subscribed group")
+	}
+	renamed := old
+	renamed.Name = "Quatro-Renamed"
+	rules := append([]MihomoRoutingRule(nil), state.RoutingRules...)
+	for i := range rules {
+		if rules[i].Target == old.Name {
+			rules[i].Target = renamed.Name
+		}
+	}
+	if err := m.updateMihomoEditorChanges(mihomoEditorDelta{
+		Upserts: []MihomoOutbound{renamed}, RoutingRules: &rules,
+	}); err != nil {
+		t.Fatal("rename was rejected: ", err)
+	}
+	seen := false
+	for _, item := range m.state.Outbounds {
+		if original, ok := beforeNodes[item.ID]; ok && !reflect.DeepEqual(item, original) {
+			t.Fatalf("subscription-managed node altered during group rename: %s", item.ID)
+		}
+		if item.ID == old.ID {
+			seen = true
+			if item.Name != renamed.Name || !reflect.DeepEqual(item.Proxies, old.Proxies) {
+				t.Fatalf("group membership changed unexpectedly: %+v", item)
+			}
+		}
+	}
+	if !seen {
+		t.Fatal("renamed group disappeared")
+	}
+	if m.state.OutboundSubscriptions[1].Group != renamed.Name {
+		t.Fatalf("subscription link still points to old group: %+v", m.state.OutboundSubscriptions[1])
+	}
+	if m.state.RoutingRules[len(m.state.RoutingRules)-1].Target != renamed.Name {
+		t.Fatal("route no longer points to renamed balancer")
+	}
+	loaded := &CoreManager{dataDir: m.dataDir}
+	if err := loaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.state.OutboundSubscriptions[1].Group != renamed.Name {
+		t.Fatal("rename not persisted")
+	}
+	// A subsequent subscription refresh must not repopulate the old group.
+	updated, err := applySubscriptionNodes(loaded.state, loaded.state.OutboundSubscriptions[1], []MihomoOutbound{
+		subscriptionSS("Latvia LTE", "lv.example"),
+	})
+	if err != nil {
+		t.Fatal("post-rename subscription refresh failed: ", err)
+	}
+	for _, item := range updated.Outbounds {
+		if item.ID == old.ID {
+			if item.Name != renamed.Name {
+				t.Fatal("old group was resurrected")
+			}
+			if len(item.Proxies) != 1 {
+				t.Fatalf("refresh lost group membership: %+v", item.Proxies)
+			}
+		}
+	}
+}
+
+func TestEditorDeltaRenameSubscribedBalancerRejectsCollision(t *testing.T) {
+	state := deltaSubscriptionFixture(t)
+	m := &CoreManager{dataDir: t.TempDir(), state: state}
+	before, _ := json.Marshal(m.state)
+	var rename MihomoOutbound
+	for _, item := range state.Outbounds {
+		if item.ID == "managed-group" {
+			rename = item
+			break
+		}
+	}
+	rename.Name = "Russia" // existing group
+	if err := m.updateMihomoEditorChanges(mihomoEditorDelta{Upserts: []MihomoOutbound{rename}}); err == nil {
+		t.Fatal("renaming group onto existing name was accepted")
+	}
+	after, _ := json.Marshal(m.state)
+	if !bytes.Equal(before, after) {
+		t.Fatal("failed rename changed subscription metadata or outbounds")
+	}
+}
+
 func TestEditorDeltaRejectsSubscriptionNodeTampering(t *testing.T) {
 	state := deltaSubscriptionFixture(t)
 	m := &CoreManager{dataDir: t.TempDir(), state: state}
