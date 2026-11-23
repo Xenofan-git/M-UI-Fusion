@@ -178,18 +178,34 @@
    // Runtime rows may not carry sourceId (older Mihomo/status snapshots).
    // Trust the explicit ID when present; for missing IDs use only an
    // unambiguous provider-name prefix, never an unrelated proxy.
-   if(item.sourceId&&item.sourceId!==sourceId)return true;
-   if(!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
+   const linked=selectedSources(context.group,context.subs);
+   const onlyThisSource=linked.length===1&&linked[0]===sourceId;
+   // The subscribed group is already scoped to its providers. When it has
+   // exactly one provider, preview ALL of its visible rows, even if an older
+   // runtime snapshot omits/mislabels sourceId. With multiple providers,
+   // keep the source boundary strict.
+   if(!onlyThisSource&&item.sourceId&&item.sourceId!==sourceId)return true;
+   if(!onlyThisSource&&!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
    if(!keep.length&&!drop.length)return true;
    const flags=window.MUICountryFlags;
-   const code=item.countryCode||flags?.read(item.name)?.code;
-   const country=flags?.byCode.get(code);
+   const rawCode=String(item.countryCode||'').trim().toUpperCase();
+   // The name is authoritative when status metadata is absent or stale.
+   // The displayed 🇺🇸 is derived from the name; use that same source.
+   const country=flags?.byCode.get(rawCode)||flags?.read(item.name);
+   const nameText=item.name.toLocaleLowerCase('ru');
    // Country-only filters require no search string assembly.
    const haystack=keep.some(term=>!term.code)||drop.some(term=>!term.code)
      ?[item.name,country?.flag,country?.english,country?.ru,
        country?.code,flags?.aliases?.[country?.code]]
        .filter(Boolean).join(' ').toLocaleLowerCase('ru'):'';
-   const matches=term=>term.code?term.code===country?.code:haystack.includes(term.text);
+   const matches=term=>{
+     if(!term.code)return haystack.includes(term.text);
+     // Exact country match OR an explicit country *name/flag* written in
+     // the displayed server label. ISO tokens like US must not match
+     // substrings in "Russia", "Australia" or arbitrary provider names.
+     return term.code===country?.code||
+       (term.text.length>2&&nameText.includes(term.text));
+   };
    return (!keep.length||keep.some(matches))&&!drop.some(matches);
  }
  // Preview only changes appearance. Stored provider exclusions and
@@ -601,13 +617,13 @@
        }
      }
    }
-   // Give immediate visual feedback even when a later full table redraw is
-   // delayed by runtime-status polling or a preview SVG. Do not mutate the
-   // server or reorder DOM nodes until the user presses Apply.
+   // HRNeo-style: update the existing DOM rows in-place while typing.
+   // Full sorting/re-grouping is reserved for successful Apply/Save.
    function repaintFilterRowsInPlace(){
      const body=q('.fbs-table-body',el);
      if(!body)return;
      const pending=unsavedFilterPreview();
+     if(!pending){renderRows();return;}
      if(pending&&!previewRowOrder)
        previewRowOrder=new Map([...body.querySelectorAll(':scope > tr[data-node]')]
          .map((row,index)=>[row.dataset.node,index]));
@@ -628,25 +644,26 @@
          check.checked=!blocked&&selected.has(item.name);
        }
      }
-     if(pending){
-       body.querySelector(':scope > tr.fbs-filtered-divider')?.remove();
-       const counter=q('.fbs-show-count',el);
-       if(counter)counter.textContent='Показано '+visible+' из '+items.length+
-         ' · подходит '+(visible-filtered)+' · отфильтровано '+filtered+
-         ' · предпросмотр до «Применить»';
-     }
+     body.querySelector(':scope > tr.fbs-filtered-divider')?.remove();
+     const counter=q('.fbs-show-count',el);
+     if(counter)counter.textContent='Показано '+visible+' из '+items.length+
+       ' · подходит '+(visible-filtered)+' · отфильтровано '+filtered+
+       ' · предпросмотр до «Применить»';
+     // Keep the heading in sync with the rows without reordering them.
+     renderStatusText();
    }
    const previewInput=()=>{
      filteredCollapsed=false;
      repaintFilterRowsInPlace();
      renderFilterFlagPreviews();
-     renderRows();
    };
-   for(const selector of ['.fbs-keep','.fbs-drop']){
-     const area=q(selector,el);
-     area.addEventListener('input',previewInput);
-     area.addEventListener('change',previewInput);
-   }
+   // Delegate on the stable editor, not a potentially replaced textarea.
+   // Capture phase also handles browsers/extensions that stop bubbling.
+   const onFilterEdit=event=>{
+     if(event.target?.matches?.('.fbs-keep,.fbs-drop'))previewInput();
+   };
+   el.addEventListener('input',onFilterEdit,true);
+   el.addEventListener('change',onFilterEdit,true);
    function fillSource(){
      const sub=currentSource();if(!sub)return;
      const value=pendingSources.get(sub.id)||sub;

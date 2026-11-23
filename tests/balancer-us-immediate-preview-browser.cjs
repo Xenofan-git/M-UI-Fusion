@@ -9,13 +9,15 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=129'));
-const script=source.replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items};})();');
+assert(html.includes('static/mihomo-balancer-servers.js?v=130'));
+const script=source.replace(' function renderRows(){',
+ ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
+ .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items};})();');
 assert(script!==source,'cannot inject test');
 const savedRU='🇷🇺\nМосква\nМСК\nСанкт-Петербург\nРоссия';
 const names=Array.from({length:119},(_,i)=>
   i<17
-  ?'quatro-vpn | 🇺🇸 ⭐ LTE №'+String(i+63)+' - США· Атланта'
+  ?'quatro-vpn | 🇺🇸 ⚡ ⭐ 0.1X - LTE №'+String(i+63)+' - США· '+(i%2?'Эшберн':'Денвер')
   :'quatro-vpn | 🇩🇪 LTE №'+String(i+1)+' - Германия');
 const filtered=Array.from({length:14},(_,i)=>({
  name:'quatro-vpn | 🇷🇺 LTE №'+(i+1)+' - Россия',
@@ -26,7 +28,8 @@ const records=names.map((name,index)=>({
  name,protocol:'vless',
  // One server without an upstream sourceId must still be filtered via
  // the unambiguous provider prefix in a single-subscription group.
- sourceId:index===0?'':'sub1',countryCode:index<17?'US':'DE',
+ sourceId:index===0?'stale-status-source':index===1?'':'sub1',
+ countryCode:index===0?'DE':index===1?'':index<17?'US':'DE',
  member:true,alive:true,delay:25
 }));
 const nodeOutbounds=names.slice(1).map(name=>({
@@ -49,6 +52,7 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    headless:true,args:['--no-sandbox','--allow-file-access-from-files']});
   for(const width of [390,1440]){
    const page=await browser.newPage({viewport:{width,height:900}});
+   page.setDefaultTimeout(6000);
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(pathToFileURL(tmp).href);
    await page.evaluate(({names,records,filtered})=>{
@@ -103,10 +107,14 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    const firstUSA=page.locator('tr[data-node*="США"]').first();
    assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-filtered')),false);
    const existingRows=await page.locator('tr[data-node]').evaluateAll(rows=>rows.map(row=>row.dataset.node));
-   const inputExclude=async value=>page.locator('.fbs-drop').evaluate((el,v)=>{
-     el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));
-   },value);
-   await inputExclude(savedRU+'\nСША');
+   const inputExclude=async value=>page.locator('.fbs-drop').fill(value);
+   // Actual keyboard input (not synthetic dispatchEvent), including the
+   // intermediate prefix "С" and "СШ" typed into the visible textarea.
+   await inputExclude(savedRU+'\n');
+   const beforeTypingRender=await page.evaluate(()=>window.__renderCount);
+   await page.locator('.fbs-drop').pressSequentially('США');
+   assert.equal(await page.evaluate(()=>window.__renderCount),beforeTypingRender,
+     'typing must not perform a full table render, even once per character');
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31,
      '17 USA plus 14 RU must immediately turn muted/struck-through');
    assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
