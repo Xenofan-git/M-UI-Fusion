@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=132'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=133'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
  .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');
@@ -186,6 +186,31 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
      'after successful Save excluded members are now grouped');
    assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31);
    assert.equal(await page.evaluate(()=>window.__putRequests),1);
+   // Reproduce REAL Windows telemetry: linked source id exists in the
+   // group but the source selection options are empty (source=false).
+   // No subscription metadata has been loaded yet. The single-provider
+   // fallback must still strike USA immediately from the visible names.
+   await page.evaluate(({group,nodes})=>{
+     const form=document.querySelector('#editor');
+     window.MUIBalancerServers.attach({
+       form,group,subs:[],outbounds:nodes,isDirty:()=>false,
+       persistedName:group.name,updateDefaults:()=>{},afterRefresh:async()=>{}
+     });
+   },{group,nodes:nodeOutbounds});
+   await page.waitForFunction(()=>document.querySelectorAll('tr[data-node]').length===133);
+   assert.equal(await page.locator('.fbs-source').inputValue(),'sub1',
+     'single known group source should be selected even if metadata is not ready');
+   await page.locator('[data-sub-pane=filters]').click();
+   const noSourceRenderCount=await page.evaluate(()=>window.__renderCount);
+   await page.locator('.fbs-drop').fill(savedRU+'\nСША');
+   assert.equal(await page.locator('tr.fbs-row-filtered[data-node]').count(),31,
+     'real Windows source=false telemetry must now cross 17 US + 14 previously filtered rows');
+   assert.equal(await page.evaluate(()=>window.__renderCount),noSourceRenderCount,
+     'missing-source preview must not rebuild rows while typing');
+   assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
+     'preview must not group excluded rows before Apply');
+   assert.equal(await page.evaluate(()=>window.__putRequests),1,
+     'fallback preview must never save subscription without metadata');
    assert.equal(errors.length,0,JSON.stringify(errors));
    console.log('PASS initial editor attach in '+initialPerf.elapsed.toFixed(1)+'ms and '+initialPerf.lookups+
      ' country lookups; USA filter preview 133 nodes, no reorder before Apply',width);

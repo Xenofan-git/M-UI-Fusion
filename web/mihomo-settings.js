@@ -1022,9 +1022,17 @@
       // in /api/state, which this view polls every five seconds. Do not make
       // the pencil click wait on another round trip before opening the modal.
       const cached=app.state?.state?.outboundSubscriptions;
-      if(Array.isArray(cached))balancerSubscriptions=clone(cached);
+      const linkedIDs=new Set(requestedItem?.subscriptionIds||[]);
+      // An empty or incomplete state snapshot is NOT a usable source list.
+      // Otherwise the editor has group.subscriptionIds but no matching
+      // subscription object; its source <select> is blank and live preview
+      // silently returns without crossing any nodes.
+      const hasLinkedSource=Array.isArray(cached)&&cached.some(src=>
+        src.group===requestedItem?.name||linkedIDs.has(src.id));
+      const complete=hasLinkedSource&&[...linkedIDs].every(id=>
+        cached.some(src=>src.id===id));
+      if(complete)balancerSubscriptions=clone(cached);
       else{
-        // Only an incomplete initial state needs the older network fallback.
         try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
         catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
       }

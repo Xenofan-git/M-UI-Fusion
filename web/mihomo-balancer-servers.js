@@ -50,6 +50,17 @@
    for(const src of subs||[])if(src.group===group.name)set.add(src.id);
    return Array.from(set);
  }
+ // A live browser can have a single linked subscription in group metadata
+ // while its source chooser is temporarily empty (state cache not populated).
+ // Never discard a user's draft in this case. Multiple-provider groups
+ // still require an explicit selection: we must not filter other providers.
+ function activeFilterSourceID(){
+   if(!context?.subscribed||!panel)return '';
+   const ids=selectedSources(context.group,context.subs);
+   const chosen=q('.fbs-source',panel)?.value||'';
+   if(chosen&&ids.includes(chosen))return chosen;
+   return ids.length===1?ids[0]:'';
+ }
  function contextNodes(){
    if(!context)return[];
    if(!context.subscribed)return context.available;
@@ -159,7 +170,7 @@
  let compiledFilter=null;
  function sourceFilterSpec(){
    if(!context?.subscribed||!panel)return null;
-   const sourceId=q('.fbs-source',panel)?.value;
+   const sourceId=activeFilterSourceID();
    if(!sourceId)return null;
    const keepText=q('.fbs-keep',panel)?.value||'';
    const dropText=q('.fbs-drop',panel)?.value||'';
@@ -226,7 +237,7 @@
    const textExclusion=!!spec?.drop.some(term=>
      term.text.length>=3&&display.includes(term.text));
    if(draft){
-     const selectedSource=q('.fbs-source',panel)?.value;
+     const selectedSource=activeFilterSourceID();
      return Boolean(!passes||textExclusion||
        ((item.filtered||item.previewOnly)&&item.sourceId!==selectedSource));
    }
@@ -236,7 +247,8 @@
  // nodes yet: strike them in place and only group them after Apply/Save.
  function unsavedFilterPreview(){
    if(!context?.subscribed||!panel)return false;
-   const id=q('.fbs-source',panel)?.value;
+   const id=activeFilterSourceID();
+   if(!id)return false;
    if(filterDraftTouched.has(id))return true;
    const baseline=filterEditBaseline.get(id);
    if(!baseline)return false;
@@ -566,8 +578,16 @@
    filterEditBaseline=new Map(sourceList.map(src=>[src.id,{
      keep:String(src.filterKeep||''),drop:String(src.filterExclude||'')
    }]));
+   const attachedIDs=selectedSources(context.group,context.subs);
+   if(attachedIDs.length===1&&!filterEditBaseline.has(attachedIDs[0]))
+     filterEditBaseline.set(attachedIDs[0],{keep:'',drop:''});
    sourceChoice.replaceChildren();
    for(const sub of sourceList)sourceChoice.add(new Option(sub.name,sub.id));
+   if(!sourceList.length&&attachedIDs.length===1){
+     const option=new Option('Источник подписки (сведения обновляются)',attachedIDs[0]);
+     sourceChoice.add(option);
+     sourceChoice.disabled=true;
+   }
    const currentSource=()=>sourceList.find(sub=>sub.id===sourceChoice.value);
    const pendingSources=new Map();
    let activeSourceID=sourceChoice.value;
@@ -689,7 +709,7 @@
        const rows=[...el.querySelectorAll('.fbs-table-body tr[data-node]')];
        const usaRows=rows.filter(row=>/сша|🇺🇸/i.test(row.dataset.node||''));
        const crossed=row=>row.classList.contains('fbs-row-filtered');
-       const id=q('.fbs-source',el)?.value||'';
+       const id=activeFilterSourceID();
        const report={
          phase,event,usa:true,hasSource:!!id,
          sourceMatches:!!context?.subs?.some(src=>src.id===id),
@@ -720,7 +740,7 @@
    },500);
    let lastPreviewInput=null;
    const previewInput=(event)=>{
-     const activeID=q('.fbs-source',el)?.value;
+     const activeID=activeFilterSourceID();
      if(activeID)filterDraftTouched.add(activeID);
      const state=activeID+'\0'+
        q('.fbs-keep',el)?.value+'\0'+q('.fbs-drop',el)?.value;
