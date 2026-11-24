@@ -547,7 +547,7 @@
    '<div class="fbs-table-wrap"><table class="fbs-table"><thead><tr><th><label><input type="checkbox" class="fbs-toggle-all"> Все</label></th><th>Протокол</th><th><button type="button" data-sort="name">Имя ↕</button></th><th><button type="button" data-sort="ping">Пинг ↕</button></th><th><button type="button" data-sort="latency">Задержка ↕</button></th></tr></thead><tbody class="fbs-table-body"></tbody></table></div>'+
    '<div class="fbs-toolbar fbs-table-actions"><button type="button" class="outline-btn fbs-exclude-offline">Исключить недоступные</button><button type="button" class="outline-btn fbs-select-all">Выбрать все</button><button type="button" class="outline-btn fbs-select-none">Снять все</button><select class="fbs-filter-status" aria-label="Фильтр состояния"><option value="all">Все серверы</option><option value="online">Только online</option><option value="offline">Только offline</option></select><span class="fbs-show-count"></span></div>'+
    '<p class="fbs-status" role="status">Получение состояния Mihomo…</p>'+
-   '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="update">'+tabIcon('refresh')+'<span>Обновление</span></button><button type="button" class="fbs-tab" data-sub-pane="filters">'+tabIcon('filter')+'<span>Фильтры</span></button>'+
+   '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="update" aria-pressed="true" title="Настройки автоматического обновления подписки — открыть вкладку">'+tabIcon('refresh')+'<span>Обновление</span></button><button type="button" class="fbs-tab" data-sub-pane="filters" aria-pressed="false" title="Открыть настройки фильтрации серверов">'+tabIcon('filter')+'<span>Фильтры</span></button>'+
    '<div class="fbs-settings-source">Источник: <select class="fbs-source" aria-label="Подписка для настройки"></select></div>'+
    '<div class="fbs-panel" data-sub-panel="update"><label class="fbs-check"><input type="checkbox" class="fbs-auto"> Обновлять подписку автоматически</label><div class="fbs-interval"><label>Интервал: <input type="number" min="0" max="168" class="fbs-hours"> ч</label><label><input type="number" min="0" max="59" class="fbs-minutes"> м</label></div></div>'+
    '<div class="fbs-panel" data-sub-panel="filters" hidden><div class="fbs-filter-fields"><label><span class="fbs-filter-field-title"><span>Оставить только</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">'+addCountryIcon+'Добавить страну</button></label><label><span class="fbs-filter-field-title"><span>Исключить</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">'+addCountryIcon+'Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
@@ -913,7 +913,11 @@
    countrySearch.oninput=renderCountryChoices;
    for(const b of el.querySelectorAll('[data-sub-pane]'))b.onclick=()=>{
      if(b.dataset.subPane!=='filters')closeCountryMenu();
-     for(const other of el.querySelectorAll('[data-sub-pane]'))other.classList.toggle('active',other===b);
+     for(const other of el.querySelectorAll('[data-sub-pane]')){
+       const active=other===b;
+       other.classList.toggle('active',active);
+       other.setAttribute('aria-pressed',String(active));
+     }
      for(const page of el.querySelectorAll('[data-sub-panel]'))page.hidden=page.dataset.subPanel!==b.dataset.subPane;
    };
  }

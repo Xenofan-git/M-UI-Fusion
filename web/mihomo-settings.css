@@ -617,6 +617,11 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
   cursor:pointer;font-size:14px;font-weight:500;
 }
 .fbs-tab:hover,.fbs-tab.active{border-color:var(--teal);background:var(--surface-hover)}
+.fbs-tab.active{
+  box-shadow:inset 0 -2px 0 var(--teal),0 0 0 1px color-mix(in srgb,var(--teal) 18%,transparent);
+}
+.fbs-tab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.fbs-tab:hover:not(.active){box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 28%,transparent)}
 .fbs-panel{flex-basis:100%;font-size:12px;color:var(--muted);line-height:1.5}
 .fbs-panel[hidden]{display:none}
 .fbs-native-members{display:none!important}
@@ -980,10 +985,43 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 .mihomo-rule-drop-target>td{background:var(--surface-hover)!important;box-shadow:inset 0 2px var(--teal)}
 .mihomo-rule-switch{position:relative;display:inline-flex;flex:none;width:34px;height:20px;align-items:center;cursor:pointer;vertical-align:middle}
 .mihomo-rule-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:inherit}
-.mihomo-rule-switch-track{display:block;width:100%;height:19px;border-radius:99px;background:var(--line-strong);border:1px solid var(--line-strong);transition:background .16s,border-color .16s;pointer-events:none}
-.mihomo-rule-switch-track::after{content:"";display:block;margin:2px;width:13px;height:13px;background:var(--surface);border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .16s}
-.mihomo-rule-switch input:checked+.mihomo-rule-switch-track{background:var(--skin-accent,#009B77);border-color:var(--skin-accent,#009B77)}
-.mihomo-rule-switch input:checked+.mihomo-rule-switch-track::after{transform:translateX(15px);background:#fff}
+/* The OFF track/thumb must have explicit contrast in dark and light skins.
+   Previously --line-strong and --surface could both match the table fill,
+   making an unchecked switch completely disappear. */
+.mihomo-rule-switch-track{
+  box-sizing:border-box;position:relative;display:block;flex:none;
+  width:34px;height:20px;border-radius:99px;
+  background:#50606c;border:1px solid #83939f;
+  box-shadow:inset 0 1px 3px rgba(10,22,32,.24);
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+  pointer-events:none;
+}
+.mihomo-rule-switch-track::after{
+  content:"";position:absolute;left:2px;top:2px;
+  display:block;width:14px;height:14px;margin:0;
+  background:#e6ecf0;border-radius:50%;
+  box-shadow:0 1px 3px rgba(0,0,0,.25),0 0 0 1px rgba(23,38,46,.12);
+  transform:translateX(0);
+  transition:transform .18s ease,background-color .18s ease;
+}
+.mihomo-rule-switch input:not(:checked)+.mihomo-rule-switch-track{
+  background:#50606c;border-color:#83939f;
+}
+.mihomo-rule-switch input:checked+.mihomo-rule-switch-track{
+  background:var(--skin-accent,#009B77);border-color:var(--skin-accent,#009B77);
+}
+.mihomo-rule-switch input:checked+.mihomo-rule-switch-track::after{
+  transform:translateX(14px);background:#fff;
+}
+.mihomo-rule-switch input:not(:disabled):hover+.mihomo-rule-switch-track{
+  border-color:#c5d6db;box-shadow:0 0 0 2px rgba(143,180,190,.2),inset 0 1px 3px rgba(10,22,32,.2);
+}
+.mihomo-rule-switch input:checked:not(:disabled):hover+.mihomo-rule-switch-track{
+  border-color:#69e2b9;box-shadow:0 0 0 2px rgba(0,155,119,.2);
+}
+@media(prefers-reduced-motion:reduce){
+  .mihomo-rule-switch-track,.mihomo-rule-switch-track::after{transition:none}
+}
 .mihomo-rule-switch input:focus-visible+.mihomo-rule-switch-track{outline:2px solid var(--teal);outline-offset:3px}
 .mihomo-rule-switch:has(input:disabled){opacity:.65;cursor:not-allowed}
 .mihomo-rule-drag{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;cursor:grab;color:var(--text);user-select:none;touch-action:none;font-size:22px;border:1px dashed var(--line-strong)}
