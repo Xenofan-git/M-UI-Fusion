@@ -2576,7 +2576,9 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   function muiGetLang() {
     var stored = null;
     try { stored = localStorage.getItem('mui-language'); } catch (e) {}
-    var value = stored || document.documentElement.getAttribute('data-default-language') || 'ru';
+    // Server-persisted language outranks stale local browser cache.
+    var injected = document.documentElement.getAttribute('data-default-language');
+    var value = injected || stored || 'ru';
     return SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'ru';
   }
 
@@ -2678,6 +2680,8 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
 
   function muiSetLang(value) {
     var next = SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'ru';
+    // Keep immediate manual changes working before the server round trip.
+    document.documentElement.setAttribute('data-default-language', next);
     try { localStorage.setItem('mui-language', next); } catch (e) {}
     lang = next;
     muiApply(document);

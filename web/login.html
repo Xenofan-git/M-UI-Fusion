@@ -14,15 +14,15 @@
   <title>M-UI Fusion | Вход</title>
   <script>
     // Set the browser tab title before the UI scripts/styles load.
-    // A previously chosen browser locale may differ from the server setting.
+    // Server-rendered locale is used immediately, before cached browser data.
     (() => {
       const titles = {
         ru: 'Вход', en: 'Log In', 'zh-CN': '登录', 'zh-TW': '登入',
         fa: 'ورود', ja: 'ログイン', vi: 'Đăng nhập',
         es: 'Iniciar sesión', tr: 'Giriş', uk: 'Вхід', 'pt-BR': 'Entrar'
       };
-      let language = document.documentElement.dataset.defaultLanguage || 'ru';
-      try { language = localStorage.getItem('mui-language') || language; } catch {}
+      // The server's saved language takes precedence on first paint.
+      const language = document.documentElement.dataset.defaultLanguage || 'ru';
       document.title = 'M-UI Fusion | ' + (titles[language] || titles.ru);
     })();
   </script>
@@ -598,6 +598,7 @@
       const lang = messages[language] ? language : 'ru';
       const text = messages[lang];
       root.lang = lang;
+      root.dataset.defaultLanguage = lang;
       root.dir = lang === 'fa' ? 'rtl' : 'ltr';
       document.title = text.pageTitle;
       languageSelect.value = lang;
@@ -697,8 +698,8 @@
     applyTheme(localStorage.getItem('mui-theme') || 'light');
     if(window.MUIColorSkins.current())applyLoginColorSkin(window.MUIColorSkins.current());
     // 面板设置里的 Language 通过 data-default-language 注进来，作为没访问过本面板的
-    // 浏览器的初始语言；本机手动选过的话以 localStorage 为准。
-    applyLanguage(localStorage.getItem('mui-language') || document.documentElement.dataset.defaultLanguage || 'ru');
+    // 浏览器的初始语言；旧浏览器缓存不能覆盖已保存的服务器语言。
+    applyLanguage(document.documentElement.dataset.defaultLanguage || 'ru');
   </script>
 </body>
 </html>

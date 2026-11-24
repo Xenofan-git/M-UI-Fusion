@@ -4300,8 +4300,8 @@ func TestLoginPageCarriesTheConfiguredLanguage(t *testing.T) {
 		}
 		return recorder.Body.String()
 	}
-	if page := serve(); !strings.Contains(page, `data-default-language="zh-CN"`) {
-		t.Fatal("the default language must stay zh-CN")
+	if page := serve(); !strings.Contains(page, `data-default-language="ru"`) {
+		t.Fatal("the default language must be Russian")
 	}
 	manager.state.Settings.Language = "en"
 	page := serve()
@@ -4324,8 +4324,8 @@ func TestLoginPageCarriesTheConfiguredLanguage(t *testing.T) {
 	}
 	// 存了个不认识的值（手改 state.json）时不能把这段注释成空的。
 	manager.state.Settings.Language = "fr"
-	if page := serve(); !strings.Contains(page, `data-default-language="zh-CN"`) {
-		t.Fatal("an unsupported stored language must fall back to zh-CN")
+	if page := serve(); !strings.Contains(page, `data-default-language="ru"`) {
+		t.Fatal("an unsupported stored language must fall back to Russian")
 	}
 }
 

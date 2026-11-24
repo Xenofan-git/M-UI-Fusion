@@ -56,10 +56,12 @@ const (
 	defaultExpireDiff    = 7
 	defaultTrafficDiff   = 1
 	defaultTimeLocation  = "Local"
-	defaultLanguage      = "zh-CN"
-	defaultUITheme       = "shadcn"
-	minSessionMaxAge     = 60
-	maxPageSize          = 500
+	defaultLanguage      = "ru"
+	// Original backend message catalog remains in Chinese independent of UI default.
+	sourceMessageLanguage = "zh-CN"
+	defaultUITheme        = "shadcn"
+	minSessionMaxAge      = 60
+	maxPageSize           = 500
 )
 
 type Settings struct {

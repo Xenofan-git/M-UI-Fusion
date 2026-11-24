@@ -127,7 +127,7 @@ func (a *App) trSyncJob(job *inboundSyncJob) *inboundSyncJob {
 // translateMessage 把中文提示翻成目标语言。zh-CN 是原文，直接返回；其他语言
 // 对暂未收录的提示安全回退英文，避免新语言界面混入中文。
 func translateMessage(text, language string) string {
-	if language == defaultLanguage || text == "" || !hasCJK(text) {
+	if language == sourceMessageLanguage || text == "" || !hasCJK(text) {
 		return text
 	}
 	if translated, ok := translateSegment(text, language); ok {

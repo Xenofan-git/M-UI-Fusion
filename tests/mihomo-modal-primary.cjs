@@ -12,7 +12,7 @@ const keys=[
  'static/color-skins.css?v=116',
  'static/mihomo-settings.css?v=129',
  'static/mihomo-settings.js?v=128',
- 'static/i18n.js?v=119',
+ 'static/i18n.js?v=120',
  'static/i18n-locales.js?v=119'
 ];
 for(const asset of keys)assert.ok(html.includes(asset),'missing cache-busting for '+asset);

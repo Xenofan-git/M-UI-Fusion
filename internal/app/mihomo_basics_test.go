@@ -179,7 +179,7 @@ func TestMihomoBasicsDelayUsesConfiguredURL(t *testing.T) {
 func TestMihomoBasicsDelayRejectsRejectOutbounds(t *testing.T) {
 	b := defaultMihomoBasics()
 	m := &CoreManager{state: State{
-		Settings:     Settings{Language: defaultLanguage},
+		Settings:     Settings{Language: sourceMessageLanguage},
 		MihomoBasics: &b,
 		Outbounds: []MihomoOutbound{
 			{Name: "reject-custom", Kind: "proxy", Type: "reject"},

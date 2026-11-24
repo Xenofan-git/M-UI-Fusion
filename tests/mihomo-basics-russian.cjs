@@ -28,7 +28,7 @@ let language='ru';
 const context={
  window:{dispatchEvent(){}},Event:class{},
  localStorage:{getItem:key=>key==='mui-language'?language:null,setItem:(key,value)=>{if(key==='mui-language')language=value}},
- document:{readyState:'loading',documentElement:{getAttribute:()=> 'ru'},addEventListener(){},querySelectorAll:()=>[]}
+ document:{readyState:'loading',documentElement:{getAttribute:()=> language,setAttribute:(key,val)=>{if(key==='data-default-language')language=val}},addEventListener(){},querySelectorAll:()=>[]}
 };
 vm.createContext(context);
 vm.runInContext(locales,context);
