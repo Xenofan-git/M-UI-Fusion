@@ -227,7 +227,22 @@
   // A flag inserted here is a real filter expression; server-side matching
   // resolves it against a server name (even if the provider omitted emoji).
   function attachFlagPicker(wrapper,area){
-    const choose=make('button','outline-btn outsub-flag-trigger','🏳️ Добавить флаг');
+    const choose=make('button','outline-btn outsub-flag-trigger');
+    // An emoji flag button becomes a missing-glyph square on older Windows.
+    // Draw the action using a local SVG symbol instead of platform emoji fonts.
+    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    icon.setAttribute('viewBox','0 0 24 24');
+    icon.setAttribute('aria-hidden','true');
+    icon.classList.add('outsub-add-flag-icon');
+    const flagPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+    flagPath.setAttribute('d','M5 21V4m0 1c4-3 7 2 13-1v11c-6 3-9-2-13 1');
+    flagPath.setAttribute('fill','none');
+    flagPath.setAttribute('stroke','currentColor');
+    flagPath.setAttribute('stroke-width','1.8');
+    flagPath.setAttribute('stroke-linecap','round');
+    flagPath.setAttribute('stroke-linejoin','round');
+    icon.appendChild(flagPath);
+    choose.append(icon,document.createTextNode('Добавить флаг'));
     choose.type='button';
     choose.setAttribute('aria-label','Добавить флаг в '+(area.name==='filterKeep'?'Оставить только':'Исключить'));
     const menu=make('div','outsub-flag-picker');
@@ -248,7 +263,11 @@
         const chip=make('span','outsub-country-chip');
         const icon=directory.createIcon(country.code);
         if(icon)chip.appendChild(icon);
-        chip.appendChild(make('span','',country.ru));
+        chip.title=country.ru+' ('+country.code+')';
+        chip.setAttribute('aria-label',country.ru+' — '+country.flag);
+        // The chip itself must show the flag only; the country name remains
+        // available in the tooltip / accessibility label.
+        if(!icon)chip.textContent=country.flag;
         selected.appendChild(chip);
       }
     }
@@ -257,7 +276,7 @@
       list.replaceChildren();
       const countries=window.MUICountryFlags?.countries||[];
       const term=search.value.trim().toLocaleLowerCase('ru');
-      const matching=countries.filter(item=>(item.ru+' '+item.english+' '+item.code+' '+item.flag).toLocaleLowerCase('ru').includes(term))
+      const matching=countries.filter(item=>(item.ru+' '+item.english+' '+item.code+' '+item.flag+' '+(window.MUICountryFlags?.aliases?.[item.code]||'')).toLocaleLowerCase('ru').includes(term))
         .sort((a,b)=>a.ru.localeCompare(b.ru,'ru'));
       for(const country of matching.slice(0,100)){
         const button=make('button','outsub-country-option');
@@ -269,9 +288,10 @@
         button.onclick=()=>{
           const existing=area.value.trimEnd();
           const lines=existing.split(String.fromCharCode(10));
-          // Store an ordinary country name as a filter term, avoiding
-          // regional-indicator letters in Windows textareas.
-          const term=country.english;
+          // The persisted filter expression is the actual Unicode flag.
+          // Mihomo's server filter resolves it against the detected country
+          // even if the provider's node name does not contain an emoji.
+          const term=country.flag;
           if(!lines.includes(term))area.value=existing+(existing?String.fromCharCode(10):'')+term;
           area.dispatchEvent(new Event('input',{bubbles:true}));
           menu.hidden=true;

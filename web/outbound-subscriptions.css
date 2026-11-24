@@ -122,10 +122,18 @@
   margin:1px 0 0;
 }
 .outsub-filter-field .outsub-flag-trigger{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
   width:auto;
   min-height:34px;
   padding:5px 12px;
   font-size:12px;
+}
+.outsub-filter-field .outsub-add-flag-icon{
+  width:16px;height:16px;flex:none;
+  color:currentColor;
 }
 .outsub-filter-field .outsub-flag-picker{
   position:relative;
@@ -250,6 +258,11 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 }
 .outsub-dialog .outsub-country-chip .outsub-flag-svg{
   width:22px;height:16px;
+}
+.outsub-dialog .outsub-country-chip{
+  justify-content:center;
+  min-width:31px;
+  padding:4px 6px;
 }
 
 

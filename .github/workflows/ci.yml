@@ -52,6 +52,8 @@ jobs:
         run: node tests/russian-first-paint.cjs
       - name: Verify immutable MATCH padlock and inbound security mode explanation
         run: node tests/inbound-security-layout.cjs
+      - name: Verify Add Flag picker renders SVG and saves actual flag conditions
+        run: node tests/outsub-flag-insertion.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
       - name: Test centered Mihomo Save and Restart operation dialogs

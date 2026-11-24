@@ -55,6 +55,6 @@ for(const k of keys){
 }
 for(const [file,version] of [
  ['mihomo-balancer-servers.js','136'],['mihomo-settings.js','129'],['mihomo-settings.css','130'],
- ['outbound-subscriptions.css','119'],['i18n.js','121'],['i18n-locales.js','119']
+ ['outbound-subscriptions.css','120'],['i18n.js','121'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');
