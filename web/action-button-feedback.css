@@ -283,3 +283,48 @@ html body #mihomo-outbound-modal #mihomo-outbound-close#mihomo-outbound-close {
  justify-content: center;
  flex-shrink: 0;
 }
+
+/* Restart Mihomo: keep both fill and label visible in legacy browsers,
+   independently of theme-specific danger hover variables. */
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart {
+  --lb-fill: #bc302a !important;
+  --lb-text: #ffffff !important;
+  background: #bc302a !important;
+  background-image: none !important;
+  border: 1px solid #a52823 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  transition: background-color .12s, border-color .12s !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:hover:not(:disabled) {
+  --lb-fill: #a52823 !important;
+  background: #a52823 !important;
+  border-color: #8e221e !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:active:not(:disabled) {
+  --lb-fill: #8e221e !important;
+  background: #8e221e !important;
+  border-color: #751b18 !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:disabled {
+  --lb-fill: #805c59 !important;
+  background: #805c59 !important;
+  border-color: #6f4c49 !important;
+  cursor: not-allowed !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:focus {
+  outline: 2px solid #c23a32 !important;
+  outline-offset: 3px !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart::after {
+  content: none !important;
+  opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart {
+    transition: none !important;
+  }
+}
