@@ -415,3 +415,39 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
  .outsub-source-table th:nth-child(3),.outsub-source-table th:nth-child(4){width:58px}
  .outsub-source-inventory-head{flex-wrap:wrap}
 }
+
+/* Source-owned auto-update controls, relocated from the balancer editor. */
+.outsub-dialog .outsub-update-panel{
+  margin:14px 0;padding:13px 14px 10px;
+  border:1px solid var(--line,var(--border));border-radius:9px;
+  background:var(--surface-2,var(--surface));color:var(--text-strong);
+  font-size:12px;
+}
+.outsub-dialog .outsub-update-heading{
+  margin:0 0 11px;font-size:14px;font-weight:600;
+  color:var(--text-strong);
+}
+.outsub-dialog .outsub-update-panel label.fbs-check{
+  display:inline-flex;flex-direction:row;align-items:center;gap:9px;
+  margin:0 0 4px;font-size:13px;color:var(--text-strong);
+}
+.outsub-dialog .outsub-update-panel label.fbs-check input{
+  flex:none;width:17px;height:17px;accent-color:var(--skin-accent,var(--teal,#009B77));
+}
+.outsub-dialog .outsub-update-interval{
+  display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px;
+  margin:9px 0 0;
+}
+.outsub-dialog .outsub-update-interval label{
+  display:inline-flex;flex-direction:row;align-items:center;gap:8px;
+  margin:0;font-size:12.5px;
+}
+.outsub-dialog .outsub-update-interval input[type=number]{
+  width:73px;min-width:0;min-height:35px;box-sizing:border-box;
+  padding:5px 9px;border:1px solid var(--line,var(--border));
+  border-radius:8px;background:var(--surface,var(--card-bg));
+  color:var(--text-strong);font:inherit;
+}
+.outsub-dialog .outsub-update-panel:focus-within{
+  border-color:var(--skin-accent,var(--teal,#009B77));
+}

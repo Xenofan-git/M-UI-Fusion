@@ -47,6 +47,14 @@ assert.equal(subscribedSandbox.displayedCurrentNode('Renamed-Foreign',
   'a genuine region prefix must not be deleted');
 assert.equal(subscribedSandbox.currentNodeMeta('Renamed-Foreign',
   'quatro-vpn | 🇷🇺 🟢 LTE - Москва').label,'🟢 LTE - Москва');
+// Same provider names must be presentation-only even if a legacy group
+// lost subscriptionIds while retaining its nodes.
+assert.equal(subscribedSandbox.displayedCurrentNode('RUSSIA',
+  'quatro-vpn | 🇷🇺 0.1X - LTE №64 - Москва'),
+  '🇷🇺 0.1X - LTE №64 - Москва');
+assert.equal(subscribedSandbox.currentNodeMeta('RUSSIA',
+  'quatro-vpn | 🇷🇺 0.1X - LTE №64 - Москва').label,
+  '0.1X - LTE №64 - Москва');
 
 assert.equal(meta('FOREIGN','INT | NL 🟢 LTE Авто').code,'NL');
 assert.equal(meta('FOREIGN','INT | NL 🟢 LTE Авто').label,'🟢 LTE Авто');
@@ -119,7 +127,7 @@ assert.equal(node('Russia','RU Moscow #5'),'RU Moscow #5');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 assert.ok(css.includes('.mihomo-current-country-flag'));
-assert.ok(html.includes('mihomo-settings.js?v=132'));
+assert.ok(html.includes('mihomo-settings.js?v=133'));
 assert.ok(html.includes('mihomo-settings.css?v=132'));
 for(const code of ['lv','ru','fi','de']){
   const svg=fs.readFileSync('web/flags/'+code+'.svg','utf8');

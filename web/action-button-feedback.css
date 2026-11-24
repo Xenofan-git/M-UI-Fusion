@@ -187,3 +187,93 @@ html body #mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled:is(:hove
     transform: none !important;
   }
 }
+
+/* Lavender outline actions in every visual layout and color skin.
+   Use the EXISTING theme surface as the fill, and stable purple for ink /
+   stroke. No glass overlay, translucent text or invisible white-on-white.
+   Deliberately leave destructive red actions and status chips alone. */
+html body {
+  --mui-outline-purple: #7522b7;
+  --mui-outline-purple-hover: #5e179b;
+}
+html body.dark, html[data-theme="dark"] body, html.dark body,
+html[data-color-skin="graphite"] body,
+html[data-color-skin="emerald"] body,
+html[data-color-skin="aurora"] body {
+  --mui-outline-purple: #c49af8;
+  --mui-outline-purple-hover: #e1c9ff;
+}
+html body :is(
+  #login-button,
+  #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary,
+  #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  #outsub-submit,
+  #outsub-root .outsub-actions > button:not(:last-child),
+  #outsub-modal .outsub-dialog button.outline-btn:not(.danger),
+  .fbs-editor .fbs-toolbar button.outline-btn,
+  .fbs-editor .fbs-settings-actions button.outline-btn
+):not(:disabled) {
+  --lb-fill: var(--surface,var(--card-bg,#faf9ff)) !important;
+  --lb-text: var(--mui-outline-purple) !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: var(--surface,var(--card-bg,#faf9ff)) !important;
+  background-image: none !important;
+  border: 1px solid var(--mui-outline-purple) !important;
+  color: var(--mui-outline-purple) !important;
+  -webkit-text-fill-color: var(--mui-outline-purple) !important;
+  text-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: inset 0 0 0 1px rgb(130 61 188 / .08) !important;
+}
+html body :is(
+  #login-button,
+  #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary,
+  #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  #outsub-submit,
+  #outsub-root .outsub-actions > button:not(:last-child),
+  #outsub-modal .outsub-dialog button.outline-btn:not(.danger),
+  .fbs-editor .fbs-toolbar button.outline-btn,
+  .fbs-editor .fbs-settings-actions button.outline-btn
+):not(:disabled):is(:hover,:focus-visible,:active) {
+  --lb-fill: var(--surface-hover,var(--surface,var(--card-bg,#f6f0fd))) !important;
+  --lb-text: var(--mui-outline-purple-hover) !important;
+  background: var(--surface-hover,var(--surface,var(--card-bg,#f6f0fd))) !important;
+  background-image: none !important;
+  color: var(--mui-outline-purple-hover) !important;
+  -webkit-text-fill-color: var(--mui-outline-purple-hover) !important;
+  border-color: var(--mui-outline-purple-hover) !important;
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 0 2px rgb(151 83 213 / .16) !important;
+}
+html body :is(
+  #login-button,
+  #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary,
+  #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  #outsub-submit,
+  #outsub-root .outsub-actions > button:not(:last-child),
+  #outsub-modal .outsub-dialog button.outline-btn:not(.danger),
+  .fbs-editor .fbs-toolbar button.outline-btn,
+  .fbs-editor .fbs-settings-actions button.outline-btn
+)::after {
+  /* The old moving white highlight made labels disappear on light themes. */
+  opacity: 0 !important;
+  content: none !important;
+}
+html body :is(
+  #login-button,
+  #mihomo-settings-root .mihomo-toolbar > button.mihomo-primary,
+  #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  #outsub-submit
+):disabled {
+  background: var(--surface,var(--card-bg,#faf9ff)) !important;
+  background-image: none !important;
+  border: 1px solid var(--mui-outline-purple) !important;
+  color: var(--mui-outline-purple) !important;
+  -webkit-text-fill-color: var(--mui-outline-purple) !important;
+  opacity: .65 !important;
+  filter: none !important;
+  box-shadow: none !important;
+}

@@ -361,10 +361,44 @@
     field(form,'URL подписки','url','url',{maxLength:2048,placeholder:'https://provider.example/subscription/...'});
     const existing=make('label','outsub-existing','Подключить к существующему балансировщику');
     const group=make('select');group.name='group';existing.appendChild(group);form.appendChild(existing);
-    field(form,'Интервал автообновления (минут)','intervalMinutes','number',{min:5,max:10080});
-    const autoLabel=make('label','inline'),auto=make('input');auto.type='checkbox';auto.name='enabled';
-    autoLabel.appendChild(auto);autoLabel.appendChild(document.createTextNode('Автоматически обновлять подписку'));
-    form.appendChild(autoLabel);
+    // Same compact check + hours/minutes layout as the former balancer
+    // "Обновление" pane, now owned by the independent source catalog.
+    const updatePanel=make('section','outsub-update-panel fbs-panel');
+    updatePanel.id='outsub-update-panel';
+    const updateTitle=make('h3','outsub-update-heading','Обновление');
+    updatePanel.appendChild(updateTitle);
+    const autoLabel=make('label','fbs-check'),auto=make('input');
+    auto.type='checkbox';auto.name='enabled';
+    autoLabel.append(auto,document.createTextNode('Обновлять подписку автоматически'));
+    updatePanel.appendChild(autoLabel);
+    const intervalRow=make('div','fbs-interval outsub-update-interval');
+    const hourLabel=make('label','', 'Интервал:');
+    const hours=make('input');hours.type='number';hours.min='0';hours.max='168';
+    hours.name='intervalHours';hours.setAttribute('aria-label','Часы интервала обновления');
+    hourLabel.append(hours,document.createTextNode('ч'));
+    const minuteLabel=make('label');
+    const minutes=make('input');minutes.type='number';minutes.min='0';minutes.max='59';
+    minutes.name='intervalRestMinutes';minutes.setAttribute('aria-label','Минуты интервала обновления');
+    minuteLabel.append(minutes,document.createTextNode('м'));
+    intervalRow.append(hourLabel,minuteLabel);
+    updatePanel.appendChild(intervalRow);
+    // Keep the existing numeric API payload, without adding a new backend
+    // schedule or modifying group-owned filters.
+    const intervalValue=make('input');intervalValue.type='hidden';intervalValue.name='intervalMinutes';
+    updatePanel.appendChild(intervalValue);
+    const syncInterval=()=>{
+      const h=hours.value===''?NaN:Number(hours.value);
+      const m=minutes.value===''?NaN:Number(minutes.value);
+      const total=h*60+m;
+      intervalValue.value=Number.isInteger(h)&&Number.isInteger(m)&&
+        h>=0&&h<=168&&m>=0&&m<=59&&total>=5&&total<=10080?String(total):'';
+    };
+    for(const input of [hours,minutes]){
+      input.addEventListener('input',syncInterval);
+      input.addEventListener('change',syncInterval);
+    }
+    form._syncSourceInterval=syncInterval;
+    form.appendChild(updatePanel);
     const filters=make('div','outsub-filters');
     for(const [name,label,placeholder] of [
       ['filterKeep','Оставить только','Germany\n🇩🇪\nLTE'],
@@ -443,7 +477,18 @@
     const tbody=make('tbody');tbody.id='outsub-source-inventory-body';table.appendChild(tbody);
     tableWrap.appendChild(table);inventory.appendChild(tableWrap);form.appendChild(inventory);
     let inventoryRows=[],inventorySort='name',inventoryAsc=true;
+    function updateInventorySortArrows(){
+      head.querySelectorAll('button[data-sort]').forEach(button=>{
+        const selected=button.dataset.sort===inventorySort;
+        const heading=({protocol:'Протокол',name:'Имя',ping:'Пинг',delay:'Задержка'})[button.dataset.sort];
+        button.textContent=heading+' '+(selected?(inventoryAsc?'↑':'↓'):'↕');
+        button.setAttribute('aria-pressed',String(selected));
+        button.setAttribute('aria-label',heading+(selected?(inventoryAsc?', по возрастанию':', по убыванию'):', сортировать'));
+        button.title=selected?(inventoryAsc?'По возрастанию':'По убыванию'):'Сортировать по '+heading.toLowerCase();
+      });
+    }
     function renderInventory(){
+      updateInventorySortArrows();
       const query=inventorySearch.value.trim().toLocaleLowerCase('ru');
       const nodes=inventoryRows.filter(n=>!query||[n.name,n.protocol,n.countryCode,n.flag]
         .filter(Boolean).join(' ').toLocaleLowerCase('ru').includes(query));
@@ -531,6 +576,9 @@
           const isNew=!form.dataset.id;
           // A source is imported only here. Groups reuse the same source ID,
           // nodes and auto-refresh interval without any new provider GET.
+          form._syncSourceInterval();
+          if(!form.elements.intervalMinutes.value)
+            throw Error('Интервал автообновления должен быть от 5 минут до 7 суток');
           const body={
             name:form.elements.name.value.trim(),
             url:form.elements.url.value.trim(),
@@ -588,11 +636,11 @@
     if(!creatingGroup&&!isNew)form._loadSourceInventory(sub.id);
     form.elements.sourceId.closest('label').hidden=!creatingGroup;
     form.elements.sourceId.required=creatingGroup;
-    for(const name of ['name','url','intervalMinutes']){
+    for(const name of ['name','url']){
       form.elements[name].closest('label').hidden=creatingGroup;
       form.elements[name].required=!creatingGroup;
     }
-    form.elements.enabled.closest('label').hidden=creatingGroup;
+    form.querySelector('#outsub-update-panel').hidden=creatingGroup;
     form.querySelector('.outsub-filters').hidden=!creatingGroup;
     form.querySelector('.outsub-preview-toolbar').hidden=!creatingGroup;
     form.querySelector('.outsub-preview-controls').hidden=!creatingGroup;
@@ -635,7 +683,10 @@
     select.value=sub?.group||'';
     form.elements.name.value=sub?.name||'';
     form.elements.url.value=sub?.url||'';
-    form.elements.intervalMinutes.value=sub?.intervalMinutes||1440;
+    const schedule=Number(sub?.intervalMinutes)||1440;
+    form.elements.intervalHours.value=Math.floor(schedule/60);
+    form.elements.intervalRestMinutes.value=schedule%60;
+    form._syncSourceInterval();
     form.elements.enabled.checked=sub?!!sub.enabled:true;
     form.elements.filterKeep.value=sub?.filterKeep||'';
     form.elements.filterExclude.value=sub?.filterExclude||'';

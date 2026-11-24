@@ -27,7 +27,7 @@ assert(paletteCSS.includes('-webkit-text-fill-color:#fff!important'),'older Chro
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="pending"]'));
 assert(css.includes('.mui-mihomo-status-backdrop[data-phase="error"]'));
 assert(css.includes('background:linear-gradient(160deg,#009B77,#08795E)'));
-for(const [asset,version] of [['mihomo-settings.js','132'],['mihomo-settings.css','132'],['i18n.js','123'],['i18n-locales.js','119']])
+for(const [asset,version] of [['mihomo-settings.js','133'],['mihomo-settings.css','132'],['i18n.js','123'],['i18n-locales.js','119']])
  assert(html.includes('static/'+asset+'?v='+version),asset+' cache version');
 const keys=['mh.operationSaving','mh.operationSaveTitle','mh.operationRestarting','mh.operationRestartTitle','mh.operationFailureTitle','mh.operationRestartSuccess'];
 for(const key of keys){

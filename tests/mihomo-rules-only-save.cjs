@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert.ok(html.includes('static/mihomo-settings.js?v=132'));
+assert.ok(html.includes('static/mihomo-settings.js?v=133'));
 assert.ok(source.includes('lastSyncedOutbounds=clone(draft.outbounds)'));
 assert.ok(source.includes('lastSyncedBasics=clone(draft.basics)'));
 const applyStart=source.indexOf('  async function saveOutboundDraft(event){');

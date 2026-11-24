@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict');
 const login=fs.readFileSync('web/login.html','utf8');
 const panel=fs.readFileSync('web/index.html','utf8');
 const css=fs.readFileSync('web/action-button-feedback.css','utf8');
-const link='static/action-button-feedback.css?v=1';
+const link='static/action-button-feedback.css?v=2';
 for(const [name,html] of [['login',login],['panel',panel]]){
   const skin=html.indexOf('static/color-skins.css');
   const feedback=html.indexOf(link);

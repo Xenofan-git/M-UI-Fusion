@@ -146,13 +146,25 @@
     const cachedSources=typeof balancerSubscriptions==='undefined'?[]:balancerSubscriptions||[];
     const groupEntry=typeof draft==='undefined'?null:draft?.outbounds?.find(x=>x.kind==='group'&&x.name===groupName);
     const linked=new Set(groupEntry?.subscriptionIds||[]);
-    const fromKnownSubscription=[...sourceGroups,...cachedSources].some(sub=>
-      String(sub?.name||'').trim().toLowerCase()===provider&&
-      (String(sub.group||'').toLowerCase()===group||linked.has(sub.id))
-    );
-    // Only remove a *known provider* prefix, never a protocol/region prefix
-    // such as "INT |" if it identifies the actual outbound.
-    return provider&&(group===provider||group.endsWith('-'+provider)||fromKnownSubscription)
+    const matchesProvider=name=>String(name||'').trim().toLowerCase()===provider;
+    // Providers are independent of groups: even after a subscription is
+    // unlinked or renamed the selected proxy retains its original prefix.
+    // Strip it ONLY from the displayed label, not the real Mihomo name.
+    const fromKnownSubscription=[...sourceGroups,...cachedSources].some(sub=>matchesProvider(sub?.name));
+    const groupMembers=groupEntry?.proxies||[];
+    const fromCurrentProxy=((typeof draft==='undefined'?[]:draft?.outbounds)||[]).some(item=>
+      item.kind==='proxy'&&item.name===value&&(
+        (item.sourceSubscriptionId&&[...sourceGroups,...cachedSources].some(sub=>
+          sub.id===item.sourceSubscriptionId&&matchesProvider(sub.name)))||
+        matchesProvider(item.sourceOriginalName&&value.slice(0,divider))
+      ));
+    const namedLikeSubscription=(groupEntry?.subscriptionManaged===true||
+      (linked.size>0&&groupMembers.includes(value)))&&provider!=='int'&&provider!=='ru';
+    // Never drop ordinary routing labels such as "INT |" or "RU |".
+    const reserved=['int','ru','direct','vpn','torrent','foreign','russia'];
+    return provider&&!reserved.includes(provider)&&
+      (fromKnownSubscription||fromCurrentProxy||namedLikeSubscription||
+       group===provider||group.endsWith('-'+provider))
       ?value.slice(divider+3):value;
   }
   // UI-only: use the same local SVG country flags as the subscription
