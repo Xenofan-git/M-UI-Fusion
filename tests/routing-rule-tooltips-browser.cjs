@@ -55,7 +55,7 @@ source,
      fg:getComputedStyle(el).color,
      fill:getComputedStyle(el).webkitTextFillColor
    }));
-   if(badgeBefore.fg!=='rgb(135, 147, 165)'||badgeBefore.fill!==badgeBefore.fg)
+   if(badgeBefore.fg!=='rgb(82, 99, 93)'||badgeBefore.fill!==badgeBefore.fg)
      throw Error('resting (!) mark not subdued: '+JSON.stringify(badgeBefore));
    await geo.hover();
    const badgeOnHover=await geo.evaluate(el=>({
@@ -63,7 +63,7 @@ source,
      fg:getComputedStyle(el).color
    }));
    if(badgeOnHover.bg!==badgeBefore.bg)throw Error('hover filled the help circle: '+JSON.stringify({badgeBefore,badgeOnHover}));
-   if(badgeOnHover.fg!=='rgb(255, 255, 255)')throw Error('only the exclamation mark should become white: '+JSON.stringify(badgeOnHover));
+   if(badgeOnHover.fg!=='rgb(23, 104, 79)')throw Error('exclamation mark must remain contrasting: '+JSON.stringify(badgeOnHover));
    if(await popup.isHidden()||!(await getText()).includes('Страна IP'))throw Error('GEOIP hover tooltip missing');
    const rect=await popup.boundingBox();if(!rect||rect.x<0||rect.x+rect.width>width+2)throw Error('tooltip clipped or outside viewport');
    const list=page.locator('#mihomo-rule-table [data-mihomo-rule-type=LIST]');
@@ -73,10 +73,10 @@ source,
    if(!(await ruleRow.textContent()).includes('GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP'))throw Error('universal GeoSite list label not visible');
    const nr=page.locator('#mihomo-rule-table [data-mihomo-help=no-resolve]');
    const nrBefore=await nr.evaluate(el=>getComputedStyle(el).color);
-   if(nrBefore!=='rgb(135, 147, 165)')throw Error('No-Resolve info badge is not muted: '+nrBefore);
+   if(nrBefore!=='rgb(82, 99, 93)')throw Error('No-Resolve info badge is not muted: '+nrBefore);
    await nr.hover();
-   if((await nr.evaluate(el=>getComputedStyle(el).color))!=='rgb(255, 255, 255)')
-     throw Error('No-Resolve exclamation did not turn white');
+   if((await nr.evaluate(el=>getComputedStyle(el).color))!=='rgb(23, 104, 79)')
+     throw Error('No-Resolve exclamation lost contrast');
    if(!(await getText()).includes('не запускает DNS'))throw Error('No-Resolve tooltip missing');
    if(!(await nr.locator('xpath=..').textContent()).includes('No-Resolve'))throw Error('Badge not capitalized');
    await nr.click();

@@ -1091,24 +1091,62 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .mihomo-toolb
 }
 
 
-/* Every routing-rule (!) badge is muted in its resting state across skins.
-   Only the glyph becomes pure white when hovered/focused/pinned. */
+/* Keep the help glyph readable on hover without changing the circle fill.
+   Explicit pairs support older Chromium as well as all current palettes. */
 html body .mihomo-rule-help-trigger{
-  background:var(--surface-subtle)!important;
-  border-color:var(--line)!important;
-  color:#8793a5!important;
-  -webkit-text-fill-color:#8793a5!important;
+  --help-bg:#e9efec;
+  --help-edge:#b5c8c1;
+  --help-ink:#52635d;
+  --help-active:#17684f;
+  --lb-fill:var(--help-bg)!important;
+  --lb-text:var(--help-ink)!important;
+  background:var(--help-bg)!important;
+  background-image:none!important;
+  border-color:var(--help-edge)!important;
+  color:var(--help-ink)!important;
+  -webkit-text-fill-color:var(--help-ink)!important;
+  opacity:1!important;
+  filter:none!important;
+  text-shadow:none!important;
   box-shadow:none!important;
 }
-html body .mihomo-rule-help-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
-  background:var(--surface-subtle)!important;
-  border-color:var(--line)!important;
-  color:#fff!important;
-  -webkit-text-fill-color:#fff!important;
+html body.dark .mihomo-rule-help-trigger,
+html[data-theme="dark"] body .mihomo-rule-help-trigger,
+html[data-theme="ultra-dark"] body .mihomo-rule-help-trigger,
+html[data-color-skin="graphite"] body .mihomo-rule-help-trigger,
+html[data-color-skin="emerald"] body .mihomo-rule-help-trigger,
+html[data-color-skin="aurora"] body .mihomo-rule-help-trigger{
+  --help-bg:#303c38;
+  --help-edge:#65776e;
+  --help-ink:#bdc9c3;
+  --help-active:#ffffff;
+}
+html[data-color-skin="ivory"] body .mihomo-rule-help-trigger{
+  --help-bg:#ede4d7;
+  --help-edge:#c4b49e;
+  --help-ink:#6c5945;
+  --help-active:#75471e;
+}
+html body .mihomo-rule-help-trigger:hover,
+html body .mihomo-rule-help-trigger:focus,
+html body .mihomo-rule-help-trigger:active,
+html body .mihomo-rule-help-trigger[aria-expanded="true"]{
+  --lb-text:var(--help-active)!important;
+  background:var(--help-bg)!important;
+  background-image:none!important;
+  border-color:var(--help-edge)!important;
+  color:var(--help-active)!important;
+  -webkit-text-fill-color:var(--help-active)!important;
+  opacity:1!important;
   box-shadow:none!important;
 }
-html body .mihomo-rule-help-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
+html body .mihomo-rule-help-trigger::before,
+html body .mihomo-rule-help-trigger::after{
   content:none!important;
+}
+html body .mihomo-rule-help-trigger:focus-visible{
+  outline:2px solid var(--help-active)!important;
+  outline-offset:2px;
 }
 /* Theme resets must never paint the native checkbox over our custom track.
    MATCH is locked (input disabled) but must look like the other green toggles. */
@@ -1218,3 +1256,93 @@ html body .mihomo-rule-switch-locked input:checked+.mihomo-rule-switch-track::af
 
 /* Hide the action entirely while successful notifications auto-dismiss. */
 html body .mui-mihomo-status-actions[hidden]{display:none!important}
+
+/* Routing rule editor — quiet, balancer-style section cards.
+   Scoped to this modal; literal fallbacks work in older Chromium. */
+#mihomo-rule-modal {
+  --rule-card: #eef4f2;
+  --rule-field: #ffffff;
+  --rule-edge: #b5c8c1;
+  --rule-ink: #243e36;
+  --rule-muted: #51655d;
+  --rule-accent: #17684f;
+  --rule-note: #e6f0ed;
+  --rule-focus: rgba(23,104,79,.15);
+}
+body.dark #mihomo-rule-modal,
+html[data-theme="dark"] #mihomo-rule-modal,
+html[data-theme="ultra-dark"] #mihomo-rule-modal {
+  --rule-card: #24312e;
+  --rule-field: #192421;
+  --rule-edge: #526b61;
+  --rule-ink: #e2eee9;
+  --rule-muted: #b3c6bd;
+  --rule-accent: #84cfb0;
+  --rule-note: #293c35;
+  --rule-focus: rgba(132,207,176,.18);
+}
+html[data-color-skin] body #mihomo-rule-modal {
+  --rule-card: var(--skin-soft);
+  --rule-field: var(--skin-card);
+  --rule-edge: var(--skin-line);
+  --rule-ink: var(--skin-text);
+  --rule-muted: var(--skin-muted);
+  --rule-accent: var(--skin-accent);
+  --rule-note: var(--skin-soft);
+  --rule-focus: rgba(127,127,127,.18);
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-rule-conditions,
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-rule-advanced {
+  background: var(--rule-card) !important;
+  border: 1px solid var(--rule-edge) !important;
+  border-radius: 12px !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-form-note {
+  background: var(--rule-note) !important;
+  color: var(--rule-ink) !important;
+  border: 1px solid var(--rule-edge) !important;
+  border-left: 3px solid var(--rule-accent) !important;
+  border-radius: 8px !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-rule-section-heading {
+  color: var(--rule-accent) !important;
+  font-size: 15px;
+  font-weight: 650;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-field > span,
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-rule-advanced summary {
+  color: var(--rule-ink) !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-field textarea,
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-field select {
+  background: var(--rule-field) !important;
+  color: var(--rule-ink) !important;
+  -webkit-text-fill-color: var(--rule-ink) !important;
+  border: 1px solid var(--rule-edge) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-field textarea:focus,
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-field select:focus {
+  border-color: var(--rule-accent) !important;
+  box-shadow: 0 0 0 2px var(--rule-focus) !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .mihomo-rule-list-toolbar small {
+  color: var(--rule-muted) !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form #mihomo-geo-picker-open {
+  --lb-fill: var(--rule-field) !important;
+  --lb-text: var(--rule-accent) !important;
+  background: var(--rule-field) !important;
+  color: var(--rule-accent) !important;
+  -webkit-text-fill-color: var(--rule-accent) !important;
+  border: 1px solid var(--rule-edge) !important;
+  border-radius: 8px !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form #mihomo-geo-picker-open:hover,
+html body #mihomo-rule-modal #mihomo-rule-form #mihomo-geo-picker-open:focus {
+  border-color: var(--rule-accent) !important;
+  box-shadow: 0 0 0 2px var(--rule-focus) !important;
+}
+/* Ivory's normal accent is too faint against the soft card. */
+html[data-color-skin="ivory"] body #mihomo-rule-modal { --rule-accent: #75471e; }
