@@ -1092,7 +1092,6 @@
         // Defaults for newly created subscription balancers; never alter saved groups.
         ...(requestedKind==='group'?{timeout:8000,tolerance:100}:{}),
         strategy:'consistent-hashing'}));
-    if(creatingSubscriptionGroup&&balancerSubscriptions.length===1)editingOriginal.subscriptionIds=[balancerSubscriptions[0].id];
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
     outboundFormChanged=false;outboundYAMLCached=false;
     setOutboundMode('form');
@@ -1156,9 +1155,10 @@
     if(creatingSubscriptionGroup)select.add(new Option('Выберите подписку…',''));
     for(const source of balancerSubscriptions){
       const option=new Option(source.name+' ('+String(source.nodeCount||0)+')',source.id);
-      option.selected=(item.subscriptionIds||[]).includes(source.id)||source.group===item.name;
+      option.selected=!creatingSubscriptionGroup&&((item.subscriptionIds||[]).includes(source.id)||source.group===item.name);
       select.add(option);
     }
+    if(creatingSubscriptionGroup)select.value='';
   }
   function syncBalancerSubscriptionMembers(){
     const form=$('#mihomo-outbound-form');

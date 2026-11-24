@@ -55,7 +55,13 @@ try{
   assert(await check('.fbs-table-wrap').isVisible());
   assert(await check('.fbs-keep').isVisible());
   assert.equal(await check('[data-sub-pane=update]').count(),0);
-  assert.equal(await check('select[name=subscriptionIds]').inputValue(),source.id);
+  const picker=check('select[name=subscriptionIds]');
+  assert.equal(await picker.inputValue(),'','new group must require a manual source selection');
+  assert.equal(await picker.locator('option:checked').textContent(),'Выберите подписку…');
+  assert.equal(await check('.fbs-table-body tr[data-node]').count(),0);
+  await picker.selectOption(source.id);
+  await page.waitForFunction(()=>document.querySelectorAll('.fbs-table-body tr[data-node]').length===3);
+  assert.equal(await picker.inputValue(),source.id);
   await check('input[name=name]').fill('RUSSIA-TEST');
   await check('.fbs-keep').fill('🇷🇺');
   await check('#outbound-apply').click();
@@ -64,6 +70,10 @@ try{
   assert(creation,JSON.stringify(writes));assert.equal(creation.body.group,'RUSSIA-TEST');assert.equal(creation.body.filterKeep,'🇷🇺');assert.equal(creation.body.sourceId,source.id);
   assert.equal(creation.body.settings.interval,300);
   const writeCount=writes.filter(w=>w.url==='/api/mihomo/subscriptions/groups').length;assert.equal(writeCount,1);
+  await page.locator('#mihomo-add-sub-balancer').click();
+  assert.equal(await picker.inputValue(),'','reopening must clear previous source');
+  assert.equal(await check('.fbs-table-body tr[data-node]').count(),0);
+  await check('#mihomo-outbound-close').click();
   const paint=await page.locator('#mihomo-save').evaluate(e=>{const s=getComputedStyle(e);return {color:s.webkitTextFillColor,bg:s.backgroundColor,opacity:s.opacity}});
   assert.equal(paint.color,'rgb(255, 255, 255)');assert.equal(paint.opacity,'1');
   console.log('PASS real editor',width,'close, visible Save, 3 stable rows with RU selected, one shared creation POST');

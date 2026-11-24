@@ -43,7 +43,7 @@ assert.ok(css.includes('#mihomo-rule-modal .mihomo-unified-rule-editor'));
 assert.ok(css.includes('#mihomo-rule-modal #mihomo-rule-payload-field[hidden]'));
 assert.ok(css.includes('#mihomo-rule-modal #mihomo-rule-advanced[hidden]'));
 const index=fs.readFileSync('web/index.html','utf8');
-assert.ok(index.includes('static/mihomo-settings.js?v=135'));
+assert.ok(index.includes('static/mihomo-settings.js?v=136'));
 assert.ok(index.includes('static/mihomo-settings.css?v=132'));
 const i18n=fs.readFileSync('web/i18n.js','utf8');
 assert.ok(i18n.includes("'mh.ruleConditionsTitle':'Условия'"));

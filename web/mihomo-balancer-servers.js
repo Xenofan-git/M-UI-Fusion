@@ -47,7 +47,7 @@
  const setStatus=(message,bad=false)=>{const target=q('.fbs-status',panel);if(target){target.textContent=message;target.classList.toggle('bad',bad);}};
  function selectedSources(group,subs){
    const set=new Set(group.subscriptionIds||[]);
-   for(const src of subs||[])if(src.group===group.name)set.add(src.id);
+   for(const src of subs||[])if(group.name&&src.group===group.name)set.add(src.id);
    return Array.from(set);
  }
  // A live browser can have a single linked subscription in group metadata
