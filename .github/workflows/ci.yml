@@ -60,8 +60,6 @@ jobs:
         run: node tests/source-catalog-group-picker.cjs
       - name: Verify standalone subscription inventory and orphaned subscription groups
         run: node tests/source-standalone-and-orphan.cjs
-      - name: Verify subscription-owned update controls and purple theme visibility
-        run: node tests/subscription-update-ownership.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
       - name: Test centered Mihomo Save and Restart operation dialogs

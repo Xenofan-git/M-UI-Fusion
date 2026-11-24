@@ -543,18 +543,18 @@
    wrapper.innerHTML=
    '<div class="fbs-heading"><div><strong>'+(context.subscribed?'Серверы подписки':'Серверы балансировщика')+'</strong><p class="fbs-count"></p></div></div>'+
    '<div class="fbs-candidate-line">Кандидат балансировщика: <strong class="fbs-candidate">Определяется…</strong></div>'+
-   '<div class="fbs-toolbar"><input type="search" class="fbs-search" placeholder="⌕ Поиск серверов, стран и флагов…"><button type="button" class="outline-btn fbs-probe">↻ Опросить серверы</button><button type="button" class="outline-btn fbs-stop" hidden>Остановить</button></div>'+
+   '<div class="fbs-toolbar"><input type="search" class="fbs-search" placeholder="⌕ Поиск серверов, стран и флагов…"><button type="button" class="outline-btn fbs-refresh-source">⇩ Обновить подписку</button><button type="button" class="outline-btn fbs-probe">↻ Опросить серверы</button><button type="button" class="outline-btn fbs-stop" hidden>Остановить</button></div>'+
    '<div class="fbs-table-wrap"><table class="fbs-table"><thead><tr><th><label><input type="checkbox" class="fbs-toggle-all"> Все</label></th><th>Протокол</th><th><button type="button" data-sort="name">Имя ↕</button></th><th><button type="button" data-sort="ping">Пинг ↕</button></th><th><button type="button" data-sort="latency">Задержка ↕</button></th></tr></thead><tbody class="fbs-table-body"></tbody></table></div>'+
    '<div class="fbs-toolbar fbs-table-actions"><button type="button" class="outline-btn fbs-exclude-offline">Исключить недоступные</button><button type="button" class="outline-btn fbs-select-all">Выбрать все</button><button type="button" class="outline-btn fbs-select-none">Снять все</button><select class="fbs-filter-status" aria-label="Фильтр состояния"><option value="all">Все серверы</option><option value="online">Только online</option><option value="offline">Только offline</option></select><span class="fbs-show-count"></span></div>'+
    '<p class="fbs-status" role="status">Получение состояния Mihomo…</p>'+
-   '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="filters" aria-pressed="true" title="Фильтры этого балансировщика">'+tabIcon('filter')+'<span>Фильтры</span></button>'+
+   '<div class="fbs-options"><button type="button" class="fbs-tab active" data-sub-pane="update" aria-pressed="true" title="Настройки автоматического обновления подписки — открыть вкладку">'+tabIcon('refresh')+'<span>Обновление</span></button><button type="button" class="fbs-tab" data-sub-pane="filters" aria-pressed="false" title="Открыть настройки фильтрации серверов">'+tabIcon('filter')+'<span>Фильтры</span></button>'+
    '<div class="fbs-settings-source">Источник: <select class="fbs-source" aria-label="Подписка для настройки"></select></div>'+
-
-   '<div class="fbs-panel" data-sub-panel="filters"><div class="fbs-filter-fields"><label><span class="fbs-filter-field-title"><span>Оставить только</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">'+addCountryIcon+'Добавить страну</button></label><label><span class="fbs-filter-field-title"><span>Исключить</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">'+addCountryIcon+'Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
-   '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить фильтры балансировщика</button><span class="fbs-save-hint">Автообновление источника и его интервал настраиваются только во вкладке «Подписки».</span></div></div>';
+   '<div class="fbs-panel" data-sub-panel="update"><label class="fbs-check"><input type="checkbox" class="fbs-auto"> Обновлять подписку автоматически</label><div class="fbs-interval"><label>Интервал: <input type="number" min="0" max="168" class="fbs-hours"> ч</label><label><input type="number" min="0" max="59" class="fbs-minutes"> м</label></div></div>'+
+   '<div class="fbs-panel" data-sub-panel="filters" hidden><div class="fbs-filter-fields"><label><span class="fbs-filter-field-title"><span>Оставить только</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-keep" rows="3" placeholder="Germany&#10;🇩🇪"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="keep">'+addCountryIcon+'Добавить страну</button></label><label><span class="fbs-filter-field-title"><span>Исключить</span><small>(одна строка = одно условие)</small></span><textarea class="fbs-drop" rows="3" placeholder="Россия&#10;Russia"></textarea><button type="button" class="outline-btn fbs-flag-picker" data-flag-for="drop">'+addCountryIcon+'Добавить страну</button></label></div><div class="fbs-country-menu" hidden><input type="search" class="fbs-country-search" placeholder="Поиск страны…"><div class="fbs-country-list"></div></div></div>'+
+   '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить настройки подписки</button><span class="fbs-save-hint">Фильтры сохраняются также при нажатии «Применить к конфигурации». Другие параметры группы — после «Сохранить».</span></div></div>';
    if(!context.subscribed){
      const toolbar=q('.fbs-toolbar',wrapper);
-
+     q('.fbs-refresh-source',wrapper).hidden=true;
      q('.fbs-options',wrapper).hidden=true;
      const picker=elt('div','fbs-manual-picker');
      picker.innerHTML='<button type="button" class="outline-btn fbs-add-toggle">＋ Добавить Outbound</button>'+
@@ -602,6 +602,18 @@
      for(const item of bad){selected.delete(item.name);if(context?.subscribed)selectionOverrides.set(item.name,false);}
      updateSelection();renderRows();setStatus('Исключено недоступных узлов: '+bad.length+'. Нажмите «Применить к конфигурации».');
    };
+   q('.fbs-refresh-source',el).onclick=async()=>{
+     if(probing){setStatus('Сначала завершите опрос',true);return;}
+     if(context?.isDirty?.()){setStatus('Сначала сохраните изменения настроек Mihomo',true);return;}
+     const id=selectedSources(context.group,context.subs);
+     if(!id.length){setStatus('Подписка не привязана',true);return;}
+     const button=q('.fbs-refresh-source',el);button.disabled=true;setStatus('Обновление подписки…');
+     try{
+       for(const sourceID of id)await request('/api/mihomo/subscriptions/'+encodeURIComponent(sourceID)+'/refresh',{method:'POST'});
+       await context.afterRefresh?.();
+       setStatus('Подписка обновлена. При необходимости переоткройте настройки балансировщика.');
+     }catch(error){setStatus(error.message,true);}finally{button.disabled=false;}
+   };
    q('.fbs-probe',el).onclick=probeServers;
    q('.fbs-stop',el).onclick=()=>{controller?.abort();setStatus('Опрос остановлен');};
    if(!context.subscribed){
@@ -640,11 +652,14 @@
          body.filterExclude!==(context.group.subscriptionFilterExclude||'');
        return changed?body:null;
      }
-     // Source-owned legacy groups save filter terms alone. The backend
-     // merges them with current source metadata under the subscription lock.
-     const body={id:sub.id,
+     const hours=Number(q('.fbs-hours',el).value),minutes=Number(q('.fbs-minutes',el).value);
+     const interval=hours*60+minutes;
+     if(!Number.isInteger(hours)||hours<0||hours>168||
+        !Number.isInteger(minutes)||minutes<0||minutes>59||
+        interval<5||interval>10080)throw Error('Интервал должен быть от 5 минут до 7 суток');
+     const body={...sub,enabled:q('.fbs-auto',el).checked,intervalMinutes:interval,
        filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value};
-     const modified=['filterKeep','filterExclude']
+     const modified=['enabled','intervalMinutes','filterKeep','filterExclude']
        .some(key=>(body[key]??'')!==(sub[key]??''));
      return modified?body:null;
    };
@@ -675,9 +690,8 @@
          context.group.subscriptionFilterKeep=change.filterKeep;
          context.group.subscriptionFilterExclude=change.filterExclude;
        }else{
-         await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id)+'/filters',{
-           method:'PUT',body:JSON.stringify({filterKeep:change.filterKeep,
-             filterExclude:change.filterExclude})
+         await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id),{
+           method:'PUT',body:JSON.stringify(change)
          });
          if(source)Object.assign(source,change);
        }
@@ -851,9 +865,16 @@
        ...sub,filterKeep:context.group.subscriptionFilterKeep||'',
        filterExclude:context.group.subscriptionFilterExclude||''
      }:sub);
+     q('.fbs-auto',el).checked=!!sub.enabled;
+     q('.fbs-hours',el).value=Math.floor((sub.intervalMinutes||1440)/60);
+     q('.fbs-minutes',el).value=(sub.intervalMinutes||1440)%60;
+     q('.fbs-auto',el).disabled=shared;
+     q('.fbs-hours',el).disabled=shared;
+     q('.fbs-minutes',el).disabled=shared;
+     q('.fbs-source-save',el).textContent=shared?'Сохранить фильтры балансировщика':'Сохранить настройки подписки';
      q('.fbs-save-hint',el).textContent=shared?
-       'Фильтры относятся только к этому балансировщику. Обновление самой подписки — во вкладке «Подписки».':
-       'Здесь сохраняются только фильтры группы. Автообновление и интервал изменяются во вкладке «Подписки».';
+       'Автообновление источника настраивается во вкладке «Подписки». Здесь фильтры относятся только к этому балансировщику.':
+       'Фильтры сохраняются также при нажатии «Применить к конфигурации».';
      q('.fbs-keep',el).value=value.filterKeep||'';
      q('.fbs-drop',el).value=value.filterExclude||'';
      previewRowOrder=null;lastPreviewInput=null;
@@ -868,10 +889,10 @@
    q('.fbs-source-save',el).onclick=async()=>{
      if(context?.isDirty?.()){setStatus('Сначала сохраните изменения в Mihomo Settings',true);return;}
      const button=q('.fbs-source-save',el);
-     button.disabled=true;setStatus('Сохранение фильтров балансировщика…');
+     button.disabled=true;setStatus('Сохранение фильтров и настроек подписки…');
      try{
        const changed=await saveSourceSettings({refreshAfter:true});
-       setStatus(changed?'Фильтры балансировщика сохранены. Переоткройте окно для актуального состава.':'Изменений для сохранения нет');
+       setStatus(changed?'Фильтры подписки сохранены. Переоткройте окно для актуального состава.':'Изменений для сохранения нет');
      }catch(error){setStatus(error.message,true);}
      finally{button.disabled=false;}
    };
@@ -922,7 +943,15 @@
      document.removeEventListener('keydown',onEscape);
    };
    countrySearch.oninput=renderCountryChoices;
-
+   for(const b of el.querySelectorAll('[data-sub-pane]'))b.onclick=()=>{
+     if(b.dataset.subPane!=='filters')closeCountryMenu();
+     for(const other of el.querySelectorAll('[data-sub-pane]')){
+       const active=other===b;
+       other.classList.toggle('active',active);
+       other.setAttribute('aria-pressed',String(active));
+     }
+     for(const page of el.querySelectorAll('[data-sub-panel]'))page.hidden=page.dataset.subPanel!==b.dataset.subPane;
+   };
  }
  async function probeServers(){
    if(!panel||probing)return;

@@ -631,37 +631,6 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 	switch {
 	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "refresh":
 		err = a.manager.refreshOutboundSubscription(r.Context(), current)
-	case r.Method == http.MethodPut && len(parts) == 2 && parts[1] == "filters":
-		// A legacy source-owned group edits ONLY source filter rules. The
-		// current enabled/interval/URL/name are read after subscriptionSyncMu
-		// is acquired; stale balancer forms cannot reset the catalog schedule.
-		if current.Group == "" {
-			err = errors.New("фильтры общего источника задаются в балансировщиках")
-			break
-		}
-		var input struct {
-			FilterKeep    string `json:"filterKeep"`
-			FilterExclude string `json:"filterExclude"`
-		}
-		if err = decodeJSON(r, &input); err != nil {
-			break
-		}
-		changes := current
-		changes.FilterKeep = input.FilterKeep
-		changes.FilterExclude = input.FilterExclude
-		changes, err = normalizeOutboundSubscription(changes)
-		if err == nil && (changes.FilterKeep != current.FilterKeep ||
-			changes.FilterExclude != current.FilterExclude) {
-			var body []byte
-			body, err = downloadOutboundSubscription(r.Context(), changes.URL)
-			if err == nil {
-				var nodes []MihomoOutbound
-				nodes, err = parseOutboundSubscription(body)
-				if err == nil {
-					err = a.manager.commitOutboundSubscription(changes, nodes, false)
-				}
-			}
-		}
 	case r.Method == http.MethodPut && len(parts) == 1:
 		var changes OutboundSubscription
 		if err = decodeJSON(r, &changes); err == nil {

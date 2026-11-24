@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=138'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=137'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -89,15 +89,18 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.evaluate(()=>window.__serverDelay());
    await page.waitForFunction(n=>window.__serverCalls===n+1,beforeOverlap);
    await page.evaluate(()=>{window.fetch=window.__baseFetch;});
-   assert.equal(await page.locator('.fbs-tab .fbs-tab-icon').count(),1);
-   assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Фильтры');
-   assert.equal(await page.locator('[data-sub-pane="update"]').count(),0);
-   assert.equal(await page.locator('[data-sub-panel="update"]').count(),0);
-   assert.equal(await page.locator('.fbs-auto').count(),0);
-   assert.equal(await page.locator('.fbs-hours').count(),0);
-   assert.equal(await page.locator('.fbs-minutes').count(),0);
-   assert.equal(await page.locator('.fbs-refresh-source').count(),0);
-   assert(await page.locator('[data-sub-panel="filters"]').isVisible());
+   assert.equal(await page.locator('.fbs-tab .fbs-tab-icon').count(),2);
+   assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Обновление');
+   assert.equal((await page.locator('.fbs-tab').nth(1).innerText()).trim(),'Фильтры');
+   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'true');
+   assert.match(await page.locator('[data-sub-pane="update"]').getAttribute('title'),/настройки автоматического обновления/i);
+   await page.locator('[data-sub-pane="filters"]').click();
+   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'false');
+   assert.equal(await page.locator('[data-sub-pane="filters"]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.locator('[data-sub-panel="update"]').isHidden(),true);
+   await page.locator('[data-sub-pane="update"]').click();
+   assert.equal(await page.locator('[data-sub-panel="update"]').isVisible(),true);
+   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('.fbs-table-body > tr[data-node]').count(),2);
    for(const selector of ['.fbs-node-name','.fbs-candidate-label']){
      const selection=await page.locator(selector).first().evaluate(el=>{
@@ -321,12 +324,10 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    });
    assert.equal(await page.evaluate(()=>window.__saveResult),true);
    const stored=await page.evaluate(()=>window.__lastSourcePUT);
-   assert.match(stored.url,/api\/mihomo\/subscriptions\/sub1\/filters$/);
+   assert.match(stored.url,/api\/mihomo\/subscriptions\/sub1$/);
    assert.equal(stored.body.filterKeep,'🇵🇱');
    assert.equal(stored.body.filterExclude,'🇷🇺');
-   assert.equal(Object.hasOwn(stored.body,'intervalMinutes'),false,'balancer must never submit source schedule');
-   assert.equal(Object.hasOwn(stored.body,'enabled'),false,'balancer must never submit auto-refresh toggle');
-   assert.equal(Object.hasOwn(stored.body,'url'),false,'balancer must never submit source URL');
+   assert.equal(stored.body.intervalMinutes,1440);
    assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
    const appliedRows=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>({
      name:r.dataset.node,filtered:r.classList.contains('fbs-row-filtered')
