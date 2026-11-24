@@ -521,15 +521,9 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 		sub.ID = "sub-" + sub.ID[:12]
 		a.manager.subscriptionSyncMu.Lock()
 		defer a.manager.subscriptionSyncMu.Unlock()
-		a.manager.mu.Lock()
-		for _, other := range a.manager.state.OutboundSubscriptions {
-			if other.Name == sub.Name || other.URL == sub.URL {
-				a.manager.mu.Unlock()
-				writeJSON(w, 409, apiResponse{Message: "подписка с таким именем или URL уже существует"})
-				return
-			}
-		}
-		a.manager.mu.Unlock()
+		// The same provider URL (and its display name) may feed independent
+		// balancers with different filters. Group names and source IDs, not
+		// provider URLs, must be unique to protect existing outbounds.
 		// Validate and import first. Errors do not add an empty/misconfigured
 		// subscription to state, and never damage any existing proxy.
 		data, err := downloadOutboundSubscription(r.Context(), sub.URL)
@@ -596,16 +590,8 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 			changes.FilteredNodes = current.FilteredNodes
 			changes, err = normalizeOutboundSubscription(changes)
 		}
-		if err == nil {
-			a.manager.mu.Lock()
-			for _, other := range a.manager.state.OutboundSubscriptions {
-				if other.ID != changes.ID && (other.Name == changes.Name || other.URL == changes.URL) {
-					err = errors.New("подписка с таким именем или URL уже существует")
-					break
-				}
-			}
-			a.manager.mu.Unlock()
-		}
+		// Editing a source must not be blocked by another source using the
+		// same URL or display name. IDs still separate their imported nodes.
 		if err == nil {
 			// Renaming the source is allowed; existing nodes change name in a
 			// single validated transaction, with a conservative dependency check.
@@ -696,9 +682,11 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 	before := m.state
 	if isNew {
 		for _, other := range before.OutboundSubscriptions {
-			if other.Name == sub.Name || other.URL == sub.URL {
+			// Different subscription records must always have distinct IDs;
+			// provider URLs and subscription labels may intentionally match.
+			if other.ID == sub.ID {
 				m.mu.Unlock()
-				return errors.New("подписка уже существует")
+				return errors.New("ID подписки уже существует")
 			}
 		}
 	}
