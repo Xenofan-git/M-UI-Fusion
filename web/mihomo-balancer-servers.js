@@ -202,7 +202,7 @@
    // runtime snapshot omits/mislabels sourceId. With multiple providers,
    // keep the source boundary strict.
    if(!context.retained&&!onlyThisSource&&item.sourceId&&item.sourceId!==sourceId)return true;
-   if(!context.retained&&!onlyThisSource&&!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
+   if(!context.retained&&!onlyThisSource&&!item.sourceId&&(!source||!item.name.startsWith((source.nodeNamePrefix||source.name)+' | ')))return true;
    if(!keep.length&&!drop.length)return true;
    const flags=window.MUICountryFlags;
    const rawCode=String(item.countryCode||'').trim().toUpperCase();
@@ -533,7 +533,7 @@
        const existing=new Set(items.map(n=>n.name));
        for(const node of response.nodes||[]){
          if(node.included)continue;
-         const name=sub.name+' | '+node.name;
+         const name=(sub.nodeNamePrefix||sub.name)+' | '+node.name;
          if(existing.has(name)){
            const prior=items.find(n=>n.name===name);
            if(prior&&node.key)prior.key=node.key;
@@ -1018,7 +1018,7 @@
    if(!label)return false;
    const ids=selectedSources(group,subs);
    const retained=ids.length===0&&(!!group.subscriptionManaged||!!group.subscriptionRetainedMembers?.length||
-     ((group.proxies||[]).length>0&&subs.some(source=>source.name&&(group.proxies||[]).every(name=>name.startsWith(source.name+' | ')))));
+     ((group.proxies||[]).length>0&&subs.some(source=>source.name&&(group.proxies||[]).every(name=>name.startsWith((source.nodeNamePrefix||source.name)+' | ')))));
    const subscribed=ids.length>0||retained||creating;
    const nativeSelect=form.elements.proxies;
    nativeSelect.classList.add('fbs-native-members');
@@ -1042,7 +1042,7 @@
      context.previewNodes=[];
      for(const src of subs.filter(x=>ids.includes(x.id))){
        for(const n of src.filteredNodes||[]){
-         const name=src.name+' | '+n.name;
+         const name=(src.nodeNamePrefix||src.name)+' | '+n.name;
          if(items.some(x=>x.name===name))continue;
          const row={name,protocol:n.protocol,countryCode:n.countryCode,sourceId:src.id,key:n.key||'',member:false,filtered:true,previewOnly:true,alive:null,delay:0,ping:0};
          context.previewNodes.push(row);items.push(row);

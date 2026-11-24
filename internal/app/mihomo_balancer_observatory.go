@@ -103,9 +103,9 @@ func retainedBalancerNodes(state State, group MihomoOutbound) ([]MihomoOutbound,
 	known := group.SubscriptionManaged
 	if !known {
 		for _, source := range state.OutboundSubscriptions {
-			same := source.Name != ""
+			same := subscriptionNodePrefix(source) != ""
 			for _, name := range candidates {
-				if !strings.HasPrefix(name, source.Name+" | ") {
+				if !strings.HasPrefix(name, subscriptionNodePrefix(source)+" | ") {
 					same = false
 					break
 				}

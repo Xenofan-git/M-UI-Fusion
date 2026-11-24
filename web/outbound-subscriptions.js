@@ -125,7 +125,7 @@
         Number(!!a.group)-Number(!!b.group)):[];
       renderList();status('Подписок: '+subs.length);
       window.dispatchEvent(new CustomEvent('mui-balancer-subscriptions-loaded',{
-        detail:{subscriptions:subs.map(source=>({id:source.id,group:source.group,name:source.name}))}
+        detail:{subscriptions:subs.map(source=>({id:source.id,group:source.group,name:source.name,nodeNamePrefix:source.nodeNamePrefix}))}
       }));
     }
     catch(error){status(error.message,true);}
@@ -498,6 +498,7 @@
     }
     form._loadSourceInventory=loadSourceInventory;
     form._resetInventory=()=>{inventoryRows=[];inventorySearch.value='';inventorySort='name';inventoryAsc=true;renderInventory();};
+    const saveError=make('p','outsub-form-error');saveError.id='outsub-form-error';saveError.setAttribute('role','alert');saveError.hidden=true;form.appendChild(saveError);
     const buttons=make('div','outsub-actions');
     const cancel=make('button','outline-btn','Отмена');cancel.type='button';cancel.onclick=()=>overlay.classList.remove('open');
     const save=make('button','primary-btn outsub-submit-primary','Создать балансировщик из подписки');save.id='outsub-submit';save.type='submit';
@@ -506,8 +507,9 @@
     overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.classList.remove('open');});
     form.onsubmit=async event=>{
       event.preventDefault();
+      saveError.hidden=true;saveError.textContent='';
       if(window.MUIMihomoSettings?.isDirty?.()){
-        status('Сначала сохраните изменения в Mihomo Settings',true);return;
+        saveError.textContent='Сначала сохраните изменения в настройках Mihomo';saveError.hidden=false;status(saveError.textContent,true);return;
       }
       const creatingGroup=form.dataset.mode==='balancer';
       save.disabled=true;status(creatingGroup?'Создание балансировщика из выбранной подписки…':'Сохранение источника подписки…');
@@ -535,13 +537,9 @@
             name:form.elements.name.value.trim(),
             url:form.elements.url.value.trim(),
             enabled:form.elements.enabled.checked,
-            intervalMinutes:Number(form.elements.intervalMinutes.value),
-            group:form.elements.group.value||'',
-            filterKeep:form.elements.filterKeep.value,
-            filterExclude:form.elements.filterExclude.value,
-            excludedNodeKeys:Array.from(excluded),
-            createGroup:false
+            intervalMinutes:Number(form.elements.intervalMinutes.value)
           };
+          if(isNew)Object.assign(body,{group:'',filterKeep:'',filterExclude:'',excludedNodeKeys:[],createGroup:false});
           await request('/api/mihomo/subscriptions'+(isNew?'':'/'+encodeURIComponent(form.dataset.id)),{
             method:isNew?'POST':'PUT',body:JSON.stringify(body)
           });
@@ -551,7 +549,7 @@
         status(creatingGroup?'Балансировщик создан. Используются общие узлы источника.':'Подписка сохранена');
       }catch(error){
         status(error.message,true);
-        q('#outsub-preview-count').textContent='Ошибка сохранения: '+error.message;
+        saveError.textContent='Ошибка сохранения: '+error.message;saveError.hidden=false;
       }finally{save.disabled=false;}
       if(saved){
         // The server commit has already succeeded. A disconnected panel
@@ -568,9 +566,10 @@
   }
   function openForm(sub,mode='source'){
     const overlay=modal(),form=q('#outsub-form',overlay);
-    form.reset();previewNodes=[];excluded=new Set(sub?.excludedNodeKeys||[]);loadedURL='';
+    form.reset();q('#outsub-form-error',form).hidden=true;q('#outsub-form-error',form).textContent='';previewNodes=[];excluded=new Set(sub?.excludedNodeKeys||[]);loadedURL='';
     form.dataset.id=sub?.id||'';
     form.dataset.mode=mode;
+    overlay.dataset.mode=mode;
     const creatingGroup=mode==='balancer';
     const isNew=!sub;
     q('#outsub-title',overlay).textContent=creatingGroup?'Добавить балансировщик из подписки':

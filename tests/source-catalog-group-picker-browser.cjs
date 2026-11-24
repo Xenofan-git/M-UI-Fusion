@@ -35,6 +35,11 @@ const css=fs.readFileSync('web/outbound-subscriptions.css','utf8');
          const sub={...payload,id:'sub-catalog',nodeCount:3,lastUpdated:'2026-11-24T12:00:00Z'};
          window.__sources.push(sub);return json(sub);
        }
+       if(method==='PUT'&&url.endsWith('/api/mihomo/subscriptions/sub-catalog')){
+         if(Object.keys(payload).sort().join(',')!=='enabled,intervalMinutes,name,url')return {ok:false,status:400,json:async()=>({message:'unexpected field'})};
+         if(payload.name==='Reject')return {ok:false,status:400,json:async()=>({message:'Test save failure'})};
+         Object.assign(window.__sources[0],payload,{nodeNamePrefix:'QuatroVPN'});return json({ok:true});
+       }
        if(method==='GET'&&url.endsWith('/api/mihomo/subscriptions/sub-catalog/nodes')){
          return json({nodes:[
            {name:'LTE Россия',key:'node-ru-01',countryCode:'RU',flag:'🇷🇺',protocol:'vless',included:true},
@@ -75,6 +80,22 @@ const css=fs.readFileSync('web/outbound-subscriptions.css','utf8');
    assert.equal(await modal.locator('#outsub-source-inventory thead th').count(),4);
    await modal.locator('#outsub-source-inventory-search').fill('Germany');
    assert.equal(await modal.locator('#outsub-source-inventory-body tr').count(),1);
+   await modal.locator('[name="name"]').fill('Reject');
+   await modal.locator('#outsub-submit').click();
+   await page.waitForFunction(()=>!document.querySelector('#outsub-form-error').hidden);
+   assert(await modal.locator('#outsub-form-error').isVisible());
+   assert((await modal.locator('#outsub-form-error').innerText()).includes('Test save failure'));
+   await modal.locator('[name="name"]').fill('Quatro-VPN');
+   await modal.locator('[name="intervalMinutes"]').fill('720');
+   await modal.locator('[name="enabled"]').uncheck();
+   await modal.locator('#outsub-submit').click();
+   await page.waitForFunction(()=>!document.querySelector('#outsub-modal').classList.contains('open'));
+   await page.waitForFunction(()=>document.querySelector('.outsub-card h3').textContent==='Quatro-VPN');
+   await page.getByRole('button',{name:'Параметры подписки'}).click();
+   assert.equal(await modal.locator('[name="name"]').inputValue(),'Quatro-VPN');
+   assert.equal(await modal.locator('[name="intervalMinutes"]').inputValue(),'720');
+   assert.equal(await modal.locator('[name="enabled"]').isChecked(),false);
+   assert.equal(await modal.locator('#outsub-form-error').isVisible(),false);
    await modal.locator('.outsub-actions button.outline-btn').click();
    assert.equal(await modal.isVisible(),false);
    // Creation form: source list only, no URL, no auto-refresh per balancer.
@@ -83,13 +104,13 @@ const css=fs.readFileSync('web/outbound-subscriptions.css','utf8');
    const pickerButton=modal.locator('#outsub-source-open');
    assert(await pickerButton.isVisible());
    assert.equal(await picker.isVisible(),false,'native select is backing only');
-   assert((await pickerButton.innerText()).includes('QuatroVPN'),'single source auto-selected');
+   assert((await pickerButton.innerText()).includes('Quatro-VPN'),'single source auto-selected');
    assert.equal(await modal.locator('[name="url"]').isVisible(),false);
    assert.equal(await modal.locator('[name="enabled"]').isVisible(),false);
    assert.equal(await modal.locator('[name="intervalMinutes"]').isVisible(),false);
    assert.equal(await modal.locator('[name="name"]').isVisible(),false);
    assert(await modal.locator('[name="groupName"]').isVisible());
-   assert((await picker.locator('option').allTextContents()).some(x=>x.includes('QuatroVPN')));
+   assert((await picker.locator('option').allTextContents()).some(x=>x.includes('Quatro-VPN')));
    await pickerButton.click();
    assert(await modal.locator('#outsub-source-menu [data-source-id="sub-catalog"]').isVisible());
    await modal.locator('#outsub-source-menu [data-source-id="sub-catalog"]').click();

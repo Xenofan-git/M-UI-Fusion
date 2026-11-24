@@ -44,6 +44,7 @@ type FilteredSubscriptionNode struct {
 type OutboundSubscription struct {
 	ID               string                     `json:"id"`
 	Name             string                     `json:"name"`
+	NodeNamePrefix   string                     `json:"nodeNamePrefix,omitempty"` // Stable internal label, independent of the display name.
 	URL              string                     `json:"url"`
 	Enabled          bool                       `json:"enabled"`
 	IntervalMinutes  int                        `json:"intervalMinutes"`
@@ -315,11 +316,20 @@ func truncateSubscriptionName(raw string, maxBytes int) string {
 
 // Reserve at most 45 bytes for the subscription label. This keeps node
 // names readable while respecting the exact normalization limit.
-func subscriptionOutboundName(source OutboundSubscription, nodeName string, ordinal int) string {
-	label := truncateSubscriptionName(safeSubscriptionNamePart(source.Name), 45)
+func subscriptionNodePrefix(source OutboundSubscription) string {
+	raw := source.NodeNamePrefix
+	if raw == "" {
+		raw = source.Name
+	}
+	label := truncateSubscriptionName(safeSubscriptionNamePart(raw), 45)
 	if label == "" {
 		label = "Subscription"
 	}
+	return label
+}
+
+func subscriptionOutboundName(source OutboundSubscription, nodeName string, ordinal int) string {
+	label := subscriptionNodePrefix(source)
 	name := safeSubscriptionNamePart(nodeName)
 	if name == "" {
 		name = fmt.Sprintf("Node %d", ordinal)
@@ -539,6 +549,7 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 			return
 		}
 		input.ID = ""
+		input.NodeNamePrefix = ""
 		sub, err := normalizeOutboundSubscription(input.OutboundSubscription)
 		if err != nil {
 			writeJSON(w, 400, apiResponse{Message: err.Error()})
@@ -633,9 +644,27 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "refresh":
 		err = a.manager.refreshOutboundSubscription(r.Context(), current)
 	case r.Method == http.MethodPut && len(parts) == 1:
-		var changes OutboundSubscription
-		if err = decodeJSON(r, &changes); err == nil {
+		// Preserve fields omitted by the settings form; older clients sent the
+		// creation-only flag even on PUT. Accept false, never create a group here.
+		input := struct {
+			OutboundSubscription
+			CreateGroup bool `json:"createGroup"`
+		}{OutboundSubscription: current}
+		input.ExcludedNodeKeys = append([]string(nil), current.ExcludedNodeKeys...)
+		input.FilteredNodes = append([]FilteredSubscriptionNode(nil), current.FilteredNodes...)
+		err = decodeJSON(r, &input)
+		changes := input.OutboundSubscription
+		if err == nil && input.CreateGroup {
+			err = errors.New("создание группы недоступно при редактировании подписки")
+		}
+		if err == nil {
 			changes.ID = current.ID
+			// Display-name edits do not rename existing Mihomo objects or change
+			// their names on the next scheduled provider refresh.
+			changes.NodeNamePrefix = current.NodeNamePrefix
+			if changes.Name != current.Name {
+				changes.NodeNamePrefix = subscriptionNodePrefix(current)
+			}
 			changes.LastAttempt = current.LastAttempt
 			changes.LastUpdated = current.LastUpdated
 			changes.LastError = current.LastError
@@ -647,9 +676,9 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 		// Editing a source must not be blocked by another source using the
 		// same URL or display name. IDs still separate their imported nodes.
 		if err == nil {
-			// Renaming the source is allowed; existing nodes change name in a
-			// single validated transaction, with a conservative dependency check.
-			if changes.URL != current.URL || changes.Name != current.Name || changes.Group != current.Group ||
+			// A display-name/interval edit is metadata-only, even offline.
+			// URL and legacy filter changes still require validated reconciliation.
+			if changes.URL != current.URL || changes.Group != current.Group ||
 				changes.FilterKeep != current.FilterKeep || changes.FilterExclude != current.FilterExclude ||
 				!slices.Equal(changes.ExcludedNodeKeys, current.ExcludedNodeKeys) {
 				var body []byte

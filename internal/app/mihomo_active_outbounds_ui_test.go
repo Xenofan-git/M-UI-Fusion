@@ -34,14 +34,14 @@ func TestActiveOutboundColumnKeepsCurrentWhileDelayTestMayFail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(routes), "mihomo-settings.js?v=137") {
+	if !strings.Contains(string(routes), "mihomo-settings.js?v=138") {
 		t.Fatal("outbounds view is not using the latest flag-stable UI")
 	}
 	css, err := webFS.ReadFile("web/mihomo-settings.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "width:16px;height:11px") {
-		t.Fatal("current outbound flag size did not change to 16x11")
+	if !strings.Contains(string(css), "width:18px;height:12px") {
+		t.Fatal("current outbound flag size did not change to 18x12")
 	}
 }

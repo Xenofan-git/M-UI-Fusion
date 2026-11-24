@@ -795,3 +795,79 @@ func TestLegacyCatalogPromotionKeepsForeignAndCreatesRussia(t *testing.T) {
 		}
 	}
 }
+
+func TestSubscriptionEditPreservesNodeNamesAndReferences(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-edit", Name: "old-provider", URL: "https://127.0.0.1/never-download", Enabled: true, IntervalMinutes: 1440}
+	raw := []MihomoOutbound{subscriptionSS("Germany", "de.example"), subscriptionSS("Russia", "ru.example")}
+	if err := m.commitOutboundSubscription(sub, raw, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.commitSharedSubscriptionGroup(sub.ID, "FOREIGN", "url-test", "Germany", "", nil, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.commitSharedSubscriptionGroup(sub.ID, "RUSSIA", "url-test", "Russia", "", nil, true); err != nil {
+		t.Fatal(err)
+	}
+	m.state.RoutingRules = []MihomoRoutingRule{{ID: "direct-node", Type: "DOMAIN", Payload: "test.example", Target: "old-provider | Germany"}, {ID: "match", Type: "MATCH", Target: "FOREIGN"}}
+	before := m.state
+	config, err := renderStateConfig(before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &App{manager: m}
+	put := func(payload string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("PUT", "/api/mihomo/subscriptions/"+sub.ID, strings.NewReader(payload))
+		w := httptest.NewRecorder()
+		app.handleOutboundSubscriptionAction(w, r)
+		return w
+	}
+	w := put(`{"name":"Quatro-VPN","intervalMinutes":720,"enabled":false,"createGroup":false}`)
+	if w.Code != 200 {
+		t.Fatalf("edit failed: %d %s", w.Code, w.Body.String())
+	}
+	edited := m.state.OutboundSubscriptions[0]
+	if edited.Name != "Quatro-VPN" || edited.NodeNamePrefix != "old-provider" || edited.URL != sub.URL || edited.ID != sub.ID || edited.Enabled || edited.IntervalMinutes != 720 {
+		t.Fatal("metadata incorrect")
+	}
+	if edited.LastUpdated != before.OutboundSubscriptions[0].LastUpdated || edited.NodeCount != 2 {
+		t.Fatal("rename changed import metadata")
+	}
+	if !reflect.DeepEqual(before.Outbounds, m.state.Outbounds) || !reflect.DeepEqual(before.RoutingRules, m.state.RoutingRules) {
+		t.Fatal("rename changed routing or members")
+	}
+	nextConfig, err := renderStateConfig(m.state)
+	if err != nil || !bytes.Equal(config, nextConfig) {
+		t.Fatal("rename changed core config", err)
+	}
+	w = put(`{"name":"Another","url":"file:///etc/passwd"}`)
+	if w.Code == 200 || m.state.OutboundSubscriptions[0].Name != "Quatro-VPN" {
+		t.Fatal("invalid URL committed")
+	}
+	w = put(`{"name":"Another","url":"https://127.0.0.1/new"}`)
+	if w.Code == 200 || m.state.OutboundSubscriptions[0].URL != sub.URL {
+		t.Fatal("failed provider update committed")
+	}
+	w = put(`{"createGroup":true}`)
+	if w.Code == 200 {
+		t.Fatal("creation flag accepted")
+	}
+	reloaded := &CoreManager{dataDir: m.dataDir}
+	if err := reloaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.state.OutboundSubscriptions[0].NodeNamePrefix != "old-provider" {
+		t.Fatal("prefix not persisted")
+	}
+	if err := m.commitOutboundSubscription(edited, raw, false); err != nil {
+		t.Fatal("refresh after rename failed:", err)
+	}
+	for _, g := range m.state.Outbounds {
+		if g.Kind == "proxy" && !strings.HasPrefix(g.Name, "old-provider | ") {
+			t.Fatal("internal node name changed on refresh")
+		}
+		if g.Kind == "group" && len(g.Proxies) != 1 {
+			t.Fatal("group membership changed on refresh")
+		}
+	}
+}

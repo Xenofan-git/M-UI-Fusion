@@ -147,7 +147,7 @@
     const groupEntry=typeof draft==='undefined'?null:draft?.outbounds?.find(x=>x.kind==='group'&&x.name===groupName);
     const linked=new Set(groupEntry?.subscriptionIds||[]);
     const fromKnownSubscription=[...sourceGroups,...cachedSources].some(sub=>
-      String(sub?.name||'').trim().toLowerCase()===provider&&
+      String(sub?.nodeNamePrefix||sub?.name||'').trim().toLowerCase()===provider&&
       (String(sub.group||'').toLowerCase()===group||linked.has(sub.id))
     );
     // Only remove a *known provider* prefix, never a protocol/region prefix
@@ -300,7 +300,7 @@
     const members=item.proxies||[];
     if(!members.length)return false;
     const sources=[...(app.state?.state?.outboundSubscriptions||[]),...balancerSubscriptions]
-      .map(source=>source?.name).filter(Boolean);
+      .map(source=>source?.nodeNamePrefix||source?.name).filter(Boolean);
     return sources.some(name=>members.every(member=>String(member).startsWith(name+' | ')));
   }
   function visibleGroupPeers(item){

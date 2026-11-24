@@ -1,6 +1,8 @@
 package app
 
 import (
+	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -45,15 +47,16 @@ func TestMihomoTabIconsAreDistinctAndConsistent(t *testing.T) {
 	begin := strings.Index(bar, `data-mihomo-tab="subscriptions"`)
 	end := strings.Index(bar[begin:], `</button>`)
 	subscribed := bar[begin : begin+end]
-	if !strings.Contains(subscribed, `<circle cx="12" cy="12" r="8.7"`) ||
-		!strings.Contains(subscribed, `M12 6.2v9.1`) {
-		t.Fatal("subscription icon must be a ring with a downward arrow")
-	}
 	begin = strings.Index(bar, `data-mihomo-tab="balancers"`)
 	end = strings.Index(bar[begin:], `</button>`)
 	balanced := bar[begin : begin+end]
 	if !strings.Contains(balanced, `M20 9a8.4`) || !strings.Contains(balanced, `M4 15a8.4`) {
 		t.Fatal("balancer glyph must have two circulating arrows")
+	}
+	paths := regexp.MustCompile(`<path d="([^"]+)"`)
+	want := append(paths.FindAllString(balanced, -1), `<path d="M12 8v8m-3-3 3 3 3-3"`)
+	if !reflect.DeepEqual(paths.FindAllString(subscribed, -1), want) {
+		t.Fatal("subscription glyph must reuse the two circulating arrows and add a central downward arrow")
 	}
 	stylesheet, err := webFS.ReadFile("web/mihomo-settings.css")
 	if err != nil {

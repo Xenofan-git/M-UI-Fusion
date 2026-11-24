@@ -415,3 +415,75 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
  .outsub-source-table th:nth-child(3),.outsub-source-table th:nth-child(4){width:58px}
  .outsub-source-inventory-head{flex-wrap:wrap}
 }
+
+/* Subscription settings: muted section cards and solid table header,
+   consistent with the routing/balancer editor. */
+#outsub-modal[data-mode="source"]{
+ --sub-card:#eef4f2;--sub-field:#fff;--sub-edge:#b5c8c1;
+ --sub-ink:#243e36;--sub-muted:#51655d;--sub-accent:#17684f;
+ --sub-hover:#e3eeea;--sub-error:#982e2e;--sub-error-bg:#fbe9e7;
+}
+body.dark #outsub-modal[data-mode="source"],
+html[data-theme="dark"] #outsub-modal[data-mode="source"],
+html[data-theme="ultra-dark"] #outsub-modal[data-mode="source"]{
+ --sub-card:#24312e;--sub-field:#192421;--sub-edge:#526b61;
+ --sub-ink:#e2eee9;--sub-muted:#b3c6bd;--sub-accent:#84cfb0;
+ --sub-hover:#2c4139;--sub-error:#ffb8b3;--sub-error-bg:#442b2b;
+}
+html[data-color-skin] body #outsub-modal[data-mode="source"]{
+ --sub-card:var(--skin-soft);--sub-field:var(--skin-card);
+ --sub-edge:var(--skin-line);--sub-ink:var(--skin-text);
+ --sub-muted:var(--skin-muted);--sub-accent:var(--skin-accent);
+ --sub-hover:var(--skin-hover);
+}
+html[data-color-skin="ivory"] body #outsub-modal[data-mode="source"]{
+ --sub-accent:#75471e;--sub-error:#982e2e;--sub-error-bg:#fbe9e7;
+}
+html[data-color-skin="graphite"] body #outsub-modal[data-mode="source"],
+html[data-color-skin="emerald"] body #outsub-modal[data-mode="source"],
+html[data-color-skin="aurora"] body #outsub-modal[data-mode="source"]{
+ --sub-error:#ffb8b3;--sub-error-bg:#442b2b;
+}
+html body #outsub-modal[data-mode="source"] #outsub-form label{
+ color:var(--sub-ink)!important;
+}
+html body #outsub-modal[data-mode="source"] #outsub-form input:not([type=checkbox]),
+html body #outsub-modal[data-mode="source"] #outsub-form select{
+ background:var(--sub-field)!important;color:var(--sub-ink)!important;
+ -webkit-text-fill-color:var(--sub-ink)!important;
+ border:1px solid var(--sub-edge)!important;border-radius:8px!important;
+}
+html body #outsub-modal[data-mode="source"] #outsub-form input:focus{
+ border-color:var(--sub-accent)!important;outline:1px solid var(--sub-accent)!important;
+}
+html body #outsub-modal[data-mode="source"] #outsub-form label.inline,
+html body #outsub-modal[data-mode="source"] #outsub-source-inventory{
+ padding:12px;border:1px solid var(--sub-edge)!important;
+ background:var(--sub-card)!important;border-radius:10px;
+}
+html body #outsub-modal[data-mode="source"] #outsub-form input[type=checkbox]{accent-color:var(--sub-accent)}
+html body #outsub-modal[data-mode="source"] #outsub-source-inventory h3{color:var(--sub-accent)!important}
+html body #outsub-modal[data-mode="source"] #outsub-source-inventory-count{color:var(--sub-muted)!important}
+html body #outsub-modal[data-mode="source"] .outsub-source-table-wrap{
+ background:var(--sub-field)!important;border-color:var(--sub-edge)!important;
+}
+html body #outsub-modal[data-mode="source"] .outsub-source-table{
+ color:var(--sub-ink)!important;border-collapse:separate;border-spacing:0;
+}
+html body #outsub-modal[data-mode="source"] .outsub-source-table thead th{
+ background:var(--sub-card)!important;z-index:2;border-color:var(--sub-edge)!important;transition:none!important;
+}
+html body #outsub-modal[data-mode="source"] .outsub-source-sort{
+ --lb-text:var(--sub-accent)!important;--lb-fill:var(--sub-card)!important;
+ color:var(--sub-accent)!important;-webkit-text-fill-color:var(--sub-accent)!important;
+ background:var(--sub-card)!important;opacity:1!important;box-shadow:none!important;
+}
+html body #outsub-modal[data-mode="source"] .outsub-source-table tbody td{
+ border-bottom:1px solid var(--sub-edge);color:var(--sub-ink)!important;
+}
+html body #outsub-modal[data-mode="source"] .outsub-source-table tbody tr:hover td{background:var(--sub-hover)}
+html body #outsub-modal[data-mode="source"] .outsub-source-table td.offline{color:var(--sub-error)!important}
+html body #outsub-modal[data-mode="source"] .outsub-source-table tbody tr:last-child td{border-bottom:0}
+#outsub-form-error{padding:10px 12px;border:1px solid currentColor;border-radius:8px;
+ color:var(--sub-error,#982e2e);background:var(--sub-error-bg,#fbe9e7);overflow-wrap:anywhere;font-size:13px}
+#outsub-form-error[hidden]{display:none!important}
