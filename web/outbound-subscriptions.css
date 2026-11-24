@@ -342,9 +342,9 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 /* Uniform SVG cap-height across subscribed-node preview and country picker. */
 .outsub-dialog .outsub-flag-svg,
 .outsub-dialog .outsub-country-chip .outsub-flag-svg{
-  width:16px;height:11px;
+  width:18px;height:12px;
 }
-.outsub-dialog .outsub-node-flag{width:20px;height:15px}
+.outsub-dialog .outsub-node-flag{width:22px;height:16px}
 
 
 /* The two independent dialogs share one form shell. Explicit hidden state
@@ -404,7 +404,7 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 .outsub-source-sort{border:0;background:transparent;color:var(--text-strong);font:inherit;cursor:pointer;text-align:left;padding:4px 0}
 .outsub-source-name{max-width:0}
 .outsub-source-name span{display:inline;white-space:normal;overflow-wrap:anywhere}
-.outsub-source-name .outsub-flag-svg{display:inline-block;vertical-align:middle;width:21px;height:15px;margin-right:8px}
+.outsub-source-name .outsub-flag-svg{display:inline-block;vertical-align:middle;width:23px;height:16px;margin-right:8px}
 .outsub-source-delay.offline{color:var(--red,#e55)}
 .outsub-source-table th:nth-child(3),.outsub-source-table th:nth-child(4),
 .outsub-source-table td:nth-child(3),.outsub-source-table td:nth-child(4){text-align:right}

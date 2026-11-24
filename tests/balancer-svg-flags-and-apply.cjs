@@ -43,7 +43,7 @@ assert(!js.includes('fbs-filter-guidance')&&!css.includes('.fbs-filter-guidance{
 assert.equal((js.match(/class="fbs-filter-field-title"/g)||[]).length,2,'both field titles should carry inline guidance');
 assert.equal((js.match(/\(одна строка = одно условие\)/g)||[]).length,2,'every field needs exact inline hint');
 assert(css.includes('.fbs-filter-field-title small{'),'inline hint should use muted label styling');
-assert(css.includes('width:16px;height:11px'));
+assert(css.includes('width:18px;height:12px'));
 assert(subsCSS.includes('.outsub-dialog .outsub-flag-svg,'));
 assert(editor.includes("openMihomoStatusDialog('apply')"));
 assert(editor.includes("dialog?.set('success',muiT('mh.operationApplyReady'))"));
@@ -54,7 +54,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','141'],['mihomo-settings.js','136'],['mihomo-settings.css','132'],
- ['outbound-subscriptions.css','122'],['i18n.js','123'],['i18n-locales.js','119']
+ ['mihomo-balancer-servers.js','141'],['mihomo-settings.js','136'],['mihomo-settings.css','133'],
+ ['outbound-subscriptions.css','123'],['i18n.js','123'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

@@ -14,7 +14,7 @@ assert(render.includes('button.disabled=!!reason'), 'button state still responds
 assert(render.includes('paintActiveGroupResults()'), 'current outbound still updates in-place');
 assert(!render.includes('groupResultLabel(item.name)'), 'volatile current name must not invalidate structural cache');
 assert(!render.includes('fmt(app.state?.state?.outboundTraffic'), 'volatile traffic must not invalidate structural cache');
-assert(css.includes('width:16px;height:11px'), 'flag should be smaller');
+assert(css.includes('width:18px;height:12px'), 'flag should be slightly enlarged');
 assert(html.includes('static/mihomo-settings.js?v=136'));
-assert(html.includes('static/mihomo-settings.css?v=132'));
-console.log('PASS structural redraw cache, volatile counters in-place, 16x11 flag and asset versions');
+assert(html.includes('static/mihomo-settings.css?v=133'));
+console.log('PASS structural redraw cache, volatile counters in-place, 18x12 flag and asset versions');

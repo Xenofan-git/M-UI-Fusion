@@ -170,8 +170,8 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(observed.sameFlag,true,JSON.stringify(observed));
    assert.equal(observed.sameCandidate,true,JSON.stringify(observed));
    assert.equal(observed.removed,0,JSON.stringify(observed));
-   assert.deepEqual(observed.flagSize,['16px','11px']);
-   assert.deepEqual(observed.candidateSize,['16px','11px']);
+   assert.deepEqual(observed.flagSize,['18px','12px']);
+   assert.deepEqual(observed.candidateSize,['18px','12px']);
    assert.match(observed.delay,/мс/);
    await page.evaluate(()=>{
      Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
@@ -418,7 +418,7 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.locator('.fbs-copy-flag').first().click();
    assert.equal(await page.evaluate(()=>window.__fallbackCopied),'🇵🇱');
    assert.deepEqual(pageErrors,[]);
-   console.log('PASS',width,'SVG tabs, stable row and candidate through 16 refreshes, flags 16x11, copy/paste and old-browser fallback');
+   console.log('PASS',width,'SVG tabs, stable row and candidate through 16 refreshes, flags 18x12, copy/paste and old-browser fallback');
    await page.close();
   }
  }finally{await browser?.close();fs.rmSync(file,{force:true})}
