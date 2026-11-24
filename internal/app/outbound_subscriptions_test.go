@@ -663,3 +663,47 @@ func TestSharedSourceGroupHTTPAndStoredPreview(t *testing.T) {
 		t.Fatalf("expected one set of 3 proxies, got %d", owned)
 	}
 }
+
+// If the user deletes a subscription record but explicitly keeps its nodes,
+// the originating balancer remains a "subscription balancer" in the UI.
+// Keeping nodes must not silently convert it into a manually created group.
+func TestRemoveSubscriptionKeepNodesPreservesGroupOrigin(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-legacy", Name: "quatro-vpn", Group: "RUSSIA",
+		URL: "https://provider.example/source", IntervalMinutes: 1440, Enabled: true}
+	nodes := []MihomoOutbound{subscriptionSS("LTE - Россия Москва", "ru.example")}
+	if err := m.commitOutboundSubscriptionWithGroup(sub, nodes, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.removeOutboundSubscription(sub, true); err != nil {
+		t.Fatal("delete source, keep nodes:", err)
+	}
+	if len(m.state.OutboundSubscriptions) != 0 {
+		t.Fatal("source record not removed")
+	}
+	found := false
+	for _, item := range m.state.Outbounds {
+		if item.Kind == "group" && item.Name == "RUSSIA" {
+			found = true
+			if !item.SubscriptionManaged || len(item.SubscriptionIDs) != 0 || len(item.Proxies) != 1 {
+				t.Fatalf("orphaned subscription group origin/members lost: %+v", item)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("orphan subscription group deleted")
+	}
+	reloaded := &CoreManager{dataDir: m.dataDir}
+	if err := reloaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	found = false
+	for _, item := range reloaded.state.Outbounds {
+		if item.Kind == "group" && item.Name == "RUSSIA" {
+			found = item.SubscriptionManaged && len(item.Proxies) == 1
+		}
+	}
+	if !found {
+		t.Fatal("subscription origin did not survive restart")
+	}
+}

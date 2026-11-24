@@ -44,6 +44,7 @@ type MihomoOutbound struct {
 	VPNGate                     *VPNGateConfig `json:"vpngate,omitempty"`
 	SourceSubscriptionID        string         `json:"sourceSubscriptionId,omitempty"` // managed inbound URL subscription
 	SubscriptionIDs             []string       `json:"subscriptionIds,omitempty"`
+	SubscriptionManaged         bool           `json:"subscriptionManaged,omitempty"`         // persist origin even after source is removed while keeping nodes
 	ExcludedSubscriptionMembers []string       `json:"excludedSubscriptionMembers,omitempty"` // subscribed sources for a policy group
 	// Provider subscriptions are shared. Per-group filters never alter
 	// another group's members or the source's auto-refresh settings.
@@ -556,6 +557,7 @@ func normalizeMihomoOutbounds(input []MihomoOutbound) ([]MihomoOutbound, error) 
 			parsed.VPNGate = item.VPNGate
 			parsed.SourceSubscriptionID = item.SourceSubscriptionID
 			parsed.SubscriptionIDs = append([]string(nil), item.SubscriptionIDs...)
+			parsed.SubscriptionManaged = item.SubscriptionManaged
 			parsed.ExcludedSubscriptionMembers = append([]string(nil), item.ExcludedSubscriptionMembers...)
 			parsed.SubscriptionFilterKeep = item.SubscriptionFilterKeep
 			parsed.SubscriptionFilterExclude = item.SubscriptionFilterExclude

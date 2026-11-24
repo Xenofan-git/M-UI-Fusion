@@ -94,9 +94,10 @@
       statusBadge.appendChild(make('span','',sub.enabled?'Автообновление':'Приостановлено'));
       title.appendChild(statusBadge);
       info.appendChild(title);
+      // A provider subscription is a standalone source; group membership
+      // belongs only to the subscribed-balancer tab, not to source cards.
       info.appendChild(make('p','outsub-muted outsub-card-meta',
-        (sub.group?'Исходная группа: '+sub.group:'Общий источник без собственной группы')+
-        ' · интервал '+sub.intervalMinutes+' мин'));
+        'Интервал обновления: '+sub.intervalMinutes+' мин'));
       const stats=make('div','outsub-stat');
       stats.appendChild(make('span','outsub-count-badge',String(sub.nodeCount||0)+' узлов'));
       stats.appendChild(make('span','outsub-last-updated','Обновлено '+date(sub.lastUpdated)));
@@ -340,7 +341,21 @@
     const sourceLabel=make('label','outsub-source-choice-label','Выбрать подписку');
     const sourcePicker=make('select');sourcePicker.name='sourceId';sourcePicker.id='outsub-source-picker';
     sourcePicker.required=false;
-    sourceLabel.appendChild(sourcePicker);
+    sourcePicker.className='outsub-native-source-select';
+    sourcePicker.setAttribute('aria-hidden','true');
+    sourcePicker.tabIndex=-1;
+    const sourceButton=make('button','outsub-source-open','Выберите подписку…');
+    sourceButton.type='button';sourceButton.id='outsub-source-open';
+    sourceButton.setAttribute('aria-haspopup','listbox');
+    sourceButton.setAttribute('aria-expanded','false');
+    const sourceOptions=make('div','outsub-source-menu');sourceOptions.id='outsub-source-menu';
+    sourceOptions.setAttribute('role','listbox');sourceOptions.hidden=true;
+    sourceButton.onclick=()=>{
+      const open=sourceOptions.hidden;
+      sourceOptions.hidden=!open;
+      sourceButton.setAttribute('aria-expanded',String(open));
+    };
+    sourceLabel.append(sourcePicker,sourceButton,sourceOptions);
     form.appendChild(sourceLabel);
     field(form,'Название подписки','name','text',{maxLength:64,placeholder:'Например, My VPN'});
     field(form,'URL подписки','url','url',{maxLength:2048,placeholder:'https://provider.example/subscription/...'});
@@ -367,10 +382,29 @@
     const loadBtn=make('button','outline-btn','Загрузить серверы');loadBtn.id='outsub-preview-button';loadBtn.type='button';
     loadBtn.onclick=()=>{preview(form).catch(()=>{});};
     toolbar.appendChild(loadBtn);
-    sourcePicker.onchange=()=>{
+    function selectSource(value){
+      sourcePicker.value=value;
+      const option=sourcePicker.selectedOptions[0];
+      sourceButton.textContent=value&&option?option.textContent:'Выберите подписку…';
+      sourceOptions.hidden=true;
+      sourceButton.setAttribute('aria-expanded','false');
       previewNodes=[];excluded=new Set();loadedURL='';renderPreview();
-      if(sourcePicker.value)preview(form).catch(()=>{});
-    };
+      if(value)preview(form).catch(()=>{});
+    }
+    sourcePicker.onchange=()=>selectSource(sourcePicker.value);
+    sourceOptions.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){
+        sourceOptions.hidden=true;
+        sourceButton.setAttribute('aria-expanded','false');
+        sourceButton.focus();
+      }
+    });
+    sourceLabel.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&!sourceOptions.hidden){
+        sourceOptions.hidden=true;
+        sourceButton.setAttribute('aria-expanded','false');
+      }
+    });
     const search=make('input');search.name='search';search.type='search';search.placeholder='Поиск серверов…';
     search.oninput=renderPreview;toolbar.appendChild(search);
     const sort=make('button','outline-btn','Имя ↕');sort.type='button';sort.onclick=()=>{ascending=!ascending;renderPreview();};toolbar.appendChild(sort);
@@ -385,6 +419,85 @@
     counter.id='outsub-preview-count';form.appendChild(counter);
     const nodeList=make('div','outsub-preview-list');nodeList.id='outsub-preview-list';form.appendChild(nodeList);
     form.appendChild(make('p','outsub-warning','Фильтры как в HydraRoute: по одной фразе на строку, без учёта регистра. «Оставить только» — совпадение с любой строкой; «Исключить» — исключает совпадения. Выбор узлов и фильтры сохраняются при автообновлении.'));
+    // Read-only source inventory, separate from group-only filter controls.
+    const inventory=make('section','outsub-source-inventory');inventory.id='outsub-source-inventory';
+    const inventoryHead=make('div','outsub-source-inventory-head');
+    inventoryHead.appendChild(make('h3','', 'Серверы подписки'));
+    const sourceCount=make('span','outsub-muted');sourceCount.id='outsub-source-inventory-count';
+    inventoryHead.appendChild(sourceCount);inventory.appendChild(inventoryHead);
+    const inventorySearch=make('input','outsub-source-inventory-search');
+    inventorySearch.type='search';inventorySearch.placeholder='Поиск серверов…';
+    inventorySearch.setAttribute('aria-label','Поиск серверов подписки');inventorySearch.id='outsub-source-inventory-search';
+    inventory.appendChild(inventorySearch);
+    const tableWrap=make('div','outsub-source-table-wrap');
+    const table=make('table','outsub-source-table');
+    const head=make('thead'),header=make('tr');
+    for(const [key,title] of [['protocol','Протокол'],['name','Имя'],['ping','Пинг'],['delay','Задержка']]){
+      const th=make('th');
+      const button=make('button','outsub-source-sort',title+' ↕');
+      button.type='button';
+      button.dataset.sort=key;
+      th.appendChild(button);header.appendChild(th);
+    }
+    head.appendChild(header);table.appendChild(head);
+    const tbody=make('tbody');tbody.id='outsub-source-inventory-body';table.appendChild(tbody);
+    tableWrap.appendChild(table);inventory.appendChild(tableWrap);form.appendChild(inventory);
+    let inventoryRows=[],inventorySort='name',inventoryAsc=true;
+    function renderInventory(){
+      const query=inventorySearch.value.trim().toLocaleLowerCase('ru');
+      const nodes=inventoryRows.filter(n=>!query||[n.name,n.protocol,n.countryCode,n.flag]
+        .filter(Boolean).join(' ').toLocaleLowerCase('ru').includes(query));
+      const value=node=>inventorySort==='protocol'?node.protocol||'':
+        inventorySort==='delay'?Number(node.delay)||0:
+        inventorySort==='ping'?Number(node.ping)||0:node.name;
+      nodes.sort((a,b)=>{
+        const x=value(a),y=value(b);
+        const delta=typeof x==='number'?x-y:String(x).localeCompare(String(y),'ru');
+        return inventoryAsc?delta:-delta;
+      });
+      sourceCount.textContent='Показано '+nodes.length+' из '+inventoryRows.length;
+      tbody.replaceChildren();
+      for(const node of nodes){
+        const tr=make('tr');
+        tr.appendChild(make('td','',node.protocol||'—'));
+        const td=make('td','outsub-source-name');
+        const svg=window.MUICountryFlags?.createIcon(node.countryCode);
+        if(svg)td.appendChild(svg);
+        const name=make('span','',String(node.name||''));
+        name.title=node.name;td.appendChild(name);tr.appendChild(td);
+        tr.appendChild(make('td','',node.ping>0?node.ping+' мс':'—'));
+        const delayText=node.alive===false?'offline':node.delay>0?node.delay+' мс':'—';
+        const delay=make('td','outsub-source-delay'+(node.alive===false?' offline':''),delayText);
+        if(node.checkedAt)delay.title='Последняя проверка: '+new Date(node.checkedAt).toLocaleString('ru-RU');
+        tr.appendChild(delay);tbody.appendChild(tr);
+      }
+      if(!nodes.length){
+        const tr=make('tr'),td=make('td','outsub-source-empty',inventoryRows.length?
+          'Поиск не дал результатов':'Серверов пока нет. Добавьте или обновите подписку.');
+        td.colSpan=4;tr.appendChild(td);tbody.appendChild(tr);
+      }
+    }
+    inventorySearch.oninput=renderInventory;
+    head.querySelectorAll('button[data-sort]').forEach(button=>button.onclick=()=>{
+      const key=button.dataset.sort;
+      inventoryAsc=inventorySort===key?!inventoryAsc:true;
+      inventorySort=key;renderInventory();
+    });
+    async function loadSourceInventory(sourceID){
+      inventoryRows=[];
+      renderInventory();
+      if(!sourceID)return;
+      try{
+        const result=await request('/api/mihomo/subscriptions/'+encodeURIComponent(sourceID)+'/nodes');
+        if(form.dataset.id!==sourceID||form.dataset.mode!=='source')return;
+        inventoryRows=result.nodes||[];
+        renderInventory();
+      }catch(error){
+        sourceCount.textContent='Не удалось получить серверы: '+error.message;
+      }
+    }
+    form._loadSourceInventory=loadSourceInventory;
+    form._resetInventory=()=>{inventoryRows=[];inventorySearch.value='';inventorySort='name';inventoryAsc=true;renderInventory();};
     const buttons=make('div','outsub-actions');
     const cancel=make('button','outline-btn','Отмена');cancel.type='button';cancel.onclick=()=>overlay.classList.remove('open');
     const save=make('button','primary-btn outsub-submit-primary','Создать балансировщик из подписки');save.id='outsub-submit';save.type='submit';
@@ -470,6 +583,9 @@
     form.elements.groupName.required=creatingGroup;
     form.elements.groupType.closest('label').hidden=!creatingGroup;
     form.elements.group.closest('label').hidden=true;
+    form.querySelector('#outsub-source-inventory').hidden=creatingGroup||isNew;
+    form._resetInventory();
+    if(!creatingGroup&&!isNew)form._loadSourceInventory(sub.id);
     form.elements.sourceId.closest('label').hidden=!creatingGroup;
     form.elements.sourceId.required=creatingGroup;
     for(const name of ['name','url','intervalMinutes']){
@@ -486,12 +602,29 @@
     const sourceChoice=form.elements.sourceId;
     sourceChoice.replaceChildren(new Option(subs.length?'Выберите подписку…':
       'Подписок нет — добавьте их во вкладке «Подписки»',''));
+    const menu=q('#outsub-source-menu',overlay);
+    menu.replaceChildren();
     for(const source of subs){
       const limited=source.group&&(source.filterKeep||source.filterExclude||source.excludedNodeKeys?.length);
-      const display=source.name+' · '+(source.group?'группа '+source.group:'общий источник')+
-        ' · '+source.nodeCount+' серверов'+(limited?' · ранее отфильтрована':'')+
+      const display=source.name+' · '+source.nodeCount+' серверов'+(limited?' · ранее отфильтрована':'')+
         (source.enabled?'':' · автообновление выключено');
       sourceChoice.add(new Option(display,source.id));
+      const option=make('button','outsub-source-option',display);
+      option.type='button';option.setAttribute('role','option');option.dataset.sourceId=source.id;
+      option.onclick=()=>{
+        sourceChoice.value=source.id;
+        sourceChoice.dispatchEvent(new Event('change',{bubbles:true}));
+      };
+      menu.appendChild(option);
+    }
+    menu.hidden=true;
+    const openButton=q('#outsub-source-open',overlay);
+    openButton.setAttribute('aria-expanded','false');
+    if(creatingGroup&&subs.length===1){
+      sourceChoice.value=subs[0].id;
+      sourceChoice.dispatchEvent(new Event('change',{bubbles:true}));
+    }else{
+      openButton.textContent='Выберите подписку…';
     }
     form.elements.groupName.value=sub?.group||'';
     form.elements.groupType.value='url-test';
@@ -509,7 +642,7 @@
     form.elements.filterKeep.dispatchEvent(new Event('input',{bubbles:true}));
     form.elements.filterExclude.dispatchEvent(new Event('input',{bubbles:true}));
     overlay.classList.add('open');
-    (isNew?form.elements.groupName:form.elements.name).focus();
+    (creatingGroup?form.elements.groupName:form.elements.name).focus();
   }
   q('#outsub-reload').onclick=load;
   window.MUIOutboundSubscriptions={

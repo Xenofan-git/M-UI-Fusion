@@ -64,17 +64,35 @@ const css=fs.readFileSync('web/outbound-subscriptions.css','utf8');
    await page.waitForFunction(()=>!document.querySelector('#outsub-modal').classList.contains('open'));
    assert.equal(await page.locator('.outsub-card').count(),1);
    assert.equal(await page.locator('.outsub-card h3').innerText(),'QuatroVPN');
+   assert.equal(await page.locator('.outsub-card-meta').innerText(),'Интервал обновления: 1440 мин');
+   assert.equal((await page.locator('.outsub-card').innerText()).includes('Исходная группа'),false);
+   await page.getByRole('button',{name:'Параметры подписки'}).click();
+   assert(await modal.locator('#outsub-source-inventory').isVisible());
+   assert.equal(await modal.locator('.outsub-filters').isVisible(),false);
+   assert.equal(await modal.locator('[name="group"]').isVisible(),false);
+   await page.waitForFunction(()=>document.querySelector('#outsub-source-inventory-count').textContent.includes('3 из 3'));
+   assert.equal(await modal.locator('#outsub-source-inventory-body tr').count(),3);
+   assert.equal(await modal.locator('#outsub-source-inventory thead th').count(),4);
+   await modal.locator('#outsub-source-inventory-search').fill('Germany');
+   assert.equal(await modal.locator('#outsub-source-inventory-body tr').count(),1);
+   await modal.locator('.outsub-actions button.outline-btn').click();
+   assert.equal(await modal.isVisible(),false);
    // Creation form: source list only, no URL, no auto-refresh per balancer.
    await page.evaluate(()=>window.MUIOutboundSubscriptions.openCreate());
    const picker=modal.locator('#outsub-source-picker');
-   assert(await picker.isVisible());
+   const pickerButton=modal.locator('#outsub-source-open');
+   assert(await pickerButton.isVisible());
+   assert.equal(await picker.isVisible(),false,'native select is backing only');
+   assert((await pickerButton.innerText()).includes('QuatroVPN'),'single source auto-selected');
    assert.equal(await modal.locator('[name="url"]').isVisible(),false);
    assert.equal(await modal.locator('[name="enabled"]').isVisible(),false);
    assert.equal(await modal.locator('[name="intervalMinutes"]').isVisible(),false);
    assert.equal(await modal.locator('[name="name"]').isVisible(),false);
    assert(await modal.locator('[name="groupName"]').isVisible());
    assert((await picker.locator('option').allTextContents()).some(x=>x.includes('QuatroVPN')));
-   await picker.selectOption('sub-catalog');
+   await pickerButton.click();
+   assert(await modal.locator('#outsub-source-menu [data-source-id="sub-catalog"]').isVisible());
+   await modal.locator('#outsub-source-menu [data-source-id="sub-catalog"]').click();
    await page.waitForFunction(()=>document.querySelector('#outsub-preview-count').textContent.includes('Выбрано 3 из 3'));
    await modal.locator('[name="groupName"]').fill('FOREIGN 2');
    await modal.locator('[name="filterExclude"]').fill('🇷🇺');
@@ -83,7 +101,7 @@ const css=fs.readFileSync('web/outbound-subscriptions.css','utf8');
    await page.waitForFunction(()=>!document.querySelector('#outsub-modal').classList.contains('open'));
    // A second group points to the SAME source ID; no provider URL resubmitted.
    await page.evaluate(()=>window.MUIOutboundSubscriptions.openCreate());
-   await picker.selectOption('sub-catalog');
+   assert.equal(await picker.inputValue(),'sub-catalog','source auto-selected on second open');
    await page.waitForFunction(()=>document.querySelector('#outsub-preview-count').textContent.includes('Выбрано 3 из 3'));
    await modal.locator('[name="groupName"]').fill('Russia 2');
    await modal.locator('[name="filterKeep"]').fill('🇷🇺');
@@ -105,6 +123,23 @@ const css=fs.readFileSync('web/outbound-subscriptions.css','utf8');
      assert(!Object.hasOwn(call.payload,'intervalMinutes'),'group must not have its own source update scheduler');
    }
    assert.equal(await page.locator('.outsub-card').count(),1,'still only one source catalog record');
+   // With multiple subscription records, the custom dropdown must show all
+   // choices instead of an empty native Windows popup.
+   await page.evaluate(()=>window.__sources.push({
+     id:'sub-second',name:'AnotherVPN',url:'https://provider.example/second',
+     enabled:false,group:'',intervalMinutes:180,nodeCount:4
+   }));
+   await page.evaluate(()=>window.MUIOutboundSubscriptions.openCreate());
+   await page.waitForFunction(()=>document.querySelectorAll('#outsub-source-menu [data-source-id]').length===2);
+   const multipleButton=modal.locator('#outsub-source-open');
+   assert.equal(await multipleButton.innerText(),'Выберите подписку…');
+   await multipleButton.click();
+   assert(await modal.locator('#outsub-source-menu [data-source-id="sub-catalog"]').isVisible());
+   assert(await modal.locator('#outsub-source-menu [data-source-id="sub-second"]').isVisible());
+   await modal.locator('#outsub-source-menu [data-source-id="sub-second"]').click();
+   assert.equal(await modal.locator('#outsub-source-picker').inputValue(),'sub-second');
+   assert((await multipleButton.innerText()).includes('AnotherVPN'));
+   await modal.locator('.outsub-actions button.outline-btn').click();
    assert.deepEqual(errors,[],errors.join('; '));
    await page.close();
    console.log('PASS single source, two linked groups, separate tab and no duplicate URL width',width);

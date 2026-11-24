@@ -696,10 +696,20 @@ func (a *App) previewStoredSubscriptionNodes(w http.ResponseWriter, r *http.Requ
 			}
 		}
 	}
+	running := a.manager.runningLocked()
+	endpoint, secret := a.manager.state.Settings.APIAddress, a.manager.state.Settings.APISecret
 	a.manager.mu.Unlock()
 	if !found {
 		writeJSON(w, 404, apiResponse{Message: "подписка не найдена"})
 		return
+	}
+	// Live health is optional. The stored list must still open if Mihomo
+	// is stopped or its controller cannot be reached. Never trigger probes.
+	var runtime map[string]balancerRuntimeProxy
+	if running {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		runtime, _ = fetchBalancerRuntime(ctx, endpoint, secret)
 	}
 	keys := make([]string, len(proxies))
 	for i, node := range proxies {
@@ -715,10 +725,19 @@ func (a *App) previewStoredSubscriptionNodes(w http.ResponseWriter, r *http.Requ
 			name = node.Name
 		}
 		country := subscriptionCountryCode(name)
-		items = append(items, subscriptionPreviewNode{
+		item := subscriptionPreviewNode{
 			Key: keys[i], Name: name, Protocol: node.Type, CountryCode: country,
 			Flag: subscriptionCountryFlag(country), Included: true,
-		})
+		}
+		if live, ok := runtime[node.Name]; ok {
+			item.Alive = live.Alive
+			if len(live.History) > 0 {
+				recent := live.History[len(live.History)-1]
+				item.Delay = recent.Delay
+				item.CheckedAt = recent.Time
+			}
+		}
+		items = append(items, item)
 	}
 	writeJSON(w, http.StatusOK, apiResponse{OK: true, Data: subscriptionPreviewResponse{
 		Nodes: items, Total: len(items), Selected: len(items),
@@ -819,7 +838,7 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 		break
 	}
 	if creating {
-		group := MihomoOutbound{Kind: "group", Name: groupName, Type: groupType,
+		group := MihomoOutbound{Kind: "group", Name: groupName, Type: groupType, SubscriptionManaged: true,
 			TestURL: defaultMihomoTestURL, Interval: 300, SubscriptionIDs: []string{sourceID}}
 		if groupType != "select" {
 			group.Timeout = 8000
@@ -970,7 +989,7 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 		}
 		// Defaults apply only to a newly created subscription balancer.
 		// Existing groups keep the user's own timeout/tolerance on refresh.
-		group := MihomoOutbound{Kind: "group", Name: sub.Group, Type: groupType,
+		group := MihomoOutbound{Kind: "group", Name: sub.Group, Type: groupType, SubscriptionManaged: true,
 			TestURL: defaultMihomoTestURL, Interval: 300}
 		if groupType != "select" {
 			group.Timeout = 8000 // milliseconds: tolerate slow LTE/VPN handshakes.
@@ -1134,7 +1153,10 @@ func (m *CoreManager) removeOutboundSubscription(sub OutboundSubscription, keepN
 		next.Outbounds = append([]MihomoOutbound(nil), before.Outbounds...)
 		for i := range next.Outbounds {
 			group := &next.Outbounds[i]
-			if group.Kind == "group" && containsString(group.SubscriptionIDs, sub.ID) {
+			if group.Kind == "group" && (containsString(group.SubscriptionIDs, sub.ID) || group.Name == sub.Group) {
+				// Keep the group's presentation as subscription-created even
+				// when users remove only its source record but retain nodes.
+				group.SubscriptionManaged = true
 				group.SubscriptionIDs = withoutSubscriptionID(group.SubscriptionIDs, sub.ID)
 			}
 		}

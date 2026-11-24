@@ -289,9 +289,19 @@
     return new Set(linked.map(source=>source?.group).filter(Boolean));
   }
   function isSubscriptionGroup(item){
-    return item?.kind==='group'&&(
-      (item.subscriptionIds||[]).length>0||subscriptionGroupNames().has(item.name)
-    );
+    if(item?.kind!=='group')return false;
+    if(item.subscriptionManaged||(item.subscriptionIds||[]).length>0||
+      subscriptionGroupNames().has(item.name))return true;
+    // Older versions cleared subscriptionIds when deleting a source with
+    // "keep nodes". Recover orphaned subscription groups by their members:
+    // ALL members must retain one known provider's "source | node" prefix.
+    // Ordinary mixed/manual groups (including Russia with RU | nodes) stay
+    // under "Балансировщики из Исходящих".
+    const members=item.proxies||[];
+    if(!members.length)return false;
+    const sources=[...(app.state?.state?.outboundSubscriptions||[]),...balancerSubscriptions]
+      .map(source=>source?.name).filter(Boolean);
+    return sources.some(name=>members.every(member=>String(member).startsWith(name+' | ')));
   }
   function visibleGroupPeers(item){
     return draft.outbounds.filter(entry=>entry.kind===item.kind&&(
