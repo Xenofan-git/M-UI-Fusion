@@ -707,3 +707,39 @@ func TestRemoveSubscriptionKeepNodesPreservesGroupOrigin(t *testing.T) {
 		t.Fatal("subscription origin did not survive restart")
 	}
 }
+
+func TestRetainedSubscriptionGroupFilterRestore(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	src := OutboundSubscription{ID: "source-existing", Name: "provider", Group: "FOREIGN", URL: "https://provider.example/sub", IntervalMinutes: 1440}
+	m.state.OutboundSubscriptions = []OutboundSubscription{src}
+	de := subscriptionSS("provider | Germany", "de.example")
+	ru := subscriptionSS("provider | Russia", "ru.example")
+	other := subscriptionSS("RU | Russia", "other.example")
+	m.state.Outbounds = []MihomoOutbound{de, ru, other,
+		{Kind: "group", Name: "RUSSIA", Type: "select", Proxies: []string{de.Name, ru.Name}},
+		{Kind: "group", Name: "Russia", Type: "select", Proxies: []string{other.Name}},
+	}
+	group, sources, nodes, subscribed, ok := balancerEditorSnapshot(m.state, "RUSSIA")
+	if !ok || !subscribed || len(sources) != 0 || len(nodes) != 2 {
+		t.Fatalf("retained snapshot: %v %v %d", ok, subscribed, len(nodes))
+	}
+	if _, ok := retainedBalancerNodes(m.state, m.state.Outbounds[4]); ok {
+		t.Fatal("manual group classified as retained")
+	}
+	if err := m.commitRetainedSubscriptionFilters(group.Name, "Germany", ""); err != nil {
+		t.Fatal(err)
+	}
+	got := m.state.Outbounds[3]
+	if len(got.Proxies) != 1 || got.Proxies[0] != de.Name || len(got.SubscriptionRetainedMembers) != 2 || !got.SubscriptionManaged {
+		t.Fatalf("unexpected filtered pool: %v %v", got.Proxies, got.SubscriptionRetainedMembers)
+	}
+	if err := m.commitRetainedSubscriptionFilters(group.Name, "no-such-node", ""); err == nil {
+		t.Fatal("empty filter accepted")
+	}
+	if err := m.commitRetainedSubscriptionFilters(group.Name, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.state.Outbounds[3].Proxies) != 2 || len(m.state.Outbounds[4].Proxies) != 1 || m.state.OutboundSubscriptions[0].Group != "FOREIGN" {
+		t.Fatal("restoration changed another group/source")
+	}
+}

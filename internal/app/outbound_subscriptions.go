@@ -790,13 +790,81 @@ func (a *App) handleSharedSubscriptionGroup(w http.ResponseWriter, r *http.Reque
 	}
 	a.manager.subscriptionSyncMu.Lock()
 	defer a.manager.subscriptionSyncMu.Unlock()
-	err := a.manager.commitSharedSubscriptionGroup(req.SourceID, req.Group, req.GroupType,
-		req.FilterKeep, req.FilterExclude, req.ExcludedNodeKeys, r.Method == http.MethodPost)
+	var err error
+	if r.Method == http.MethodPut && req.SourceID == "" {
+		if len(req.ExcludedNodeKeys) != 0 {
+			writeJSON(w, 400, apiResponse{Message: "некорректные исключения сохранённых узлов"})
+			return
+		}
+		err = a.manager.commitRetainedSubscriptionFilters(req.Group, req.FilterKeep, req.FilterExclude)
+	} else {
+		err = a.manager.commitSharedSubscriptionGroup(req.SourceID, req.Group, req.GroupType,
+			req.FilterKeep, req.FilterExclude, req.ExcludedNodeKeys, r.Method == http.MethodPost)
+	}
 	if err != nil {
 		writeJSON(w, 400, apiResponse{Message: err.Error()})
 		return
 	}
 	writeJSON(w, 200, apiResponse{OK: true, Message: "Балансировщик использует общие узлы выбранной подписки"})
+}
+
+// An orphan retains its own original nodes after deleting the subscription.
+// Filtering only this saved pool avoids altering the remaining provider,
+// other groups or existing proxy records. No source download is performed.
+func (m *CoreManager) commitRetainedSubscriptionFilters(name, keep, exclude string) error {
+	m.mu.Lock()
+	before := m.state
+	next := before
+	next.Outbounds = append([]MihomoOutbound(nil), before.Outbounds...)
+	index := -1
+	for i, g := range next.Outbounds {
+		if g.Kind == "group" && g.Name == name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		m.mu.Unlock()
+		return errors.New("балансировщик не найден")
+	}
+	group := &next.Outbounds[index]
+	nodes, ok := retainedBalancerNodes(before, *group)
+	if !ok {
+		m.mu.Unlock()
+		return errors.New("нет сохранённых серверов удалённой подписки")
+	}
+	group.SubscriptionManaged = true
+	group.SubscriptionRetainedMembers = nil
+	group.SubscriptionFilterKeep = keep
+	group.SubscriptionFilterExclude = exclude
+	group.Proxies = nil
+	for _, node := range nodes {
+		group.SubscriptionRetainedMembers = append(group.SubscriptionRetainedMembers, node.Name)
+		if sharedGroupNodeAllowed(*group, node) && !containsString(group.ExcludedSubscriptionMembers, node.Name) {
+			group.Proxies = append(group.Proxies, node.Name)
+		}
+	}
+	if len(group.Proxies) == 0 {
+		m.mu.Unlock()
+		return errors.New("фильтры исключили все серверы; группа не изменена")
+	}
+	if !containsString(group.Proxies, group.DefaultSelected) {
+		group.DefaultSelected = ""
+	}
+	if group.Native != nil {
+		native := make(map[string]any, len(group.Native))
+		for k, v := range group.Native {
+			native[k] = v
+		}
+		native["proxies"] = append([]string(nil), group.Proxies...)
+		group.Native = native
+	}
+	err := m.persistSubscriptionStateLocked(before, next)
+	m.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return m.reloadAfterSubscription()
 }
 
 func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupType, keep, exclude string, blockedKeys []string, creating bool) error {

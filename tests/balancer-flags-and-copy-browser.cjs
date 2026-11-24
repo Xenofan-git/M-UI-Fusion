@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=137'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=139'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -92,7 +92,8 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(await page.locator('.fbs-tab .fbs-tab-icon').count(),2);
    assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Обновление');
    assert.equal((await page.locator('.fbs-tab').nth(1).innerText()).trim(),'Фильтры');
-   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'false');
+   assert.equal(await page.locator('.fbs-keep').isVisible(),true);
    assert.match(await page.locator('[data-sub-pane="update"]').getAttribute('title'),/настройки автоматического обновления/i);
    await page.locator('[data-sub-pane="filters"]').click();
    assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'false');

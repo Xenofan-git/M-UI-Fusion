@@ -80,6 +80,59 @@ func balancerSubscriptionSnapshot(state State, name string) (MihomoOutbound, []O
 	return group, subs, nodes, true
 }
 
+// Retained subscription groups have no live source. Only their original
+// persisted members are candidates: never bind them to a different source
+// or borrow all nodes from a provider that happens to have the same name.
+func retainedBalancerNodes(state State, group MihomoOutbound) ([]MihomoOutbound, bool) {
+	if group.Kind != "group" || len(group.SubscriptionIDs) != 0 {
+		return nil, false
+	}
+	for _, sub := range state.OutboundSubscriptions {
+		if sub.Group == group.Name {
+			return nil, false
+		}
+	}
+	candidates := group.SubscriptionRetainedMembers
+	if len(candidates) == 0 {
+		candidates = group.Proxies
+	}
+	if len(candidates) == 0 {
+		return nil, false
+	}
+	known := group.SubscriptionManaged
+	if !known {
+		for _, source := range state.OutboundSubscriptions {
+			same := source.Name != ""
+			for _, name := range candidates {
+				if !strings.HasPrefix(name, source.Name+" | ") {
+					same = false
+					break
+				}
+			}
+			if same {
+				known = true
+				break
+			}
+		}
+	}
+	if !known {
+		return nil, false
+	}
+	byName := make(map[string]MihomoOutbound, len(state.Outbounds))
+	for _, node := range state.Outbounds {
+		byName[node.Name] = node
+	}
+	nodes := make([]MihomoOutbound, 0, len(candidates))
+	for _, name := range candidates {
+		node, ok := byName[name]
+		if !ok || node.Kind != "proxy" || node.SourceSubscriptionID != "" {
+			return nil, false
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, true
+}
+
 // Manual groups expose only persisted members; subscription groups expose
 // only provider-owned nodes. No unrelated Outbounds leak into status or probes.
 func balancerEditorSnapshot(state State, name string) (MihomoOutbound, []OutboundSubscription, []MihomoOutbound, bool, bool) {
@@ -107,6 +160,9 @@ func balancerEditorSnapshot(state State, name string) (MihomoOutbound, []Outboun
 	}
 	if len(group.SubscriptionIDs) > 0 {
 		return group, nil, nil, true, false
+	}
+	if nodes, ok := retainedBalancerNodes(state, group); ok {
+		return group, nil, nodes, true, true
 	}
 	byName := make(map[string]MihomoOutbound, len(state.Outbounds))
 	for _, out := range state.Outbounds {

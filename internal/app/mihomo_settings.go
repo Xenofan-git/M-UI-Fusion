@@ -48,6 +48,7 @@ type MihomoOutbound struct {
 	ExcludedSubscriptionMembers []string       `json:"excludedSubscriptionMembers,omitempty"` // subscribed sources for a policy group
 	// Provider subscriptions are shared. Per-group filters never alter
 	// another group's members or the source's auto-refresh settings.
+	SubscriptionRetainedMembers  []string `json:"subscriptionRetainedMembers,omitempty"`
 	SubscriptionFilterKeep       string   `json:"subscriptionFilterKeep,omitempty"`
 	SubscriptionFilterExclude    string   `json:"subscriptionFilterExclude,omitempty"`
 	SubscriptionExcludedNodeKeys []string `json:"subscriptionExcludedNodeKeys,omitempty"`
@@ -559,6 +560,7 @@ func normalizeMihomoOutbounds(input []MihomoOutbound) ([]MihomoOutbound, error) 
 			parsed.SubscriptionIDs = append([]string(nil), item.SubscriptionIDs...)
 			parsed.SubscriptionManaged = item.SubscriptionManaged
 			parsed.ExcludedSubscriptionMembers = append([]string(nil), item.ExcludedSubscriptionMembers...)
+			parsed.SubscriptionRetainedMembers = append([]string(nil), item.SubscriptionRetainedMembers...)
 			parsed.SubscriptionFilterKeep = item.SubscriptionFilterKeep
 			parsed.SubscriptionFilterExclude = item.SubscriptionFilterExclude
 			parsed.SubscriptionExcludedNodeKeys = append([]string(nil), item.SubscriptionExcludedNodeKeys...)

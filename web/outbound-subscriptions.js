@@ -377,7 +377,6 @@
       attachFlagPicker(wrapper,area);
       filters.appendChild(wrapper);
     }
-    form.appendChild(filters);
     const toolbar=make('div','outsub-preview-toolbar');
     const loadBtn=make('button','outline-btn','Загрузить серверы');loadBtn.id='outsub-preview-button';loadBtn.type='button';
     loadBtn.onclick=()=>{preview(form).catch(()=>{});};
@@ -418,6 +417,7 @@
     const counter=make('p','outsub-preview-count','Нажмите «Загрузить серверы» для проверки подписки');
     counter.id='outsub-preview-count';form.appendChild(counter);
     const nodeList=make('div','outsub-preview-list');nodeList.id='outsub-preview-list';form.appendChild(nodeList);
+    form.appendChild(filters);
     form.appendChild(make('p','outsub-warning','Фильтры как в HydraRoute: по одной фразе на строку, без учёта регистра. «Оставить только» — совпадение с любой строкой; «Исключить» — исключает совпадения. Выбор узлов и фильтры сохраняются при автообновлении.'));
     // Read-only source inventory, separate from group-only filter controls.
     const inventory=make('section','outsub-source-inventory');inventory.id='outsub-source-inventory';

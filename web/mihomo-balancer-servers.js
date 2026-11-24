@@ -56,6 +56,7 @@
  // still require an explicit selection: we must not filter other providers.
  function activeFilterSourceID(){
    if(!context?.subscribed||!panel)return '';
+   if(context.retained)return '__retained__';
    const ids=selectedSources(context.group,context.subs);
    const chosen=q('.fbs-source',panel)?.value||'';
    if(chosen&&ids.includes(chosen))return chosen;
@@ -64,6 +65,7 @@
  function contextNodes(){
    if(!context)return[];
    if(!context.subscribed)return context.available;
+   if(context.retained){const names=new Set(context.group.subscriptionRetainedMembers?.length?context.group.subscriptionRetainedMembers:context.group.proxies||[]);return context.outbounds.filter(n=>n.kind==='proxy'&&names.has(n.name));}
    const ids=new Set(selectedSources(context.group,context.subs));
    return context.outbounds.filter(n=>n.kind==='proxy'&&ids.has(n.sourceSubscriptionId));
  }
@@ -199,8 +201,8 @@
    // exactly one provider, preview ALL of its visible rows, even if an older
    // runtime snapshot omits/mislabels sourceId. With multiple providers,
    // keep the source boundary strict.
-   if(!onlyThisSource&&item.sourceId&&item.sourceId!==sourceId)return true;
-   if(!onlyThisSource&&!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
+   if(!context.retained&&!onlyThisSource&&item.sourceId&&item.sourceId!==sourceId)return true;
+   if(!context.retained&&!onlyThisSource&&!item.sourceId&&(!source||!item.name.startsWith(source.name+' | ')))return true;
    if(!keep.length&&!drop.length)return true;
    const flags=window.MUICountryFlags;
    const rawCode=String(item.countryCode||'').trim().toUpperCase();
@@ -623,7 +625,7 @@
      return;
    }
    const sourceChoice=q('.fbs-source',el);
-   const sourceList=context.subs.filter(src=>selectedSources(context.group,context.subs).includes(src.id));
+   const sourceList=context.retained?[{id:'__retained__',name:'Сохранённые серверы',filterKeep:context.group.subscriptionFilterKeep||'',filterExclude:context.group.subscriptionFilterExclude||''}]:context.subs.filter(src=>selectedSources(context.group,context.subs).includes(src.id));
    const isSharedSource=sub=>!!sub&&
      (context.group.subscriptionIds||[]).includes(sub.id)&&sub.group!==context.group.name;
    filterEditBaseline=new Map(sourceList.map(src=>[src.id,{
@@ -644,6 +646,10 @@
    const pendingSources=new Map();
    let activeSourceID=sourceChoice.value;
    const makeSourceChange=sub=>{
+     if(context.retained){
+       const body={sourceId:'',group:context.group.name,filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value,excludedNodeKeys:[]};
+       return body.filterKeep!==String(context.group.subscriptionFilterKeep||'')||body.filterExclude!==String(context.group.subscriptionFilterExclude||'')?body:null;
+     }
      if(isSharedSource(sub)){
        const body={sourceId:sub.id,group:context.group.name,
          filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value,
@@ -683,7 +689,7 @@
      // data or modifies source auto-refresh / other balancers.
      for(const change of changes){
        const source=sourceList.find(item=>item.id===change.sourceId||item.id===change.id);
-       if(source&&isSharedSource(source)){
+       if(context.retained||source&&isSharedSource(source)){
          await request('/api/mihomo/subscriptions/groups',{
            method:'PUT',body:JSON.stringify(change)
          });
@@ -695,7 +701,7 @@
          });
          if(source)Object.assign(source,change);
        }
-       const key=change.sourceId||change.id;
+       const key=context.retained?'__retained__':change.sourceId||change.id;
        filterEditBaseline.set(key,{
          keep:String(change.filterKeep||''),drop:String(change.filterExclude||'')
        });
@@ -860,6 +866,14 @@
    }
    function fillSource(){
      const sub=currentSource();if(!sub)return;
+     if(context.retained){
+       q('.fbs-keep',el).value=context.group.subscriptionFilterKeep||'';
+       q('.fbs-drop',el).value=context.group.subscriptionFilterExclude||'';
+       q('.fbs-source-save',el).textContent='Сохранить фильтры балансировщика';
+       q('.fbs-save-hint',el).textContent='Подписка удалена. Фильтры применяются только к сохранённым серверам этой группы.';
+       q('.fbs-source',el).disabled=true;
+       renderFilterFlagPreviews();renderRows();return;
+     }
      const shared=isSharedSource(sub);
      const value=pendingSources.get(sub.id)||(shared?{
        ...sub,filterKeep:context.group.subscriptionFilterKeep||'',
@@ -1011,7 +1025,9 @@
    const label=form.elements.proxies?.closest('.mihomo-field');
    if(!label)return false;
    const ids=selectedSources(group,subs);
-   const subscribed=ids.length>0;
+   const retained=ids.length===0&&(!!group.subscriptionManaged||!!group.subscriptionRetainedMembers?.length||
+     ((group.proxies||[]).length>0&&subs.some(source=>source.name&&(group.proxies||[]).every(name=>name.startsWith(source.name+' | ')))));
+   const subscribed=ids.length>0||retained;
    const nativeSelect=form.elements.proxies;
    nativeSelect.classList.add('fbs-native-members');
    const title=label.querySelector('span');
@@ -1024,7 +1040,7 @@
      });
    filteredCollapsed=false;
    selectionOverrides.clear();
-   context={form,group,subs,outbounds,available,subscribed,updateDefaults,afterRefresh,
+   context={form,group,subs,outbounds,available,subscribed,retained,updateDefaults,afterRefresh,
      isDirty,persistedName:persistedName||'',selectionInitialized:false};
    const initial=contextNodes();
    if(subscribed){
@@ -1044,6 +1060,14 @@
    label.hidden=true;
    label.after(panel);
    bindHandlers();
+   if(subscribed){
+     const filters=q('[data-sub-pane="filters"]',panel);if(filters)filters.click();
+     if(retained){
+       q('[data-sub-pane="update"]',panel).hidden=true;
+       q('[data-sub-pane="update"]',panel).style.display='none';
+       q('.fbs-refresh-source',panel).hidden=true;
+     }
+   }
    renderRows();
    // Immediate initial read; recurring reads only while the dialog is visible.
    void refreshStatus();

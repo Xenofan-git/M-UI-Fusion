@@ -55,7 +55,7 @@ const editor=fs.readFileSync('web/mihomo-balancer-servers.js','utf8');
 assert.ok(editor.includes("if(!context.subscribed)return context.available"));
 assert.ok(editor.includes("selectedNames=Array.from(nativeSelect.selectedOptions"));
 assert.ok(editor.includes("Добавить Outbound"));
-assert.ok(editor.includes("const subscribed=ids.length>0;"));
+assert.ok(editor.includes("const subscribed=ids.length>0||retained;"));
 
 // The optional no-UDP option remains unchecked and editable, and existing
 // persisted 300/8000/0 values are not retroactively overwritten.

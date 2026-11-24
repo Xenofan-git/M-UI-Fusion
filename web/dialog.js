@@ -55,6 +55,7 @@
       const footer = document.createElement('footer');
       footer.className = 'modal-footer';
       const cancel = button('outline-btn', muiT('common.cancel'));
+      cancel.id = 'mui-dialog-cancel';
       const ok = button(danger ? 'danger-btn' : 'primary-btn', confirmText || muiT('common.confirm'));
       footer.append(cancel, ok);
       panel.append(header, content, footer);

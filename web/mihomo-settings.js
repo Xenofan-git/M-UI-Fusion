@@ -1318,6 +1318,8 @@
             ?(app.state?.state?.outbounds||[]).find(x=>x.kind==='group'&&x.name===response.outbounds[0].name)
             :null;
           const original=lastSaved||editingOriginal||{};
+          response.outbounds[0].subscriptionManaged=!!original.subscriptionManaged;
+          response.outbounds[0].subscriptionRetainedMembers=[...(original.subscriptionRetainedMembers||[])];
           response.outbounds[0].subscriptionFilterKeep=original.subscriptionFilterKeep||'';
           response.outbounds[0].subscriptionFilterExclude=original.subscriptionFilterExclude||'';
           response.outbounds[0].subscriptionExcludedNodeKeys=[...(original.subscriptionExcludedNodeKeys||[])];
@@ -1347,7 +1349,11 @@
           group.subscriptionFilterExclude=liveGroup.subscriptionFilterExclude||'';
           group.subscriptionExcludedNodeKeys=[...(liveGroup.subscriptionExcludedNodeKeys||[])];
         }
-        group.proxies=Array.from(new Set([...manual,...fresh]));
+        if(liveGroup?.subscriptionRetainedMembers?.length){
+          group.subscriptionManaged=true;
+          group.subscriptionRetainedMembers=[...liveGroup.subscriptionRetainedMembers];
+          group.proxies=[...(liveGroup.proxies||[])];
+        }else group.proxies=Array.from(new Set([...manual,...fresh]));
         if(group.native)group.native.proxies=[...group.proxies];
       }
       const next=clone(draft),index=next.outbounds.findIndex(item=>item.id===editingOutbound);
