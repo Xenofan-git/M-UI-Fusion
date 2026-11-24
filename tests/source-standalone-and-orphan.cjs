@@ -9,7 +9,7 @@ const filter=fs.readFileSync('internal/app/subscription_filters.go','utf8');
 const index=fs.readFileSync('web/index.html','utf8');
 assert(index.includes('outbound-subscriptions.js?v=119'));
 assert(index.includes('outbound-subscriptions.css?v=123'));
-assert(index.includes('mihomo-settings.js?v=136'));
+assert(index.includes('mihomo-settings.js?v=137'));
 assert(!ui.includes("Исходная группа: "),'source cards must not expose group binding');
 assert(ui.includes('Интервал обновления: '));
 assert(ui.includes("form.querySelector('#outsub-source-inventory').hidden=creatingGroup||isNew"));
