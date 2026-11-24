@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 const js=fs.readFileSync('web/mihomo-settings.js','utf8');
-assert(html.includes('mihomo-settings.css?v=129'));
+assert(html.includes('mihomo-settings.css?v=130'));
 for(const rule of [
  'background:#50606c;border:1px solid #83939f',
  'background:#e6ecf0;border-radius:50%',

@@ -2573,6 +2573,24 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   var lang = 'ru';
   var SUPPORTED_LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ru', 'fa', 'vi', 'es', 'tr', 'uk', 'pt-BR'];
 
+  // Inbound security choices: keep the stored value "none" unchanged.
+  // Only the visible label and explanation are localized.
+  Object.assign(DICT.en,{
+    'inbounds.securityTitle':'Security',
+    'inbounds.securityNoneChoice':'No extra security',
+    'inbounds.securityNoneHelp':'Do not apply an additional security layer (TLS, Reality, etc.).'
+  });
+  Object.assign(DICT.ru,{
+    'inbounds.securityTitle':'Безопасность',
+    'inbounds.securityNoneChoice':'Без защиты',
+    'inbounds.securityNoneHelp':'Не применять дополнительный протокол безопасности (TLS, Reality и т. п.).'
+  });
+  Object.assign(DICT['zh-CN'],{
+    'inbounds.securityTitle':'安全性',
+    'inbounds.securityNoneChoice':'无额外保护',
+    'inbounds.securityNoneHelp':'不使用额外安全协议（TLS、Reality 等）。'
+  });
+
   function muiGetLang() {
     var stored = null;
     try { stored = localStorage.getItem('mui-language'); } catch (e) {}

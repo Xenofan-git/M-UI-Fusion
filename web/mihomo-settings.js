@@ -850,8 +850,9 @@
         (locked||!next||next.type==='MATCH'?' disabled':'')+'>'+SF('arrow-down')+'</button>'+
         '<button class="mihomo-icon" data-rule-edit="'+esc(rule.id)+'" title="'+esc(muiT('action.edit'))+'">'+SF('edit')+'</button>'+
         (locked?'':'<button class="mihomo-icon danger" data-rule-delete="'+esc(rule.id)+'" title="'+esc(muiT('common.delete'))+'">'+SF('delete')+'</button>')+
-        '<label class="mihomo-rule-switch" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
-        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span></label>'+
+        '<label class="mihomo-rule-switch'+(locked?' mihomo-rule-switch-locked':'')+'" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
+        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span>'+
+        (locked?'<svg class="mihomo-rule-switch-padlock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>':'')+'</label>'+
         '</div></td></tr>';
     }).join('');
     box.innerHTML='<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>'+muiT('mh.colRuleType')+

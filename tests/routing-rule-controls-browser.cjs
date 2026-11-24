@@ -58,6 +58,21 @@ const boot=[
      assert.equal(await toggle('geo').isChecked(),true);
      assert.equal(await toggle('fallback').isChecked(),true);
      assert.equal(await toggle('fallback').isDisabled(),true);
+     const matchSwitch=row('fallback').locator('.mihomo-rule-switch-locked');
+     assert.equal(await matchSwitch.count(),1,'only MATCH has a padlocked switch');
+     assert.equal(await matchSwitch.locator('.mihomo-rule-switch-padlock').count(),1);
+     for(const id of ['bank','geo','social'])
+       assert.equal(await row(id).locator('.mihomo-rule-switch-padlock').count(),0);
+     const lockedPaint=await matchSwitch.evaluate(el=>{
+       const track=getComputedStyle(el.querySelector('.mihomo-rule-switch-track'));
+       const lock=el.querySelector('.mihomo-rule-switch-padlock');
+       const thumb=getComputedStyle(el.querySelector('.mihomo-rule-switch-track'),'::after');
+       return {track:track.backgroundColor,thumb:thumb.backgroundColor,
+         lock:lock.getBoundingClientRect().width,lockColor:getComputedStyle(lock).color};
+     });
+     const activePaint=await row('bank').locator('.mihomo-rule-switch-track').evaluate(el=>getComputedStyle(el).backgroundColor);
+     assert.notEqual(lockedPaint.track,activePaint,'locked MATCH must be gray, not emerald');
+     assert(lockedPaint.lock>=11,'padlock must be visible within the switch');
      const disabledAppearance=await row('fallback').locator('.mihomo-rule-switch').evaluate(el=>{
        const native=el.querySelector('input'),track=el.querySelector('.mihomo-rule-switch-track');
        return {opacity:getComputedStyle(native).opacity,appearance:getComputedStyle(native).appearance,

@@ -1106,6 +1106,21 @@ html body .mihomo-rule-switch > input[type="checkbox"]{
   box-shadow:none!important;outline:0!important;
 }
 html body .mihomo-rule-switch:has(input:disabled){opacity:1;cursor:not-allowed}
+/* MATCH is an immutable, active fallback. Gray and padlocked rather than an
+   editable-looking green toggle; Basics-managed system rules keep their style. */
+html body .mihomo-rule-switch-locked input:checked+.mihomo-rule-switch-track{
+  background:#606e7b!important;border-color:#87949e!important;
+  box-shadow:inset 0 1px 3px rgba(12,24,32,.22)!important;
+}
+html body .mihomo-rule-switch-locked input:checked+.mihomo-rule-switch-track::after{
+  background:#e6ebf0!important;transform:translateX(14px);
+}
+.mihomo-rule-switch-locked .mihomo-rule-switch-padlock{
+  position:absolute;left:3px;top:4px;width:12px;height:12px;z-index:2;
+  display:block;pointer-events:none;color:#eff3f6;
+}
+.mihomo-rule-switch-locked{cursor:not-allowed!important}
+
 
 .mihomo-rule-priority-cell .mihomo-rule-drag{touch-action:none;user-select:none;-webkit-user-select:none}
 .mihomo-rule-preview{pointer-events:none}

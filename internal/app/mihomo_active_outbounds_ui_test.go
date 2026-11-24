@@ -34,7 +34,7 @@ func TestActiveOutboundColumnKeepsCurrentWhileDelayTestMayFail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(routes), "mihomo-settings.js?v=128") {
+	if !strings.Contains(string(routes), "mihomo-settings.js?v=129") {
 		t.Fatal("outbounds view is not using the latest flag-stable UI")
 	}
 	css, err := webFS.ReadFile("web/mihomo-settings.css")
