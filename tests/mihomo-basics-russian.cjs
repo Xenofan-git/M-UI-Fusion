@@ -80,7 +80,7 @@ assert.equal(context.window.muiT('mihomo.basic.mode'),'Режим маршрут
 // Login has a final, theme-independent soft-press stylesheet rather
 // than the previous forced white plate with almost-black text.
 const finalTheme=login.indexOf('href="static/color-skins.css"');
-const feedback=login.indexOf('href="static/action-button-feedback.css?v=5"');
+const feedback=login.indexOf('href="static/action-button-feedback.css?v=6"');
 assert.ok(finalTheme>=0&&feedback>finalTheme&&feedback<login.indexOf('</head>'));
 assert.ok(!login.includes('login-button-hover-legibility'));
 const css=fs.readFileSync('web/action-button-feedback.css','utf8');

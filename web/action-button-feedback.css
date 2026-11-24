@@ -328,3 +328,47 @@ html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart
     transition: none !important;
   }
 }
+
+/* Routing rule Apply: explicit contrast, including legacy hover rendering. */
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"] {
+  --lb-fill: #08745a !important;
+  --lb-text: #ffffff !important;
+  background: #08745a !important;
+  background-image: none !important;
+  border: 1px solid #075a46 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  transition: background-color .12s, border-color .12s !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:hover:not(:disabled) {
+  --lb-fill: #07634d !important;
+  background: #07634d !important;
+  border-color: #064f3e !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:active:not(:disabled) {
+  --lb-fill: #064f3e !important;
+  background: #064f3e !important;
+  border-color: #043e30 !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:disabled {
+  --lb-fill: #526b64 !important;
+  background: #526b64 !important;
+  border-color: #41564f !important;
+  cursor: not-allowed !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:focus {
+  outline: 2px solid #137b60 !important;
+  outline-offset: 3px !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]::after {
+  content: none !important;
+  opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"] {
+    transition: none !important;
+  }
+}
