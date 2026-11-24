@@ -321,10 +321,12 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    });
    assert.equal(await page.evaluate(()=>window.__saveResult),true);
    const stored=await page.evaluate(()=>window.__lastSourcePUT);
-   assert.match(stored.url,/api\/mihomo\/subscriptions\/sub1$/);
+   assert.match(stored.url,/api\/mihomo\/subscriptions\/sub1\/filters$/);
    assert.equal(stored.body.filterKeep,'🇵🇱');
    assert.equal(stored.body.filterExclude,'🇷🇺');
-   assert.equal(stored.body.intervalMinutes,1440);
+   assert.equal(Object.hasOwn(stored.body,'intervalMinutes'),false,'balancer must never submit source schedule');
+   assert.equal(Object.hasOwn(stored.body,'enabled'),false,'balancer must never submit auto-refresh toggle');
+   assert.equal(Object.hasOwn(stored.body,'url'),false,'balancer must never submit source URL');
    assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
    const appliedRows=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>({
      name:r.dataset.node,filtered:r.classList.contains('fbs-row-filtered')

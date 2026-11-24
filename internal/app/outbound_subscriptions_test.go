@@ -707,3 +707,49 @@ func TestRemoveSubscriptionKeepNodesPreservesGroupOrigin(t *testing.T) {
 		t.Fatal("subscription origin did not survive restart")
 	}
 }
+
+// A balancer filter PUT must never overwrite the source's update schedule.
+// Even an old browser may send obsolete enabled/interval fields; this endpoint
+// only accepts filter terms and loads the current source under a write lock.
+func TestSubscriptionFilterOnlyPUTPreservesSourceSchedule(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-schedule", Name: "quatro-vpn", Group: "FOREIGN",
+		URL: "https://provider.example/source", Enabled: true, IntervalMinutes: 1440}
+	nodes := []MihomoOutbound{subscriptionSS("LTE - Germany", "de.example")}
+	if err := m.commitOutboundSubscriptionWithGroup(sub, nodes, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{manager: m}
+	call := func(id string, body string) int {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPut, "/api/mihomo/subscriptions/"+id+"/filters", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		app.handleOutboundSubscriptionAction(rec, req)
+		return rec.Code
+	}
+	if code := call(sub.ID, "{\"filterKeep\":\"\",\"filterExclude\":\"\"}"); code != 200 {
+		t.Fatalf("filter-only no-op returned %d", code)
+	}
+	// JSON decoding rejects any attempted injection of source-owned fields.
+	if code := call(sub.ID, "{\"filterKeep\":\"\",\"filterExclude\":\"\",\"enabled\":false,\"intervalMinutes\":5}"); code != 400 {
+		t.Fatalf("source schedule override unexpectedly accepted, status %d", code)
+	}
+	if len(m.state.OutboundSubscriptions) != 1 {
+		t.Fatal("source duplicated")
+	}
+	stored := m.state.OutboundSubscriptions[0]
+	if !stored.Enabled || stored.IntervalMinutes != 1440 || stored.URL != sub.URL {
+		t.Fatalf("group edit changed subscription schedule or URL: %+v", stored)
+	}
+	longFilter := strings.Repeat("x", 4200)
+	body, _ := json.Marshal(map[string]string{"filterKeep": longFilter, "filterExclude": ""})
+	if code := call(sub.ID, string(body)); code != 400 {
+		t.Fatalf("invalid filter must be rejected, status %d", code)
+	}
+	if m.state.OutboundSubscriptions[0].IntervalMinutes != 1440 {
+		t.Fatal("invalid filter changed schedule")
+	}
+	if code := call("unknown", "{\"filterKeep\":\"\",\"filterExclude\":\"}"); code != 404 {
+		t.Fatalf("unknown source returned %d", code)
+	}
+}

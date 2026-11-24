@@ -640,9 +640,10 @@
          body.filterExclude!==(context.group.subscriptionFilterExclude||'');
        return changed?body:null;
      }
-     // The source's schedule is owned ONLY by the Subscriptions tab.
-     // Never resubmit a stale enabled/interval value from this group editor.
-     const body={...sub,filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value};
+     // Source-owned legacy groups save filter terms alone. The backend
+     // merges them with current source metadata under the subscription lock.
+     const body={id:sub.id,
+       filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value};
      const modified=['filterKeep','filterExclude']
        .some(key=>(body[key]??'')!==(sub[key]??''));
      return modified?body:null;
@@ -674,8 +675,9 @@
          context.group.subscriptionFilterKeep=change.filterKeep;
          context.group.subscriptionFilterExclude=change.filterExclude;
        }else{
-         await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id),{
-           method:'PUT',body:JSON.stringify(change)
+         await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id)+'/filters',{
+           method:'PUT',body:JSON.stringify({filterKeep:change.filterKeep,
+             filterExclude:change.filterExclude})
          });
          if(source)Object.assign(source,change);
        }
