@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -456,5 +458,208 @@ func TestSameURLIndependentSubscribedBalancers(t *testing.T) {
 	}
 	if len(m.state.OutboundSubscriptions) != 2 {
 		t.Fatal("failed duplicate creation modified saved subscriptions")
+	}
+}
+
+// One source is downloaded/imported once and linked to multiple groups.
+// Group-specific filters survive source refresh, restart, and metadata-only
+// updates without cloning any source proxies.
+func TestSharedSourceGroupsUseOneNodeSetAndRefreshIndependently(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	source := OutboundSubscription{
+		ID: "sub-one", Name: "Quatro Shared", URL: "https://provider.example/one",
+		Enabled: true, IntervalMinutes: 1440,
+	}
+	raw := []MihomoOutbound{
+		subscriptionSS("LTE - Россия Москва", "ru.example"),
+		subscriptionSS("LTE - Germany Frankfurt", "de.example"),
+		subscriptionSS("LTE - Швейцария", "ch.example"),
+	}
+	if err := m.commitOutboundSubscriptionWithGroup(source, raw, true, false, ""); err != nil {
+		t.Fatal("create source without balancer:", err)
+	}
+	if len(m.state.OutboundSubscriptions) != 1 {
+		t.Fatalf("duplicate source created")
+	}
+	if err := m.commitSharedSubscriptionGroup(source.ID, "Shared Russia", "url-test", "🇷🇺", "", nil, true); err != nil {
+		t.Fatal("Russian group:", err)
+	}
+	if err := m.commitSharedSubscriptionGroup(source.ID, "Shared Foreign", "url-test", "", "🇷🇺", nil, true); err != nil {
+		t.Fatal("Foreign group:", err)
+	}
+	findGroup := func(name string) (MihomoOutbound, bool) {
+		for _, o := range m.state.Outbounds {
+			if o.Kind == "group" && o.Name == name {
+				return o, true
+			}
+		}
+		return MihomoOutbound{}, false
+	}
+	ru, ok := findGroup("Shared Russia")
+	if !ok {
+		t.Fatal("Russia group missing")
+	}
+	foreign, ok := findGroup("Shared Foreign")
+	if !ok {
+		t.Fatal("Foreign group missing")
+	}
+	if len(ru.Proxies) != 1 || len(foreign.Proxies) != 2 {
+		t.Fatalf("group filters wrong ru=%v foreign=%v", ru.Proxies, foreign.Proxies)
+	}
+	if !slices.Equal(ru.SubscriptionIDs, []string{source.ID}) || !slices.Equal(foreign.SubscriptionIDs, []string{source.ID}) {
+		t.Fatalf("groups not referencing same provider ID")
+	}
+	assertNoClone := func(want int) {
+		t.Helper()
+		seen := map[string]bool{}
+		for _, o := range m.state.Outbounds {
+			if o.Kind != "proxy" {
+				continue
+			}
+			if o.SourceSubscriptionID != source.ID {
+				t.Fatalf("foreign node owner %s", o.Name)
+			}
+			if seen[o.ID] {
+				t.Fatalf("duplicate node ID %s", o.ID)
+			}
+			seen[o.ID] = true
+		}
+		if len(seen) != want {
+			t.Fatalf("wanted %d source proxies, got %d", want, len(seen))
+		}
+	}
+	assertNoClone(3)
+	if err := m.commitSharedSubscriptionGroup(source.ID, "Shared Russia", "", "🇨🇭", "", nil, false); err != nil {
+		t.Fatal("edit only Russian group filters:", err)
+	}
+	ru, _ = findGroup("Shared Russia")
+	foreign, _ = findGroup("Shared Foreign")
+	if len(ru.Proxies) != 1 || !strings.Contains(ru.Proxies[0], "Швейцария") || len(foreign.Proxies) != 2 {
+		t.Fatalf("changing one group affected another: ru=%v foreign=%v", ru.Proxies, foreign.Proxies)
+	}
+	if err := m.commitOutboundSubscription(source, raw, false); err != nil {
+		t.Fatal("refresh source:", err)
+	}
+	ru, _ = findGroup("Shared Russia")
+	foreign, _ = findGroup("Shared Foreign")
+	if len(ru.Proxies) != 1 || !strings.Contains(ru.Proxies[0], "Швейцария") || len(foreign.Proxies) != 2 {
+		t.Fatalf("source refresh lost per-group filters ru=%v foreign=%v", ru.Proxies, foreign.Proxies)
+	}
+	assertNoClone(3)
+	if len(m.state.OutboundSubscriptions) != 1 || m.state.OutboundSubscriptions[0].Enabled != true {
+		t.Fatalf("group changed source configuration: %+v", m.state.OutboundSubscriptions)
+	}
+	reload := &CoreManager{dataDir: m.dataDir}
+	if err := reload.load(); err != nil {
+		t.Fatal("reload persisted state:", err)
+	}
+	if len(reload.state.OutboundSubscriptions) != 1 {
+		t.Fatal("source duplicated after restart")
+	}
+	for _, o := range reload.state.Outbounds {
+		if o.Kind == "group" && o.Name == "Shared Russia" {
+			if o.SubscriptionFilterKeep != "🇨🇭" || len(o.Proxies) != 1 {
+				t.Fatalf("group filter lost after reload: %+v", o)
+			}
+		}
+	}
+	// Failed changes must leave the original source and groups untouched.
+	if err := m.commitSharedSubscriptionGroup(source.ID, "Shared Russia", "", "неизвестное-слово", "", nil, false); err == nil {
+		t.Fatal("empty filter should be rejected before commit")
+	}
+	if err := m.commitSharedSubscriptionGroup(source.ID, "Shared Russia", "url-test", "", "", nil, true); err == nil {
+		t.Fatal("duplicate group name should be rejected")
+	}
+	ru, _ = findGroup("Shared Russia")
+	if ru.SubscriptionFilterKeep != "🇨🇭" {
+		t.Fatal("failed request corrupted group")
+	}
+}
+
+// HTTP surface of the catalog/group split: after import, every balancer
+// creation uses a source ID and never needs the original (secret) URL.
+func TestSharedSourceGroupHTTPAndStoredPreview(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	const id = "sub-catalog-example"
+	source := OutboundSubscription{ID: id, Name: "shared-vpn", URL: "https://provider.example/token-secret",
+		Enabled: true, IntervalMinutes: 1440}
+	proxies := []MihomoOutbound{
+		subscriptionSS("LTE - Россия", "ru.example"),
+		subscriptionSS("LTE - Germany", "de.example"),
+		subscriptionSS("LTE - Швейцария", "ch.example"),
+	}
+	if err := m.commitOutboundSubscriptionWithGroup(source, proxies, true, false, ""); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{manager: m}
+	previewRequest := httptest.NewRequest("GET", "/api/mihomo/subscriptions/"+id+"/nodes", nil)
+	previewResponse := httptest.NewRecorder()
+	app.handleOutboundSubscriptionAction(previewResponse, previewRequest)
+	if previewResponse.Code != 200 {
+		t.Fatalf("cached preview HTTP %d: %s", previewResponse.Code, previewResponse.Body.String())
+	}
+	raw := previewResponse.Body.String()
+	if strings.Contains(raw, "token-secret") || strings.Contains(raw, "de.example") ||
+		strings.Contains(raw, "password") || strings.Contains(raw, "cipher") {
+		t.Fatal("preview leaked sensitive subscription URL or proxy credentials")
+	}
+	var parsed struct {
+		Data subscriptionPreviewResponse
+	}
+	if err := json.Unmarshal(previewResponse.Body.Bytes(), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Data.Total != 3 || len(parsed.Data.Nodes) != 3 {
+		t.Fatalf("incorrect preview: %+v", parsed.Data)
+	}
+	for _, n := range parsed.Data.Nodes {
+		if n.Key == "" || !n.Included {
+			t.Fatalf("missing stable node key %+v", n)
+		}
+	}
+	perform := func(method string, body map[string]any) int {
+		t.Helper()
+		data, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := httptest.NewRequest(method, "/api/mihomo/subscriptions/groups", bytes.NewReader(data))
+		rec := httptest.NewRecorder()
+		app.handleOutboundSubscriptionAction(rec, request)
+		if rec.Code != 200 && !strings.Contains(rec.Body.String(), "message") {
+			t.Fatalf("missing error details: %s", rec.Body.String())
+		}
+		return rec.Code
+	}
+	payload := map[string]any{"sourceId": id, "group": "German Picks", "groupType": "url-test",
+		"filterKeep": "🇩🇪", "filterExclude": ""}
+	if code := perform("POST", payload); code != 200 {
+		t.Fatalf("group create HTTP %d", code)
+	}
+	if code := perform("POST", payload); code != 400 {
+		t.Fatalf("duplicate group allowed HTTP %d", code)
+	}
+	if code := perform("PUT", map[string]any{"sourceId": id, "group": "German Picks", "filterKeep": "🇨🇭"}); code != 200 {
+		t.Fatalf("edit group HTTP %d", code)
+	}
+	if code := perform("PUT", map[string]any{"sourceId": "sub-bad", "group": "German Picks", "filterKeep": "🇷🇺"}); code != 400 {
+		t.Fatalf("alien source allowed HTTP %d", code)
+	}
+	if len(m.state.OutboundSubscriptions) != 1 {
+		t.Fatal("group action created a second subscription")
+	}
+	owned := 0
+	for _, x := range m.state.Outbounds {
+		if x.Kind == "proxy" && x.SourceSubscriptionID == id {
+			owned++
+		}
+		if x.Name == "German Picks" && x.Kind == "group" {
+			if len(x.Proxies) != 1 || !strings.Contains(x.Proxies[0], "Швейцария") {
+				t.Fatalf("wrong group after HTTP update: %+v", x)
+			}
+		}
+	}
+	if owned != 3 {
+		t.Fatalf("expected one set of 3 proxies, got %d", owned)
 	}
 }

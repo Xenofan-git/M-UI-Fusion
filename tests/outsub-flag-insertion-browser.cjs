@@ -29,12 +29,16 @@ const root='https://panel.test';
       {key:'de',name:'LTE №12 - Germany Frankfurt',countryCode:'DE',protocol:'vless'},
       {key:'us',name:'LTE №13 - США Denver',countryCode:'US',protocol:'vless'},
      ];
-     const result=String(url).includes('/preview')?{nodes}:{data:[]};
+     const result=String(url).includes('/nodes')?{nodes}:{data:[
+      {id:'sub-test-1',name:'quatro-vpn',url:'https://provider.example/test',
+       enabled:true,group:'FOREIGN',intervalMinutes:1440,nodeCount:3}
+     ]};
      return {ok:true,status:200,json:async()=>result};
    }});
    await page.addScriptTag({content:flagSource});
    await page.addScriptTag({content:source});
    await page.evaluate(()=>window.MUIOutboundSubscriptions.openCreate());
+   await page.locator('#outsub-source-picker').selectOption('sub-test-1');
    const trigger=page.locator('.outsub-filter-field').first().locator('.outsub-flag-trigger');
    assert.equal(await trigger.innerText(),'Добавить флаг');
    assert.equal(await trigger.locator('svg.outsub-add-flag-icon').count(),1,'button should use SVG icon');

@@ -45,6 +45,13 @@ type MihomoOutbound struct {
 	SourceSubscriptionID        string         `json:"sourceSubscriptionId,omitempty"` // managed inbound URL subscription
 	SubscriptionIDs             []string       `json:"subscriptionIds,omitempty"`
 	ExcludedSubscriptionMembers []string       `json:"excludedSubscriptionMembers,omitempty"` // subscribed sources for a policy group
+	// Provider subscriptions are shared. Per-group filters never alter
+	// another group's members or the source's auto-refresh settings.
+	SubscriptionFilterKeep       string   `json:"subscriptionFilterKeep,omitempty"`
+	SubscriptionFilterExclude    string   `json:"subscriptionFilterExclude,omitempty"`
+	SubscriptionExcludedNodeKeys []string `json:"subscriptionExcludedNodeKeys,omitempty"`
+	SourceOriginalName           string   `json:"sourceOriginalName,omitempty"`
+	SourceNodeKey                string   `json:"sourceNodeKey,omitempty"`
 
 	// Proxy node common fields.
 	Server            string `json:"server,omitempty"`
@@ -550,6 +557,11 @@ func normalizeMihomoOutbounds(input []MihomoOutbound) ([]MihomoOutbound, error) 
 			parsed.SourceSubscriptionID = item.SourceSubscriptionID
 			parsed.SubscriptionIDs = append([]string(nil), item.SubscriptionIDs...)
 			parsed.ExcludedSubscriptionMembers = append([]string(nil), item.ExcludedSubscriptionMembers...)
+			parsed.SubscriptionFilterKeep = item.SubscriptionFilterKeep
+			parsed.SubscriptionFilterExclude = item.SubscriptionFilterExclude
+			parsed.SubscriptionExcludedNodeKeys = append([]string(nil), item.SubscriptionExcludedNodeKeys...)
+			parsed.SourceOriginalName = item.SourceOriginalName
+			parsed.SourceNodeKey = item.SourceNodeKey
 			*item = parsed
 		}
 		item.Kind = strings.ToLower(strings.TrimSpace(item.Kind))

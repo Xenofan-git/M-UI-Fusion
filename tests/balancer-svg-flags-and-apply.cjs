@@ -54,7 +54,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','136'],['mihomo-settings.js','130'],['mihomo-settings.css','131'],
- ['outbound-subscriptions.css','120'],['i18n.js','122'],['i18n-locales.js','119']
+ ['mihomo-balancer-servers.js','137'],['mihomo-settings.js','131'],['mihomo-settings.css','132'],
+ ['outbound-subscriptions.css','121'],['i18n.js','123'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

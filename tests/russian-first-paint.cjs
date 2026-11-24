@@ -20,7 +20,7 @@ assert(login.includes("applyLanguage(document.documentElement.dataset.defaultLan
 assert(login.includes('root.dataset.defaultLanguage = lang'));
 assert(i18n.includes('var value = injected || stored || \'ru\''));
 assert(i18n.includes("document.documentElement.setAttribute('data-default-language', next)"));
-assert(dashboard.includes('static/i18n.js?v=122'));
+assert(dashboard.includes('static/i18n.js?v=123'));
 assert(dashboard.includes('data-i18n="topbar.refresh">Обновить'));
 assert(!dashboard.includes('<span>刷新状态</span>'));
 assert(dashboard.includes('id="sidebar-logout"'));

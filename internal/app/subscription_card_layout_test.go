@@ -11,10 +11,11 @@ func TestSubscriptionCardsUseCompactFramedInformation(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := string(index)
-	if strings.Count(html, "Все узлы автоматически добавляются в Outbounds и обновляются по расписанию.") != 1 ||
-		!strings.Contains(html, `<span class="mihomo-muted">Все узлы автоматически добавляются в Outbounds и обновляются по расписанию.</span>`) ||
-		strings.Contains(html, "Группы, связанные с подписками, и их автоматическое обновление.") {
-		t.Fatal("subscription description must appear once in the toolbar, replacing the old explanatory text")
+	if strings.Count(html, "URL, расписание обновления и общий набор исходящих серверов.") != 1 ||
+		!strings.Contains(html, `data-mihomo-pane="sources"`) ||
+		!strings.Contains(html, `id="mihomo-add-source"`) ||
+		!strings.Contains(html, `data-mihomo-pane="subscriptions"`) {
+		t.Fatal("subscription catalog must have a separate tab, add button and description")
 	}
 	start := strings.Index(html, `<div class="outsub-page" id="outsub-root">`)
 	if start < 0 {
@@ -47,7 +48,7 @@ func TestSubscriptionCardsUseCompactFramedInformation(t *testing.T) {
 		`card.appendChild(info)`,
 		`card.appendChild(actions)`,
 		`['Обновить','refresh']`,
-		`['Фильтры и настройки','edit']`,
+		`['Параметры подписки','edit']`,
 		`['Удалить','delete']`,
 	} {
 		if !strings.Contains(script, marker) {

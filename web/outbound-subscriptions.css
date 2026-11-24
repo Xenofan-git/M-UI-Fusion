@@ -345,3 +345,13 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
   width:16px;height:11px;
 }
 .outsub-dialog .outsub-node-flag{width:20px;height:15px}
+
+
+/* The two independent dialogs share one form shell. Explicit hidden state
+   must win over author-level grid/flex display rules in all 3 themes. */
+.outsub-dialog [hidden]{display:none!important}
+.outsub-source-choice-label select{
+  width:100%;min-height:39px;padding:8px 10px;box-sizing:border-box;
+  border:1px solid var(--border);border-radius:8px;
+  background:var(--bg,var(--surface));color:var(--text-strong);
+}

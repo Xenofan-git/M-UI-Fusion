@@ -10,9 +10,9 @@ const locales=read('web/i18n-locales.js');
 const css=read('web/color-skins.css');
 const keys=[
  'static/color-skins.css?v=116',
- 'static/mihomo-settings.css?v=131',
- 'static/mihomo-settings.js?v=130',
- 'static/i18n.js?v=122',
+ 'static/mihomo-settings.css?v=132',
+ 'static/mihomo-settings.js?v=131',
+ 'static/i18n.js?v=123',
  'static/i18n-locales.js?v=119'
 ];
 for(const asset of keys)assert.ok(html.includes(asset),'missing cache-busting for '+asset);

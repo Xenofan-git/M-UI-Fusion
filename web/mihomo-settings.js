@@ -80,7 +80,7 @@
     $$('.mihomo-pane',root).forEach(pane=>pane.classList.toggle('active',pane.dataset.mihomoPane===tab));
     if(typeof syncInkBars==='function')syncInkBars();
     render();
-    if(tab==='subscriptions')window.MUIOutboundSubscriptions?.load();
+    if(tab==='sources'||tab==='subscriptions')window.MUIOutboundSubscriptions?.load();
   }
   function render(){
     renderWarpRouting();
@@ -1301,6 +1301,17 @@
         const exclusions=window.MUIBalancerServers?.getExcluded();
         response.outbounds[0].excludedSubscriptionMembers=editingSubscriptionGroup
           ?exclusions??editingOriginal?.excludedSubscriptionMembers??[]:[];
+        // Native YAML editing does not carry panel-only metadata. Retain
+        // group-scoped filters and shared subscription IDs across Apply.
+        if(editingSubscriptionGroup){
+          const lastSaved=sourceFiltersSaved
+            ?(app.state?.state?.outbounds||[]).find(x=>x.kind==='group'&&x.name===response.outbounds[0].name)
+            :null;
+          const original=lastSaved||editingOriginal||{};
+          response.outbounds[0].subscriptionFilterKeep=original.subscriptionFilterKeep||'';
+          response.outbounds[0].subscriptionFilterExclude=original.subscriptionFilterExclude||'';
+          response.outbounds[0].subscriptionExcludedNodeKeys=[...(original.subscriptionExcludedNodeKeys||[])];
+        }
       }
       if(sourceFiltersSaved&&response.outbounds.length===1&&response.outbounds[0].kind==='group'){
         // Source PUT can replace the managed nodes, so discard stale names
@@ -1317,8 +1328,15 @@
           const node=byName.get(name);
           return node&&!node.sourceSubscriptionId;
         });
+        const liveGroup=activeNodes.find(node=>node.kind==='group'&&node.name===group.name);
+        const liveMembers=new Set(liveGroup?.proxies||[]);
         const fresh=activeNodes.filter(node=>node.sourceSubscriptionId&&sources.has(node.sourceSubscriptionId)
-          &&!excluded.has(node.name)).map(node=>node.name);
+          &&(liveGroup?liveMembers.has(node.name):true)&&!excluded.has(node.name)).map(node=>node.name);
+        if(liveGroup){
+          group.subscriptionFilterKeep=liveGroup.subscriptionFilterKeep||'';
+          group.subscriptionFilterExclude=liveGroup.subscriptionFilterExclude||'';
+          group.subscriptionExcludedNodeKeys=[...(liveGroup.subscriptionExcludedNodeKeys||[])];
+        }
         group.proxies=Array.from(new Set([...manual,...fresh]));
         if(group.native)group.native.proxies=[...group.proxies];
       }
@@ -2026,6 +2044,7 @@
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
   $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
   $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openCreate();};
+  $('#mihomo-add-source').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openSource();};
   $('#mihomo-add-rule').onclick=()=>openRuleModal();
   $('#mihomo-warp').onclick=openWarpModal;
   $('#mihomo-vpngate').onclick=()=>openVPNGateModal();

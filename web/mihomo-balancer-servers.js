@@ -624,8 +624,11 @@
    }
    const sourceChoice=q('.fbs-source',el);
    const sourceList=context.subs.filter(src=>selectedSources(context.group,context.subs).includes(src.id));
+   const isSharedSource=sub=>!!sub&&
+     (context.group.subscriptionIds||[]).includes(sub.id)&&sub.group!==context.group.name;
    filterEditBaseline=new Map(sourceList.map(src=>[src.id,{
-     keep:String(src.filterKeep||''),drop:String(src.filterExclude||'')
+     keep:String(isSharedSource(src)?context.group.subscriptionFilterKeep||'':src.filterKeep||''),
+     drop:String(isSharedSource(src)?context.group.subscriptionFilterExclude||'':src.filterExclude||'')
    }]));
    const attachedIDs=selectedSources(context.group,context.subs);
    if(attachedIDs.length===1&&!filterEditBaseline.has(attachedIDs[0]))
@@ -641,6 +644,14 @@
    const pendingSources=new Map();
    let activeSourceID=sourceChoice.value;
    const makeSourceChange=sub=>{
+     if(isSharedSource(sub)){
+       const body={sourceId:sub.id,group:context.group.name,
+         filterKeep:q('.fbs-keep',el).value,filterExclude:q('.fbs-drop',el).value,
+         excludedNodeKeys:context.group.subscriptionExcludedNodeKeys||[]};
+       const changed=body.filterKeep!==(context.group.subscriptionFilterKeep||'')||
+         body.filterExclude!==(context.group.subscriptionFilterExclude||'');
+       return changed?body:null;
+     }
      const hours=Number(q('.fbs-hours',el).value),minutes=Number(q('.fbs-minutes',el).value);
      const interval=hours*60+minutes;
      if(!Number.isInteger(hours)||hours<0||hours>168||
@@ -667,19 +678,29 @@
        if(panel)renderRows();
        return !!context.wasSourceSaved;
      }
-     // The backend validates every filter, re-imports from subscription URL,
-     // and atomically writes the accepted nodes and filter metadata to state.
+     // Legacy group-owned filters retain their original source PUT. Shared
+     // groups use a separate group-filter PUT that never downloads provider
+     // data or modifies source auto-refresh / other balancers.
      for(const change of changes){
-       await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id),{
-         method:'PUT',body:JSON.stringify(change)
-       });
-       const sub=sourceList.find(item=>item.id===change.id);
-       if(sub)Object.assign(sub,change);
-       filterEditBaseline.set(change.id,{
+       const source=sourceList.find(item=>item.id===change.sourceId||item.id===change.id);
+       if(source&&isSharedSource(source)){
+         await request('/api/mihomo/subscriptions/groups',{
+           method:'PUT',body:JSON.stringify(change)
+         });
+         context.group.subscriptionFilterKeep=change.filterKeep;
+         context.group.subscriptionFilterExclude=change.filterExclude;
+       }else{
+         await request('/api/mihomo/subscriptions/'+encodeURIComponent(change.id),{
+           method:'PUT',body:JSON.stringify(change)
+         });
+         if(source)Object.assign(source,change);
+       }
+       const key=change.sourceId||change.id;
+       filterEditBaseline.set(key,{
          keep:String(change.filterKeep||''),drop:String(change.filterExclude||'')
        });
-       filterDraftTouched.delete(change.id);
-       pendingSources.delete(change.id);
+       filterDraftTouched.delete(key);
+       pendingSources.delete(key);
        context.wasSourceSaved=true;
      }
      // The PUT re-imports subscription nodes and can turn previously
@@ -839,10 +860,21 @@
    }
    function fillSource(){
      const sub=currentSource();if(!sub)return;
-     const value=pendingSources.get(sub.id)||sub;
-     q('.fbs-auto',el).checked=!!value.enabled;
-     q('.fbs-hours',el).value=Math.floor((value.intervalMinutes||1440)/60);
-     q('.fbs-minutes',el).value=(value.intervalMinutes||1440)%60;
+     const shared=isSharedSource(sub);
+     const value=pendingSources.get(sub.id)||(shared?{
+       ...sub,filterKeep:context.group.subscriptionFilterKeep||'',
+       filterExclude:context.group.subscriptionFilterExclude||''
+     }:sub);
+     q('.fbs-auto',el).checked=!!sub.enabled;
+     q('.fbs-hours',el).value=Math.floor((sub.intervalMinutes||1440)/60);
+     q('.fbs-minutes',el).value=(sub.intervalMinutes||1440)%60;
+     q('.fbs-auto',el).disabled=shared;
+     q('.fbs-hours',el).disabled=shared;
+     q('.fbs-minutes',el).disabled=shared;
+     q('.fbs-source-save',el).textContent=shared?'Сохранить фильтры балансировщика':'Сохранить настройки подписки';
+     q('.fbs-save-hint',el).textContent=shared?
+       'Автообновление источника настраивается во вкладке «Подписки». Здесь фильтры относятся только к этому балансировщику.':
+       'Фильтры сохраняются также при нажатии «Применить к конфигурации».';
      q('.fbs-keep',el).value=value.filterKeep||'';
      q('.fbs-drop',el).value=value.filterExclude||'';
      previewRowOrder=null;lastPreviewInput=null;

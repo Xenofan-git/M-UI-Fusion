@@ -2596,6 +2596,10 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   Object.assign(DICT.en,{'mh.hideFilteredOutbounds':'Hide filtered-out servers'});
   Object.assign(DICT['zh-CN'],{'mh.hideFilteredOutbounds':'隐藏已过滤的服务器'});
 
+  Object.assign(DICT.ru,{'mihomo.tabProviderSources':'Подписки'});
+  Object.assign(DICT.en,{'mihomo.tabProviderSources':'Subscriptions'});
+  Object.assign(DICT['zh-CN'],{'mihomo.tabProviderSources':'订阅源'});
+
   function muiGetLang() {
     var stored = null;
     try { stored = localStorage.getItem('mui-language'); } catch (e) {}

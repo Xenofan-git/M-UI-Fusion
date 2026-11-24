@@ -343,6 +343,21 @@ func uniqueSubscriptionName(base string, used map[string]bool) string {
 	}
 }
 
+// Each group's filter only changes its own members. Health probes and
+// source downloads are shared by all groups referring to a source ID.
+func sharedGroupNodeAllowed(group MihomoOutbound, node MihomoOutbound) bool {
+	name := node.SourceOriginalName
+	if name == "" {
+		name = node.Name
+	}
+	if !subscriptionFilterMatch(name,
+		subscriptionFilterWords(group.SubscriptionFilterKeep),
+		subscriptionFilterWords(group.SubscriptionFilterExclude)) {
+		return false
+	}
+	return !containsString(group.SubscriptionExcludedNodeKeys, node.SourceNodeKey)
+}
+
 func applySubscriptionNodes(state State, sub OutboundSubscription, imported []MihomoOutbound) (State, error) {
 	if len(imported) == 0 {
 		return state, errors.New("пустая подписка не может удалить текущие узлы")
@@ -369,11 +384,25 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 	}
 	addedNames := map[string]bool{}
 	orderedNames := make([]string, 0, len(imported))
+	sourceKeys := subscriptionNodeKeys(imported)
+	selectedByGroup := make(map[string][]string)
 	for idx, node := range imported {
 		if node.Kind != "proxy" {
 			return state, errors.New("подписки могут содержать только узлы")
 		}
+		originalName := node.Name
 		name := uniqueSubscriptionName(subscriptionOutboundName(sub, node.Name, idx+1), used)
+		node.SourceOriginalName = originalName
+		node.SourceNodeKey = sourceKeys[idx]
+		// Shared groups select different subsets of the SAME source nodes.
+		for _, existing := range state.Outbounds {
+			if existing.Kind != "group" || !(existing.Name == sub.Group || containsString(existing.SubscriptionIDs, sub.ID)) {
+				continue
+			}
+			if sharedGroupNodeAllowed(existing, node) && !containsString(existing.ExcludedSubscriptionMembers, name) {
+				selectedByGroup[existing.Name] = append(selectedByGroup[existing.Name], name)
+			}
+		}
 		addedNames[name] = true
 		orderedNames = append(orderedNames, name)
 		node.Name = name
@@ -427,7 +456,7 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 		}
 		if group.Name == sub.Group || containsString(group.SubscriptionIDs, sub.ID) {
 			changed = true
-			for _, name := range orderedNames {
+			for _, name := range selectedByGroup[group.Name] {
 				if excluded[name] {
 					continue
 				}
@@ -521,9 +550,25 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 		sub.ID = "sub-" + sub.ID[:12]
 		a.manager.subscriptionSyncMu.Lock()
 		defer a.manager.subscriptionSyncMu.Unlock()
-		// The same provider URL (and its display name) may feed independent
-		// balancers with different filters. Group names and source IDs, not
-		// provider URLs, must be unique to protect existing outbounds.
+		// A catalog source can use the same URL as an older group-owned
+		// subscription whose node list is already filtered. Allow a ONE-TIME
+		// full source import without changing or merging legacy group members.
+		// Reject only duplicates of another unfiltered catalog source.
+		if !input.CreateGroup && sub.Group == "" {
+			a.manager.mu.Lock()
+			duplicate := false
+			for _, existing := range a.manager.state.OutboundSubscriptions {
+				if existing.URL == sub.URL && existing.Group == "" {
+					duplicate = true
+					break
+				}
+			}
+			a.manager.mu.Unlock()
+			if duplicate {
+				writeJSON(w, 409, apiResponse{Message: "эта подписка уже добавлена; выберите существующий источник"})
+				return
+			}
+		}
 		// Validate and import first. Errors do not add an empty/misconfigured
 		// subscription to state, and never damage any existing proxy.
 		data, err := downloadOutboundSubscription(r.Context(), sub.URL)
@@ -546,6 +591,10 @@ func (a *App) handleOutboundSubscriptions(w http.ResponseWriter, r *http.Request
 
 func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	if r.URL.Path == "/api/mihomo/subscriptions/groups" {
+		a.handleSharedSubscriptionGroup(w, r)
+		return
+	}
 	if r.URL.Path == "/api/mihomo/subscriptions/preview" {
 		a.previewOutboundSubscription(w, r)
 		return
@@ -557,6 +606,10 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 		return
 	}
 	id := parts[0]
+	if len(parts) == 2 && parts[1] == "nodes" && r.Method == http.MethodGet {
+		a.previewStoredSubscriptionNodes(w, r, id)
+		return
+	}
 	a.manager.subscriptionSyncMu.Lock()
 	defer a.manager.subscriptionSyncMu.Unlock()
 	a.manager.mu.Lock()
@@ -622,6 +675,223 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 		return
 	}
 	writeJSON(w, http.StatusOK, apiResponse{OK: true, Message: "Изменения подписки сохранены"})
+}
+
+// Preview only already imported nodes. This does not fetch the provider URL
+// again, reveal proxy secrets or change the running Mihomo configuration.
+func (a *App) previewStoredSubscriptionNodes(w http.ResponseWriter, r *http.Request, sourceID string) {
+	a.manager.mu.Lock()
+	found := false
+	for _, source := range a.manager.state.OutboundSubscriptions {
+		if source.ID == sourceID {
+			found = true
+			break
+		}
+	}
+	proxies := make([]MihomoOutbound, 0)
+	if found {
+		for _, node := range a.manager.state.Outbounds {
+			if node.Kind == "proxy" && node.SourceSubscriptionID == sourceID {
+				proxies = append(proxies, node)
+			}
+		}
+	}
+	a.manager.mu.Unlock()
+	if !found {
+		writeJSON(w, 404, apiResponse{Message: "подписка не найдена"})
+		return
+	}
+	keys := make([]string, len(proxies))
+	for i, node := range proxies {
+		keys[i] = node.SourceNodeKey
+	}
+	if len(proxies) > 0 && keys[0] == "" {
+		keys = subscriptionNodeKeys(proxies)
+	}
+	items := make([]subscriptionPreviewNode, 0, len(proxies))
+	for i, node := range proxies {
+		name := node.SourceOriginalName
+		if name == "" {
+			name = node.Name
+		}
+		country := subscriptionCountryCode(name)
+		items = append(items, subscriptionPreviewNode{
+			Key: keys[i], Name: name, Protocol: node.Type, CountryCode: country,
+			Flag: subscriptionCountryFlag(country), Included: true,
+		})
+	}
+	writeJSON(w, http.StatusOK, apiResponse{OK: true, Data: subscriptionPreviewResponse{
+		Nodes: items, Total: len(items), Selected: len(items),
+	}})
+}
+
+// A group references one already-imported source. Its member subset and filter
+// are group-owned; no second source download, proxy copy or health check is
+// created. Updating the group is atomic and does not touch source settings.
+func (a *App) handleSharedSubscriptionGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost && r.Method != http.MethodPut {
+		writeJSON(w, 405, apiResponse{Message: "method not allowed"})
+		return
+	}
+	var req struct {
+		SourceID         string   `json:"sourceId"`
+		Group            string   `json:"group"`
+		GroupType        string   `json:"groupType"`
+		FilterKeep       string   `json:"filterKeep"`
+		FilterExclude    string   `json:"filterExclude"`
+		ExcludedNodeKeys []string `json:"excludedNodeKeys"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeJSON(w, 400, apiResponse{Message: "некорректные данные балансировщика"})
+		return
+	}
+	req.Group = strings.TrimSpace(req.Group)
+	if req.Group == "" || len(req.Group) > 128 || strings.ContainsAny(req.Group, "\r\n") {
+		writeJSON(w, 400, apiResponse{Message: "укажите корректное имя балансировщика"})
+		return
+	}
+	if len(req.FilterKeep) > 4096 || len(req.FilterExclude) > 4096 || len(req.ExcludedNodeKeys) > maxSubscriptionNodes {
+		writeJSON(w, 400, apiResponse{Message: "фильтр или число исключений слишком велико"})
+		return
+	}
+	for _, key := range req.ExcludedNodeKeys {
+		if len(key) < 5 || len(key) > 64 || strings.ContainsAny(key, " \t\r\n") {
+			writeJSON(w, 400, apiResponse{Message: "некорректный ключ исключённого узла"})
+			return
+		}
+	}
+	if r.Method == http.MethodPost {
+		if req.GroupType == "" {
+			req.GroupType = "url-test"
+		}
+		if !containsString([]string{"select", "url-test", "fallback", "load-balance"}, req.GroupType) {
+			writeJSON(w, 400, apiResponse{Message: "неподдерживаемый тип балансировщика"})
+			return
+		}
+	}
+	a.manager.subscriptionSyncMu.Lock()
+	defer a.manager.subscriptionSyncMu.Unlock()
+	err := a.manager.commitSharedSubscriptionGroup(req.SourceID, req.Group, req.GroupType,
+		req.FilterKeep, req.FilterExclude, req.ExcludedNodeKeys, r.Method == http.MethodPost)
+	if err != nil {
+		writeJSON(w, 400, apiResponse{Message: err.Error()})
+		return
+	}
+	writeJSON(w, 200, apiResponse{OK: true, Message: "Балансировщик использует общие узлы выбранной подписки"})
+}
+
+func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupType, keep, exclude string, blockedKeys []string, creating bool) error {
+	m.mu.Lock()
+	before := m.state
+	foundSource := false
+	for _, source := range before.OutboundSubscriptions {
+		if source.ID == sourceID {
+			foundSource = true
+			break
+		}
+	}
+	if !foundSource {
+		m.mu.Unlock()
+		return errors.New("выбранная подписка больше не существует")
+	}
+	sourceNodes := make([]MihomoOutbound, 0)
+	for _, node := range before.Outbounds {
+		if node.Kind == "proxy" && node.SourceSubscriptionID == sourceID {
+			sourceNodes = append(sourceNodes, node)
+		}
+	}
+	if len(sourceNodes) == 0 {
+		m.mu.Unlock()
+		return errors.New("у выбранной подписки нет импортированных серверов")
+	}
+	working := before
+	working.Outbounds = append([]MihomoOutbound(nil), before.Outbounds...)
+	index := -1
+	for i, node := range working.Outbounds {
+		if node.Name != groupName {
+			continue
+		}
+		if creating || node.Kind != "group" {
+			m.mu.Unlock()
+			return fmt.Errorf("балансировщик или Outbound %q уже существует", groupName)
+		}
+		index = i
+		break
+	}
+	if creating {
+		group := MihomoOutbound{Kind: "group", Name: groupName, Type: groupType,
+			TestURL: defaultMihomoTestURL, Interval: 300, SubscriptionIDs: []string{sourceID}}
+		if groupType != "select" {
+			group.Timeout = 8000
+		}
+		if groupType == "url-test" {
+			group.Tolerance = 100
+		}
+		working.Outbounds = append(working.Outbounds, group)
+		index = len(working.Outbounds) - 1
+	} else {
+		if index < 0 {
+			m.mu.Unlock()
+			return errors.New("балансировщик не найден")
+		}
+		current := working.Outbounds[index]
+		if !containsString(current.SubscriptionIDs, sourceID) {
+			m.mu.Unlock()
+			return errors.New("балансировщик не привязан к выбранной подписке")
+		}
+		for _, source := range before.OutboundSubscriptions {
+			if source.ID == sourceID && source.Group == groupName {
+				m.mu.Unlock()
+				return errors.New("настройки исходной группы редактируются во вкладке Подписки")
+			}
+		}
+	}
+	group := &working.Outbounds[index]
+	group.SubscriptionFilterKeep = keep
+	group.SubscriptionFilterExclude = exclude
+	group.SubscriptionExcludedNodeKeys = append([]string(nil), blockedKeys...)
+	existing := make([]string, 0, len(group.Proxies))
+	for _, member := range group.Proxies {
+		owned := false
+		for _, node := range sourceNodes {
+			if node.Name == member {
+				owned = true
+				break
+			}
+		}
+		if !owned {
+			existing = append(existing, member)
+		}
+	}
+	selected := make([]string, 0, len(sourceNodes))
+	for _, node := range sourceNodes {
+		if sharedGroupNodeAllowed(*group, node) && !containsString(group.ExcludedSubscriptionMembers, node.Name) {
+			selected = append(selected, node.Name)
+		}
+	}
+	group.Proxies = append(existing, selected...)
+	if len(group.Proxies) == 0 {
+		m.mu.Unlock()
+		return errors.New("фильтры исключили все серверы; группа не изменена")
+	}
+	if group.Native != nil {
+		native := make(map[string]any, len(group.Native))
+		for k, v := range group.Native {
+			native[k] = v
+		}
+		values := make([]any, 0, len(group.Proxies))
+		for _, name := range group.Proxies {
+			values = append(values, name)
+		}
+		native["proxies"] = values
+		group.Native = native
+	}
+	err := m.persistSubscriptionStateLocked(before, working)
+	m.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return m.reloadAfterSubscription()
 }
 
 func (m *CoreManager) updateOutboundSubscriptionMetadata(sub OutboundSubscription) error {

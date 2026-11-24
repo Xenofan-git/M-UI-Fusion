@@ -20,7 +20,7 @@ func TestMihomoTabIconsAreDistinctAndConsistent(t *testing.T) {
 		t.Fatal("Mihomo Settings tab bar ending missing")
 	}
 	bar := s[beginning : beginning+ending]
-	tabs := []string{"basics", "outbounds", "balancers", "subscriptions", "routing"}
+	tabs := []string{"basics", "outbounds", "balancers", "sources", "subscriptions", "routing"}
 	if strings.Count(bar, `<svg class="mihomo-tab-glyph"`) != len(tabs) {
 		t.Fatal("every tab must use a matching, independent SVG glyph")
 	}
@@ -35,6 +35,12 @@ func TestMihomoTabIconsAreDistinctAndConsistent(t *testing.T) {
 	}
 	if strings.Contains(bar, `#sf-cloud-upload`) || strings.Contains(bar, `#sf-sync`) {
 		t.Fatal("legacy shared cloud/sync glyphs should not replace custom subscription circle")
+	}
+	sourcesStart := strings.Index(bar, `data-mihomo-tab="sources"`)
+	sourcesEnd := strings.Index(bar[sourcesStart:], `</button>`)
+	sourcesTab := bar[sourcesStart : sourcesStart+sourcesEnd]
+	if !strings.Contains(sourcesTab, "rect x=\"5\" y=\"4\"") || !strings.Contains(sourcesTab, "Подписки") {
+		t.Fatal("source catalog tab must have its own document SVG glyph and Russian label")
 	}
 	begin := strings.Index(bar, `data-mihomo-tab="subscriptions"`)
 	end := strings.Index(bar[begin:], `</button>`)

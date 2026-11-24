@@ -3,8 +3,8 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
 const read=f=>fs.readFileSync('web/'+f,'utf8');
 const source=read('outbound-subscriptions.js');
 const css=[read('outbound-subscriptions.css'),read('theme-shadcn.css'),read('theme-md3.css'),read('color-skins.css')].join('\n');
-assert.ok(read('index.html').includes('static/outbound-subscriptions.css?v=120'));
-assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=115'));
+assert.ok(read('index.html').includes('static/outbound-subscriptions.css?v=121'));
+assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=116'));
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.MUI_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  let count=0;
@@ -50,7 +50,7 @@ assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=115'))
       assert.equal(got.count,i===0?'130 узлов':'14 узлов');
       assert.match(got.date,/Обновлено/);
       assert.ok(got.bounds.right<=width+1&&got.bounds.left>=0,'card must fit viewport '+JSON.stringify(got.bounds));
-      assert.deepEqual(await card.locator('.outsub-actions button').allTextContents(),['Обновить','Фильтры и настройки','Удалить']);
+      assert.deepEqual(await card.locator('.outsub-actions button').allTextContents(),['Обновить','Параметры подписки','Удалить']);
       await info.hover();
       assert.equal(await info.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(11, 15, 20)','hover must stay black');
       count++;

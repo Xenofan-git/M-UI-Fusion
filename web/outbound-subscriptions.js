@@ -44,7 +44,7 @@
     const button=make('button','outline-btn',text);
     button.type='button';
     button.onclick=async()=>{
-      if(action==='edit'){openForm(sub);return;}
+      if(action==='edit'){openForm(sub,'source');return;}
       if(action==='delete' && !await confirmAction('Удалить подписку «'+sub.name+'»? Узлы, используемые правилами, будут защищены.'))return;
       button.disabled=true;
       status('Выполняется: '+sub.name+'…');
@@ -69,7 +69,7 @@
     const container=q('#outsub-list');
     container.replaceChildren();
     if(!subs.length){
-      container.appendChild(make('div','outsub-empty','Пока нет подписок. Нажмите «Добавить балансировщик из подписки», чтобы создать группу и импортировать узлы.'));
+      container.appendChild(make('div','outsub-empty','Подписок пока нет. Нажмите «Добавить подписку», чтобы загрузить источник. После этого он появится в списке выбора балансировщиков.'));
       return;
     }
     for(const sub of subs){
@@ -94,7 +94,9 @@
       statusBadge.appendChild(make('span','',sub.enabled?'Автообновление':'Приостановлено'));
       title.appendChild(statusBadge);
       info.appendChild(title);
-      info.appendChild(make('p','outsub-muted outsub-card-meta','Балансировщик: '+(sub.group||'не выбран')+' · интервал '+sub.intervalMinutes+' мин'));
+      info.appendChild(make('p','outsub-muted outsub-card-meta',
+        (sub.group?'Исходная группа: '+sub.group:'Общий источник без собственной группы')+
+        ' · интервал '+sub.intervalMinutes+' мин'));
       const stats=make('div','outsub-stat');
       stats.appendChild(make('span','outsub-count-badge',String(sub.nodeCount||0)+' узлов'));
       stats.appendChild(make('span','outsub-last-updated','Обновлено '+date(sub.lastUpdated)));
@@ -106,7 +108,7 @@
       }
       card.appendChild(info);
       const actions=make('div','outsub-actions');
-      for(const [caption,action] of [['Обновить','refresh'],['Фильтры и настройки','edit'],['Удалить','delete']]){
+      for(const [caption,action] of [['Обновить','refresh'],['Параметры подписки','edit'],['Удалить','delete']]){
         actions.appendChild(newButton(caption,action,sub));
       }
       card.appendChild(actions);
@@ -116,7 +118,10 @@
   async function load(){
     try{
       const data=await request('/api/mihomo/subscriptions');
-      subs=Array.isArray(data)?data:[];
+      // Put canonical sources first; preserve legacy source order within
+      // each group so existing cards and saved user choices do not jump.
+      subs=Array.isArray(data)?[...data].sort((a,b)=>
+        Number(!!a.group)-Number(!!b.group)):[];
       renderList();status('Подписок: '+subs.length);
       window.dispatchEvent(new CustomEvent('mui-balancer-subscriptions-loaded',{
         detail:{subscriptions:subs.map(source=>({id:source.id,group:source.group,name:source.name}))}
@@ -192,7 +197,10 @@
     button.disabled=true;
     q('#outsub-preview-count').textContent='Получение списка серверов…';
     try{
-      const data={
+      const choosing=form.dataset.mode==='balancer';
+      const sourceID=form.elements.sourceId.value;
+      if(choosing&&!sourceID)throw Error('Выберите подписку из списка');
+      const data=choosing?null:{
         name:form.elements.name.value.trim()||'Preview',
         url:form.elements.url.value.trim(),
         enabled:form.elements.enabled.checked,
@@ -201,9 +209,11 @@
         filterExclude:form.elements.filterExclude.value,
         excludedNodeKeys:Array.from(excluded)
       };
-      const result=await request('/api/mihomo/subscriptions/preview',{method:'POST',body:JSON.stringify(data)});
+      const result=choosing
+        ?await request('/api/mihomo/subscriptions/'+encodeURIComponent(sourceID)+'/nodes')
+        :await request('/api/mihomo/subscriptions/preview',{method:'POST',body:JSON.stringify(data)});
       previewNodes=result.nodes||[];
-      loadedURL=data.url;
+      loadedURL=choosing?'source:'+sourceID:data.url;
       renderPreview();
       return result;
     }catch(error){
@@ -327,6 +337,11 @@
       type.add(new Option(label,id));
     }
     typeLabel.appendChild(type);form.appendChild(typeLabel);
+    const sourceLabel=make('label','outsub-source-choice-label','Выбрать подписку');
+    const sourcePicker=make('select');sourcePicker.name='sourceId';sourcePicker.id='outsub-source-picker';
+    sourcePicker.required=false;
+    sourceLabel.appendChild(sourcePicker);
+    form.appendChild(sourceLabel);
     field(form,'Название подписки','name','text',{maxLength:64,placeholder:'Например, My VPN'});
     field(form,'URL подписки','url','url',{maxLength:2048,placeholder:'https://provider.example/subscription/...'});
     const existing=make('label','outsub-existing','Подключить к существующему балансировщику');
@@ -352,6 +367,10 @@
     const loadBtn=make('button','outline-btn','Загрузить серверы');loadBtn.id='outsub-preview-button';loadBtn.type='button';
     loadBtn.onclick=()=>{preview(form).catch(()=>{});};
     toolbar.appendChild(loadBtn);
+    sourcePicker.onchange=()=>{
+      previewNodes=[];excluded=new Set();loadedURL='';renderPreview();
+      if(sourcePicker.value)preview(form).catch(()=>{});
+    };
     const search=make('input');search.name='search';search.type='search';search.placeholder='Поиск серверов…';
     search.oninput=renderPreview;toolbar.appendChild(search);
     const sort=make('button','outline-btn','Имя ↕');sort.type='button';sort.onclick=()=>{ascending=!ascending;renderPreview();};toolbar.appendChild(sort);
@@ -377,33 +396,56 @@
       if(window.MUIMihomoSettings?.isDirty?.()){
         status('Сначала сохраните изменения в Mihomo Settings',true);return;
       }
-      save.disabled=true;status('Проверка подписки и создание балансировщика…');
+      const creatingGroup=form.dataset.mode==='balancer';
+      save.disabled=true;status(creatingGroup?'Создание балансировщика из выбранной подписки…':'Сохранение источника подписки…');
+      let saved=false;
       try{
-        if(!previewNodes.length||loadedURL!==form.elements.url.value.trim())await preview(form);
-        if(currentSelection(form).selected.length===0)throw Error('Не выбрано ни одного узла');
-        const isNew=!form.dataset.id,groupName=isNew?form.elements.groupName.value.trim():form.elements.group.value;
-        if(isNew&&!groupName)throw Error('Укажите имя балансировщика');
-        const body={
-          name:form.elements.name.value.trim(),
-          url:form.elements.url.value.trim(),
-          enabled:form.elements.enabled.checked,
-          intervalMinutes:Number(form.elements.intervalMinutes.value),
-          group:groupName,
-          groupType:form.elements.groupType.value,
-          createGroup:isNew,
-          filterKeep:form.elements.filterKeep.value,
-          filterExclude:form.elements.filterExclude.value,
-          excludedNodeKeys:Array.from(excluded)
-        };
-        await request('/api/mihomo/subscriptions'+(isNew?'':'/'+encodeURIComponent(form.dataset.id)),{
-          method:isNew?'POST':'PUT',body:JSON.stringify(body)
-        });
+        if(creatingGroup){
+          const sourceID=form.elements.sourceId.value;
+          if(!sourceID)throw Error('Сначала добавьте подписку во вкладке «Подписки»');
+          if(!previewNodes.length||loadedURL!=='source:'+sourceID)await preview(form);
+          if(currentSelection(form).selected.length===0)throw Error('Не выбрано ни одного узла');
+          const groupName=form.elements.groupName.value.trim();
+          if(!groupName)throw Error('Укажите имя балансировщика');
+          await request('/api/mihomo/subscriptions/groups',{
+            method:'POST',body:JSON.stringify({
+              sourceId:sourceID,group:groupName,groupType:form.elements.groupType.value,
+              filterKeep:form.elements.filterKeep.value,filterExclude:form.elements.filterExclude.value,
+              excludedNodeKeys:Array.from(excluded)
+            })
+          });
+        }else{
+          const isNew=!form.dataset.id;
+          // A source is imported only here. Groups reuse the same source ID,
+          // nodes and auto-refresh interval without any new provider GET.
+          const body={
+            name:form.elements.name.value.trim(),
+            url:form.elements.url.value.trim(),
+            enabled:form.elements.enabled.checked,
+            intervalMinutes:Number(form.elements.intervalMinutes.value),
+            group:form.elements.group.value||'',
+            filterKeep:form.elements.filterKeep.value,
+            filterExclude:form.elements.filterExclude.value,
+            excludedNodeKeys:Array.from(excluded),
+            createGroup:false
+          };
+          await request('/api/mihomo/subscriptions'+(isNew?'':'/'+encodeURIComponent(form.dataset.id)),{
+            method:isNew?'POST':'PUT',body:JSON.stringify(body)
+          });
+        }
+        saved=true;
         overlay.classList.remove('open');
-        await refreshPanel();
-        await load();
-        status(isNew?'Балансировщик создан из подписки':'Фильтры подписки сохранены');
-      }catch(error){status(error.message,true);q('#outsub-preview-count').textContent='Ошибка сохранения: '+error.message;}
-      finally{save.disabled=false;}
+        status(creatingGroup?'Балансировщик создан. Используются общие узлы источника.':'Подписка сохранена');
+      }catch(error){
+        status(error.message,true);
+        q('#outsub-preview-count').textContent='Ошибка сохранения: '+error.message;
+      }finally{save.disabled=false;}
+      if(saved){
+        // The server commit has already succeeded. A disconnected panel
+        // refresh must not be shown as a failed Save (or create duplicates).
+        try{await refreshPanel();await load();}
+        catch(error){status('Изменения сохранены. Обновите список после восстановления связи: '+error.message,true);}
+      }
     };
     return overlay;
   }
@@ -411,19 +453,46 @@
     if(typeof refresh==='function')await refresh();
     window.MUIMihomoSettings?.refreshOutbounds?.();
   }
-  function openForm(sub){
+  function openForm(sub,mode='source'){
     const overlay=modal(),form=q('#outsub-form',overlay);
     form.reset();previewNodes=[];excluded=new Set(sub?.excludedNodeKeys||[]);loadedURL='';
     form.dataset.id=sub?.id||'';
+    form.dataset.mode=mode;
+    const creatingGroup=mode==='balancer';
     const isNew=!sub;
-    q('#outsub-title',overlay).textContent=isNew?'Добавить балансировщик из подписки':'Настройки подписки '+sub.name;
-    q('#outsub-submit',overlay).textContent=isNew?'Создать балансировщик из подписки':'Сохранить фильтры и настройки';
+    q('#outsub-title',overlay).textContent=creatingGroup?'Добавить балансировщик из подписки':
+      isNew?'Добавить подписку':'Настройки подписки '+sub.name;
+    q('#outsub-submit',overlay).textContent=creatingGroup?'Создать балансировщик':
+      isNew?'Добавить подписку':'Сохранить подписку';
     q('#outsub-preview-count',overlay).textContent='Нажмите «Загрузить серверы» для проверки подписки';
     q('#outsub-preview-list',overlay).replaceChildren();
-    form.elements.groupName.closest('label').hidden=!isNew;
-    form.elements.groupName.required=isNew;
-    form.elements.groupType.closest('label').hidden=!isNew;
-    form.elements.group.closest('label').hidden=isNew;
+    form.elements.groupName.closest('label').hidden=!creatingGroup;
+    form.elements.groupName.required=creatingGroup;
+    form.elements.groupType.closest('label').hidden=!creatingGroup;
+    form.elements.group.closest('label').hidden=true;
+    form.elements.sourceId.closest('label').hidden=!creatingGroup;
+    form.elements.sourceId.required=creatingGroup;
+    for(const name of ['name','url','intervalMinutes']){
+      form.elements[name].closest('label').hidden=creatingGroup;
+      form.elements[name].required=!creatingGroup;
+    }
+    form.elements.enabled.closest('label').hidden=creatingGroup;
+    form.querySelector('.outsub-filters').hidden=!creatingGroup;
+    form.querySelector('.outsub-preview-toolbar').hidden=!creatingGroup;
+    form.querySelector('.outsub-preview-controls').hidden=!creatingGroup;
+    form.querySelector('.outsub-preview-count').hidden=!creatingGroup;
+    form.querySelector('.outsub-preview-list').hidden=!creatingGroup;
+    form.querySelector('.outsub-warning').hidden=!creatingGroup;
+    const sourceChoice=form.elements.sourceId;
+    sourceChoice.replaceChildren(new Option(subs.length?'Выберите подписку…':
+      'Подписок нет — добавьте их во вкладке «Подписки»',''));
+    for(const source of subs){
+      const limited=source.group&&(source.filterKeep||source.filterExclude||source.excludedNodeKeys?.length);
+      const display=source.name+' · '+(source.group?'группа '+source.group:'общий источник')+
+        ' · '+source.nodeCount+' серверов'+(limited?' · ранее отфильтрована':'')+
+        (source.enabled?'':' · автообновление выключено');
+      sourceChoice.add(new Option(display,source.id));
+    }
     form.elements.groupName.value=sub?.group||'';
     form.elements.groupType.value='url-test';
     const select=form.elements.group;
@@ -443,5 +512,9 @@
     (isNew?form.elements.groupName:form.elements.name).focus();
   }
   q('#outsub-reload').onclick=load;
-  window.MUIOutboundSubscriptions={load,openCreate:()=>openForm(null)};
+  window.MUIOutboundSubscriptions={
+    load,
+    openCreate:async()=>{await load();openForm(null,'balancer');},
+    openSource:()=>openForm(null,'source')
+  };
 })();

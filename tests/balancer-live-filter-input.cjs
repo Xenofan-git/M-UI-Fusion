@@ -19,7 +19,7 @@ for(const name of [
  'quatro-vpn | 🇺🇸 ⭐ LTE Авто - США'
 ])assert.equal(flags.read(name)?.code,'US',name);
 assert.equal(flags.read('quatro-vpn | 🇩🇪 LTE Германия')?.code,'DE');
-assert(html.includes('static/mihomo-balancer-servers.js?v=136'),'updated JS must bypass browser cache');
+assert(html.includes('static/mihomo-balancer-servers.js?v=137'),'updated JS must bypass browser cache');
 assert(script.includes('function repaintFilterRowsInPlace()'),
  'textarea must repaint existing table rows synchronously');
 assert(script.includes('function activeFilterSourceID()')&&
@@ -35,7 +35,7 @@ assert(script.includes("area.addEventListener('keyup',previewInput)"),'legacy ke
 assert(script.includes('filterEditBaseline=new Map(sourceList.map('),
  'filter preview must compare against immutable initial subscription baseline');
 assert(script.includes('filterDraftTouched.add(activeID)')&&
-  script.includes('filterDraftTouched.delete(change.id)'),
+  script.includes('filterDraftTouched.delete(key)'),
  'input edits must hold preview until Apply, even if live metadata changes');
 assert(script.includes('term.code===country?.code||'),
  'US must not accidentally match Russia via substring');
