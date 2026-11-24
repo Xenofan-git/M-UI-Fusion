@@ -41,7 +41,7 @@ assert.match(source,/item\[field.name\]\?\?groupHealthDefaults\?\?/);
 assert.match(source,/editingSubscriptionGroup=\(requestedItem\?\.kind\|\|requestedKind\)==='group'\s*&&currentTab==='subscriptions'/);
 assert.match(source,/balancerSubscriptions=\[\];\s*if\(editingSubscriptionGroup\)\{/);
 assert.match(source,/field\.classList\.contains\('mihomo-subscription-field'\)&&!editingSubscriptionGroup/);
-assert.match(source,/if\(!editingSubscriptionGroup\)return;\s*for\(const source of balancerSubscriptions\)/);
+assert.match(source,/if\(!editingSubscriptionGroup\)return;[\s\S]*?for\(const source of balancerSubscriptions\)/);
 assert.match(source,/if\(!editingSubscriptionGroup\|\|form\.elements\.kind\.value!=='group'\)return;/);
 assert.match(source,/subscriptionIds:editingSubscriptionGroup\?selectedIDs:\[\]/);
 assert.match(source,/subscriptionIds:kind==='group'&&editingSubscriptionGroup\?/);
@@ -55,7 +55,7 @@ const editor=fs.readFileSync('web/mihomo-balancer-servers.js','utf8');
 assert.ok(editor.includes("if(!context.subscribed)return context.available"));
 assert.ok(editor.includes("selectedNames=Array.from(nativeSelect.selectedOptions"));
 assert.ok(editor.includes("Добавить Outbound"));
-assert.ok(editor.includes("const subscribed=ids.length>0||retained;"));
+assert.ok(editor.includes("const subscribed=ids.length>0||retained||creating;"));
 
 // The optional no-UDP option remains unchecked and editable, and existing
 // persisted 300/8000/0 values are not retroactively overwritten.

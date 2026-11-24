@@ -34,6 +34,7 @@ const (
 // credential. Excluded providers remain visible in the balancer editor
 // after a restart without being passed to Mihomo as active outbounds.
 type FilteredSubscriptionNode struct {
+	Key         string `json:"key,omitempty"`
 	Name        string `json:"name"`
 	Protocol    string `json:"protocol"`
 	CountryCode string `json:"countryCode,omitempty"`
@@ -447,7 +448,7 @@ func applySubscriptionNodes(state State, sub OutboundSubscription, imported []Mi
 				changed = true
 				// When the source moves to a different group, do not keep its
 				// nodes linked to the previous group.
-				if addedNames[member] && (oldGroup == sub.Group || group.Name != oldGroup) {
+				if addedNames[member] && (oldGroup == sub.Group || group.Name != oldGroup) && (!(group.Name == sub.Group || containsString(group.SubscriptionIDs, sub.ID)) || containsString(selectedByGroup[group.Name], member)) {
 					members = append(members, member)
 				}
 				continue
@@ -744,6 +745,16 @@ func (a *App) previewStoredSubscriptionNodes(w http.ResponseWriter, r *http.Requ
 	}})
 }
 
+type subscriptionGroupSettings struct {
+	TestURL         string `json:"testUrl"`
+	Interval        int    `json:"interval"`
+	Timeout         int    `json:"timeout"`
+	Tolerance       int    `json:"tolerance"`
+	Strategy        string `json:"strategy"`
+	DisableUDP      bool   `json:"disableUdp"`
+	DefaultSelected string `json:"defaultSelected"`
+}
+
 // A group references one already-imported source. Its member subset and filter
 // are group-owned; no second source download, proxy copy or health check is
 // created. Updating the group is atomic and does not touch source settings.
@@ -753,12 +764,13 @@ func (a *App) handleSharedSubscriptionGroup(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	var req struct {
-		SourceID         string   `json:"sourceId"`
-		Group            string   `json:"group"`
-		GroupType        string   `json:"groupType"`
-		FilterKeep       string   `json:"filterKeep"`
-		FilterExclude    string   `json:"filterExclude"`
-		ExcludedNodeKeys []string `json:"excludedNodeKeys"`
+		SourceID         string                     `json:"sourceId"`
+		Group            string                     `json:"group"`
+		GroupType        string                     `json:"groupType"`
+		FilterKeep       string                     `json:"filterKeep"`
+		FilterExclude    string                     `json:"filterExclude"`
+		ExcludedNodeKeys []string                   `json:"excludedNodeKeys"`
+		Settings         *subscriptionGroupSettings `json:"settings,omitempty"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, 400, apiResponse{Message: "некорректные данные балансировщика"})
@@ -798,8 +810,8 @@ func (a *App) handleSharedSubscriptionGroup(w http.ResponseWriter, r *http.Reque
 		}
 		err = a.manager.commitRetainedSubscriptionFilters(req.Group, req.FilterKeep, req.FilterExclude)
 	} else {
-		err = a.manager.commitSharedSubscriptionGroup(req.SourceID, req.Group, req.GroupType,
-			req.FilterKeep, req.FilterExclude, req.ExcludedNodeKeys, r.Method == http.MethodPost)
+		err = a.manager.commitSubscriptionGroupFromRequest(r.Context(), req.SourceID, req.Group, req.GroupType,
+			req.FilterKeep, req.FilterExclude, req.ExcludedNodeKeys, r.Method == http.MethodPost, req.Settings)
 	}
 	if err != nil {
 		writeJSON(w, 400, apiResponse{Message: err.Error()})
@@ -868,8 +880,157 @@ func (m *CoreManager) commitRetainedSubscriptionFilters(name, keep, exclude stri
 }
 
 func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupType, keep, exclude string, blockedKeys []string, creating bool) error {
+	return m.commitPreparedSubscriptionGroup(sourceID, groupName, groupType, keep, exclude, blockedKeys, creating, nil, nil)
+}
+
+// Import a legacy provider's entire catalog only on an explicit group save.
+// The previous source-wide filters become group-owned, so other groups keep
+// their current members. The provider URL and update schedule are untouched.
+func (m *CoreManager) commitSubscriptionGroupFromRequest(ctx context.Context, sourceID, groupName, groupType, keep, exclude string, blockedKeys []string, creating bool, settings *subscriptionGroupSettings) error {
+	m.mu.Lock()
+	var source OutboundSubscription
+	for _, sub := range m.state.OutboundSubscriptions {
+		if sub.ID == sourceID {
+			source = sub
+			break
+		}
+	}
+	m.mu.Unlock()
+	if source.ID == "" {
+		return errors.New("выбранная подписка больше не существует")
+	}
+	var raw []MihomoOutbound
+	if source.Group != "" || source.FilterKeep != "" || source.FilterExclude != "" || len(source.ExcludedNodeKeys) > 0 {
+		// Metadata-only ownership transfer needs a fresh full inventory, not a
+		// second subscription or any changes to the active config before commit.
+		data, err := downloadOutboundSubscription(ctx, source.URL)
+		if err != nil {
+			return err
+		}
+		raw, err = parseOutboundSubscription(data)
+		if err != nil {
+			return err
+		}
+	}
+	return m.commitPreparedSubscriptionGroup(sourceID, groupName, groupType, keep, exclude, blockedKeys, creating, settings, raw)
+}
+
+func (m *CoreManager) commitPreparedSubscriptionGroup(sourceID, groupName, groupType, keep, exclude string, blockedKeys []string, creating bool, settings *subscriptionGroupSettings, raw []MihomoOutbound) error {
 	m.mu.Lock()
 	before := m.state
+	working := before
+	var err error
+	if raw != nil {
+		working, err = promoteLegacySubscription(before, sourceID, raw)
+	}
+	if err == nil {
+		working, err = sharedSubscriptionGroupState(working, sourceID, groupName, groupType, keep, exclude, blockedKeys, creating, settings)
+	}
+	if err == nil {
+		err = m.persistSubscriptionStateLocked(before, working)
+	}
+	m.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return m.reloadAfterSubscription()
+}
+
+// A pure staging transaction: if the provider changed since the last import
+// and an existing reference would disappear, abort rather than altering
+// another group's routing. All existing group members are restored exactly.
+func promoteLegacySubscription(before State, sourceID string, raw []MihomoOutbound) (State, error) {
+	working := before
+	working.Outbounds = append([]MihomoOutbound(nil), before.Outbounds...)
+	working.OutboundSubscriptions = append([]OutboundSubscription(nil), before.OutboundSubscriptions...)
+	index := -1
+	for i, src := range working.OutboundSubscriptions {
+		if src.ID == sourceID {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return before, errors.New("подписка не найдена")
+	}
+	old := working.OutboundSubscriptions[index]
+	if old.Group == "" && old.FilterKeep == "" && old.FilterExclude == "" && len(old.ExcludedNodeKeys) == 0 {
+		return before, nil
+	}
+	if len(raw) == 0 {
+		return before, errors.New("подписка не содержит узлов")
+	}
+	// The old source filter (including explicit key exclusions) is preserved
+	// on its original group; other linked groups retain their own filter and
+	// block formerly excluded source nodes by stable key.
+	keys := subscriptionNodeKeys(raw)
+	blocked := map[string]bool{}
+	for _, k := range old.ExcludedNodeKeys {
+		blocked[k] = true
+	}
+	for i, n := range raw {
+		if !subscriptionFilterMatch(n.Name, subscriptionFilterWords(old.FilterKeep), subscriptionFilterWords(old.FilterExclude)) {
+			blocked[keys[i]] = true
+		}
+	}
+	for i := range working.Outbounds {
+		g := &working.Outbounds[i]
+		if g.Kind != "group" || !(g.Name == old.Group || containsString(g.SubscriptionIDs, sourceID)) {
+			continue
+		}
+		g.SubscriptionManaged = true
+		if !containsString(g.SubscriptionIDs, sourceID) {
+			g.SubscriptionIDs = append(append([]string(nil), g.SubscriptionIDs...), sourceID)
+		}
+		if g.Name == old.Group && g.SubscriptionFilterKeep == "" && g.SubscriptionFilterExclude == "" {
+			g.SubscriptionFilterKeep = old.FilterKeep
+			g.SubscriptionFilterExclude = old.FilterExclude
+			g.SubscriptionExcludedNodeKeys = append(append([]string(nil), g.SubscriptionExcludedNodeKeys...), old.ExcludedNodeKeys...)
+		} else {
+			list := append([]string(nil), g.SubscriptionExcludedNodeKeys...)
+			for _, key := range keys {
+				if blocked[key] && !containsString(list, key) {
+					list = append(list, key)
+				}
+			}
+			g.SubscriptionExcludedNodeKeys = list
+		}
+	}
+	source := old
+	source.Group = ""
+	source.FilterKeep = ""
+	source.FilterExclude = ""
+	source.ExcludedNodeKeys = nil
+	source.FilteredNodes = nil
+	// The original group list (with metadata migrated) is restored after
+	// staging the full import, so no group changes merely due to promotion.
+	groups := map[string]MihomoOutbound{}
+	for _, g := range working.Outbounds {
+		if g.Kind == "group" {
+			groups[g.Name] = g
+		}
+	}
+	next, err := applySubscriptionNodes(working, source, raw)
+	if err != nil {
+		return before, err
+	}
+	for i, g := range next.Outbounds {
+		if prior, ok := groups[g.Name]; g.Kind == "group" && ok {
+			next.Outbounds[i] = prior
+		}
+	}
+	next.OutboundSubscriptions = working.OutboundSubscriptions
+	source.NodeCount = len(raw)
+	next.OutboundSubscriptions[index] = source
+	normalized, err := normalizeMihomoOutbounds(next.Outbounds)
+	if err != nil {
+		return before, err
+	}
+	next.Outbounds = normalized
+	return next, nil
+}
+
+func sharedSubscriptionGroupState(before State, sourceID, groupName, groupType, keep, exclude string, blockedKeys []string, creating bool, settings *subscriptionGroupSettings) (State, error) {
 	foundSource := false
 	for _, source := range before.OutboundSubscriptions {
 		if source.ID == sourceID {
@@ -878,8 +1039,7 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 		}
 	}
 	if !foundSource {
-		m.mu.Unlock()
-		return errors.New("выбранная подписка больше не существует")
+		return before, errors.New("выбранная подписка больше не существует")
 	}
 	sourceNodes := make([]MihomoOutbound, 0)
 	for _, node := range before.Outbounds {
@@ -888,8 +1048,7 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 		}
 	}
 	if len(sourceNodes) == 0 {
-		m.mu.Unlock()
-		return errors.New("у выбранной подписки нет импортированных серверов")
+		return before, errors.New("у выбранной подписки нет импортированных серверов")
 	}
 	working := before
 	working.Outbounds = append([]MihomoOutbound(nil), before.Outbounds...)
@@ -899,8 +1058,7 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 			continue
 		}
 		if creating || node.Kind != "group" {
-			m.mu.Unlock()
-			return fmt.Errorf("балансировщик или Outbound %q уже существует", groupName)
+			return before, fmt.Errorf("балансировщик или Outbound %q уже существует", groupName)
 		}
 		index = i
 		break
@@ -918,22 +1076,28 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 		index = len(working.Outbounds) - 1
 	} else {
 		if index < 0 {
-			m.mu.Unlock()
-			return errors.New("балансировщик не найден")
+			return before, errors.New("балансировщик не найден")
 		}
 		current := working.Outbounds[index]
 		if !containsString(current.SubscriptionIDs, sourceID) {
-			m.mu.Unlock()
-			return errors.New("балансировщик не привязан к выбранной подписке")
+			return before, errors.New("балансировщик не привязан к выбранной подписке")
 		}
 		for _, source := range before.OutboundSubscriptions {
 			if source.ID == sourceID && source.Group == groupName {
-				m.mu.Unlock()
-				return errors.New("настройки исходной группы редактируются во вкладке Подписки")
+				return before, errors.New("настройки исходной группы редактируются во вкладке Подписки")
 			}
 		}
 	}
 	group := &working.Outbounds[index]
+	if creating && settings != nil {
+		group.TestURL = settings.TestURL
+		group.Interval = settings.Interval
+		group.Timeout = settings.Timeout
+		group.Tolerance = settings.Tolerance
+		group.Strategy = settings.Strategy
+		group.DisableUDP = settings.DisableUDP
+		group.DefaultSelected = settings.DefaultSelected
+	}
 	group.SubscriptionFilterKeep = keep
 	group.SubscriptionFilterExclude = exclude
 	group.SubscriptionExcludedNodeKeys = append([]string(nil), blockedKeys...)
@@ -958,8 +1122,10 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 	}
 	group.Proxies = append(existing, selected...)
 	if len(group.Proxies) == 0 {
-		m.mu.Unlock()
-		return errors.New("фильтры исключили все серверы; группа не изменена")
+		return before, errors.New("фильтры исключили все серверы; группа не изменена")
+	}
+	if !creating && group.DefaultSelected != "" && !containsString(group.Proxies, group.DefaultSelected) {
+		group.DefaultSelected = ""
 	}
 	if group.Native != nil {
 		native := make(map[string]any, len(group.Native))
@@ -971,14 +1137,17 @@ func (m *CoreManager) commitSharedSubscriptionGroup(sourceID, groupName, groupTy
 			values = append(values, name)
 		}
 		native["proxies"] = values
+		if group.DefaultSelected == "" {
+			delete(native, "default-selected")
+		}
 		group.Native = native
 	}
-	err := m.persistSubscriptionStateLocked(before, working)
-	m.mu.Unlock()
+	normalized, err := normalizeMihomoOutbounds(working.Outbounds)
 	if err != nil {
-		return err
+		return before, err
 	}
-	return m.reloadAfterSubscription()
+	working.Outbounds = normalized
+	return working, nil
 }
 
 func (m *CoreManager) updateOutboundSubscriptionMetadata(sub OutboundSubscription) error {
@@ -1031,7 +1200,7 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 	for _, item := range preview.Nodes {
 		if !item.Included {
 			sub.FilteredNodes = append(sub.FilteredNodes, FilteredSubscriptionNode{
-				Name: item.Name, Protocol: item.Protocol, CountryCode: item.CountryCode, Flag: item.Flag,
+				Key: item.Key, Name: item.Name, Protocol: item.Protocol, CountryCode: item.CountryCode, Flag: item.Flag,
 			})
 		}
 	}

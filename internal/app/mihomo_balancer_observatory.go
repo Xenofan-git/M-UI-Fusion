@@ -26,6 +26,7 @@ type balancerRuntimeProxy struct {
 	} `json:"history"`
 }
 type balancerStatusNode struct {
+	Key         string `json:"key,omitempty"`
 	Name        string `json:"name"`
 	Protocol    string `json:"protocol"`
 	SourceID    string `json:"sourceId"`
@@ -217,7 +218,7 @@ func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, n
 	}
 	for _, node := range nodes {
 		cc := subscriptionCountryCode(node.Name)
-		item := balancerStatusNode{Name: node.Name, Protocol: node.Type, SourceID: node.SourceSubscriptionID,
+		item := balancerStatusNode{Key: node.SourceNodeKey, Name: node.Name, Protocol: node.Type, SourceID: node.SourceSubscriptionID,
 			Flag: subscriptionCountryFlag(cc), CountryCode: cc, Member: members[node.Name]}
 		if live, ok := runtime[node.Name]; ok {
 			item.Alive = live.Alive
@@ -243,7 +244,7 @@ func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, n
 			}
 			seen[name] = true
 			result.Nodes = append(result.Nodes, balancerStatusNode{
-				Name: name, Protocol: filtered.Protocol, SourceID: source.ID,
+				Key: filtered.Key, Name: name, Protocol: filtered.Protocol, SourceID: source.ID,
 				CountryCode: filtered.CountryCode, Flag: filtered.Flag, Filtered: true,
 			})
 		}

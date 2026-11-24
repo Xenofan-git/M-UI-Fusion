@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const cache=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(cache.includes('static/mihomo-balancer-servers.js?v=139'));
+assert(cache.includes('static/mihomo-balancer-servers.js?v=140'));
 const debug=source.replace(/\}\)\(\);\s*$/,'window.__fbsDebug={refreshStatus,renderRows};})();');
 assert(debug!==source,'test instrumentation missing');
 const file=path.join(web,'.balancer-flags-copy-regression.html');
@@ -89,19 +89,10 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    await page.evaluate(()=>window.__serverDelay());
    await page.waitForFunction(n=>window.__serverCalls===n+1,beforeOverlap);
    await page.evaluate(()=>{window.fetch=window.__baseFetch;});
-   assert.equal(await page.locator('.fbs-tab .fbs-tab-icon').count(),2);
-   assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Обновление');
-   assert.equal((await page.locator('.fbs-tab').nth(1).innerText()).trim(),'Фильтры');
-   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'false');
+   assert.equal(await page.locator('.fbs-tab .fbs-tab-icon').count(),1);
+   assert.equal((await page.locator('.fbs-tab').first().innerText()).trim(),'Фильтры');
+   assert.equal(await page.locator('[data-sub-pane="update"]').count(),0);
    assert.equal(await page.locator('.fbs-keep').isVisible(),true);
-   assert.match(await page.locator('[data-sub-pane="update"]').getAttribute('title'),/настройки автоматического обновления/i);
-   await page.locator('[data-sub-pane="filters"]').click();
-   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'false');
-   assert.equal(await page.locator('[data-sub-pane="filters"]').getAttribute('aria-pressed'),'true');
-   assert.equal(await page.locator('[data-sub-panel="update"]').isHidden(),true);
-   await page.locator('[data-sub-pane="update"]').click();
-   assert.equal(await page.locator('[data-sub-panel="update"]').isVisible(),true);
-   assert.equal(await page.locator('[data-sub-pane="update"]').getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('.fbs-table-body > tr[data-node]').count(),2);
    for(const selector of ['.fbs-node-name','.fbs-candidate-label']){
      const selection=await page.locator(selector).first().evaluate(el=>{
@@ -325,10 +316,10 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    });
    assert.equal(await page.evaluate(()=>window.__saveResult),true);
    const stored=await page.evaluate(()=>window.__lastSourcePUT);
-   assert.match(stored.url,/api\/mihomo\/subscriptions\/sub1$/);
+   assert.match(stored.url,/api\/mihomo\/subscriptions\/groups$/);
    assert.equal(stored.body.filterKeep,'🇵🇱');
    assert.equal(stored.body.filterExclude,'🇷🇺');
-   assert.equal(stored.body.intervalMinutes,1440);
+   assert.equal(stored.body.intervalMinutes,undefined);
    assert.equal(await page.evaluate(()=>window.MUIBalancerServers.hasUnsavedFilterEdits()),false);
    const appliedRows=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>({
      name:r.dataset.node,filtered:r.classList.contains('fbs-row-filtered')
@@ -337,11 +328,9 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(appliedRows[0].filtered,false);
    assert.match(appliedRows[1].name,/Россия/);
    assert.equal(appliedRows[1].filtered,true);
-   assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
-   await page.locator('.fbs-filtered-divider button').click();
-   assert.equal(await page.locator('tr[data-node*="Россия"]').isHidden(),true);
-   await page.locator('.fbs-filtered-divider button').click();
+   assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Исключено фильтрами · 1');
    assert.equal(await page.locator('tr[data-node*="Россия"]').isVisible(),true);
+   assert.equal(await page.locator('.fbs-filtered-divider button').isDisabled(),true);
    const beforeEditingApplied=await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>r.dataset.node));
    await page.locator('.fbs-keep').fill('🇷🇺');
    assert.deepEqual(await page.locator('.fbs-table-body tr[data-node]').evaluateAll(rows=>rows.map(r=>r.dataset.node)),
@@ -397,14 +386,14 @@ const html='<!doctype html><html><head><meta charset="utf-8">'+
    assert.equal(await page.evaluate(()=>window.__legacyPreviewCalls),1,'load legacy filtered names read-only');
    assert.equal(await page.locator('.fbs-row-filtered .fbs-node-name').innerText(),'quatro-vpn | LTE - Россия');
    assert.match(await page.locator('.fbs-row-filtered .fbs-node-name').evaluate(el=>getComputedStyle(el).textDecorationLine),/line-through/);
-   assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Скрыто фильтрами · 1');
+   assert.equal(await page.locator('.fbs-filtered-toggle').innerText(),'▾ Исключено фильтрами · 1');
    await page.locator('.fbs-keep').fill('');
    await page.locator('.fbs-drop').fill('');
    const reenabled=page.locator('tr[data-node*="Россия"]');
    assert.equal(await reenabled.evaluate(el=>el.classList.contains('fbs-row-filtered')),false,
      'removing a filter must visually restore a formerly excluded name immediately');
-   assert.equal(await reenabled.locator('input[type=checkbox]').isDisabled(),true,
-     'the restored preview must not become active until Apply reimports it');
+   assert.equal(await reenabled.locator('input[type=checkbox]').isChecked(),true,
+     'the restored preview shows the intended selection before Apply');
    assert.equal(await page.locator('.fbs-filtered-divider').count(),0,
      'removing the filter must not regroup before Apply');
    await page.locator('.fbs-keep').fill('🇵🇱');

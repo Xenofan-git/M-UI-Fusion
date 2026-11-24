@@ -743,3 +743,55 @@ func TestRetainedSubscriptionGroupFilterRestore(t *testing.T) {
 		t.Fatal("restoration changed another group/source")
 	}
 }
+
+func TestLegacyCatalogPromotionKeepsForeignAndCreatesRussia(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	source := OutboundSubscription{ID: "legacy-catalog", Name: "provider", Group: "FOREIGN", URL: "https://provider.example/list", Enabled: true, IntervalMinutes: 360, FilterExclude: "🇷🇺"}
+	raw := []MihomoOutbound{subscriptionSS("🇩🇪 Germany", "de.example"), subscriptionSS("🇷🇺 Russia", "ru.example")}
+	if err := m.commitOutboundSubscriptionWithGroup(source, raw, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	before := m.state
+	var prior []string
+	for _, g := range before.Outbounds {
+		if g.Name == "FOREIGN" {
+			prior = append([]string(nil), g.Proxies...)
+		}
+	}
+	if len(prior) != 1 {
+		t.Fatalf("legacy group %v", prior)
+	}
+	settings := &subscriptionGroupSettings{TestURL: "https://www.gstatic.com/generate_204", Interval: 180, Timeout: 7000, Tolerance: 80}
+	if err := m.commitPreparedSubscriptionGroup(source.ID, "RUSSIA", "url-test", "🇷🇺", "", nil, true, settings, raw); err != nil {
+		t.Fatal(err)
+	}
+	src := m.state.OutboundSubscriptions[0]
+	if src.Group != "" || src.FilterExclude != "" || src.NodeCount != 2 || src.IntervalMinutes != 360 || !src.Enabled {
+		t.Fatal("legacy source promotion incorrect")
+	}
+	for _, g := range m.state.Outbounds {
+		if g.Name == "FOREIGN" && (!slices.Equal(g.Proxies, prior) || g.SubscriptionFilterExclude != "🇷🇺") {
+			t.Fatalf("FOREIGN changed %v", g.Proxies)
+		}
+		if g.Name == "RUSSIA" && (len(g.Proxies) != 1 || !strings.Contains(g.Proxies[0], "Russia") || g.Interval != 180 || g.Timeout != 7000 || g.Tolerance != 80) {
+			t.Fatalf("RUSSIA incorrect: %v", g.Proxies)
+		}
+	}
+	refreshed, err := materializeGroupSubscriptions(m.state, m.state.Outbounds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range refreshed {
+		if g.Kind == "group" && len(g.Proxies) != 1 {
+			t.Fatalf("materialize restored filtered nodes: %v", g.Proxies)
+		}
+	}
+	if err := m.commitOutboundSubscription(src, raw, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range m.state.Outbounds {
+		if g.Kind == "group" && len(g.Proxies) != 1 {
+			t.Fatalf("refresh restored filtered nodes: %v", g.Proxies)
+		}
+	}
+}

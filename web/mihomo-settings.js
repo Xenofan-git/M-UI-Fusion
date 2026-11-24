@@ -43,7 +43,7 @@
   let balancerSubscriptions=[];
   // The shared editor is used by two mutually exclusive balancer tabs.
   // Only the subscription tab may expose/bind subscription sources.
-  let editingSubscriptionGroup=false;
+  let editingSubscriptionGroup=false,creatingSubscriptionGroup=false;
   let outboundFormChanged=false,outboundYAMLCached=false;
 
   function freshID(prefix){return prefix+'-'+crypto.randomUUID().replaceAll('-','').slice(0,12);}
@@ -943,7 +943,7 @@
   }
   function ensureModals(){
     if($('#mihomo-outbound-modal'))return;
-    const outboundModal=document.createElement('div');outboundModal.className='modal-backdrop';outboundModal.id='mihomo-outbound-modal';outboundModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-outbound-title"><header class="modal-titlebar"><span id="mihomo-outbound-title">Add Outbound</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-outbound-form" novalidate><div class="modal-content"><div class="mihomo-editor-tabs" role="tablist" aria-label="Outbound input"><button type="button" role="tab" id="outbound-form-tab" aria-controls="outbound-form-panel" aria-selected="true" data-outbound-mode="form">Form</button><button type="button" role="tab" id="outbound-yaml-tab" aria-controls="outbound-yaml-panel" aria-selected="false" data-outbound-mode="yaml">YAML</button><span class="ink-bar"></span></div><div id="outbound-form-panel" role="tabpanel" aria-labelledby="outbound-form-tab"><div class="mihomo-form-note" data-i18n-html="mh.formNote">Proxy Node 会写入 <code>proxies</code>；Proxy Group 会写入 <code>proxy-groups</code>。两者都可作为 Routing Rule 的目标。</div><div class="mihomo-form-grid">
+    const outboundModal=document.createElement('div');outboundModal.className='modal-backdrop';outboundModal.id='mihomo-outbound-modal';outboundModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-outbound-title"><header class="modal-titlebar"><span id="mihomo-outbound-title">Add Outbound</span><button type="button" class="modal-close" id="mihomo-outbound-close" data-mihomo-close aria-label="Закрыть">×</button></header><form id="mihomo-outbound-form" novalidate><div class="modal-content"><div class="mihomo-editor-tabs" role="tablist" aria-label="Outbound input"><button type="button" role="tab" id="outbound-form-tab" aria-controls="outbound-form-panel" aria-selected="true" data-outbound-mode="form">Form</button><button type="button" role="tab" id="outbound-yaml-tab" aria-controls="outbound-yaml-panel" aria-selected="false" data-outbound-mode="yaml">YAML</button><span class="ink-bar"></span></div><div id="outbound-form-panel" role="tabpanel" aria-labelledby="outbound-form-tab"><div class="mihomo-form-note" data-i18n-html="mh.formNote">Proxy Node 会写入 <code>proxies</code>；Proxy Group 会写入 <code>proxy-groups</code>。两者都可作为 Routing Rule 的目标。</div><div class="mihomo-form-grid">
       <input name="id" type="hidden"><input name="kind" type="hidden" value="proxy"><label class="mihomo-field"><span>Name</span><input name="name" maxlength="128" required placeholder="Hong Kong / Proxy"></label>
       <label class="mihomo-field"><span>Type</span><select name="type"></select></label><label class="mihomo-field" data-kind="proxy" data-types="ss,snell,socks5,http,vmess,vless,trojan,hysteria2,tuic,wireguard,openvpn"><span>Server</span><input name="server" placeholder="example.com"></label><label class="mihomo-field" data-kind="proxy" data-types="ss,snell,socks5,http,vmess,vless,trojan,hysteria2,tuic,wireguard,openvpn"><span>Port</span><input name="port" type="number" min="1" max="65535" placeholder="443"></label>
       <label class="mihomo-field" data-kind="proxy" data-types="socks5,http,openvpn"><span>Username</span><input name="username" autocomplete="off"></label><label class="mihomo-field" data-kind="proxy" data-types="ss,socks5,http,trojan,hysteria2,tuic,openvpn"><span>Password</span><input name="password" autocomplete="new-password"></label><label class="mihomo-field" data-kind="proxy" data-types="snell"><span data-i18n="mihomo.snellPsk">PSK</span><input name="snellPsk" autocomplete="new-password"></label>
@@ -1004,8 +1004,8 @@
     $('#mihomo-geo-picker-search').oninput=renderGeoPicker;
     $('#mihomo-geo-picker-source').onchange=renderGeoPicker;
     $('#mihomo-geo-picker-open').onclick=openGeoPicker;
-    $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>{window.MUIBalancerServers?.teardown();closeModal(button.closest('.modal-backdrop'));});
-    for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal){window.MUIBalancerServers?.teardown();closeModal(modal);}};
+    $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>{if(outboundBusy&&button.closest('#mihomo-outbound-modal'))return;window.MUIBalancerServers?.teardown();closeModal(button.closest('.modal-backdrop'));});
+    for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal&&!(outboundBusy&&modal===outboundModal)){window.MUIBalancerServers?.teardown();closeModal(modal);}};
     $('#mihomo-outbound-form').onsubmit=saveOutboundDraft;
     $('#mihomo-outbound-form').elements.kind.onchange=syncOutboundForm;
     $('#mihomo-outbound-form').elements.type.onchange=syncOutboundForm;
@@ -1061,6 +1061,7 @@
     // display or attach a subscription, even when a source exists globally.
     editingSubscriptionGroup=(requestedItem?.kind||requestedKind)==='group'
       &&currentTab==='subscriptions';
+    creatingSubscriptionGroup=editingSubscriptionGroup&&!id;
     balancerSubscriptions=[];
     if(editingSubscriptionGroup){
       // /api/mihomo/subscriptions returns exactly the records already present
@@ -1091,12 +1092,17 @@
         // Defaults for newly created subscription balancers; never alter saved groups.
         ...(requestedKind==='group'?{timeout:8000,tolerance:100}:{}),
         strategy:'consistent-hashing'}));
+    if(creatingSubscriptionGroup&&balancerSubscriptions.length===1)editingOriginal.subscriptionIds=[balancerSubscriptions[0].id];
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
     outboundFormChanged=false;outboundYAMLCached=false;
     setOutboundMode('form');
     $('#mihomo-outbound-title').textContent=editingOriginal.kind==='group'
       ?(id?'Настройки балансировщика':'Добавить балансировщик')
       :muiT(id?'mh.editOutbound':'mihomo.addOutbound');
+    const editorTabs=$('#mihomo-outbound-modal .mihomo-editor-tabs');
+    editorTabs.style.display=creatingSubscriptionGroup?'none':'';
+    $('#mihomo-outbound-modal').dataset.creatingSubscription=String(creatingSubscriptionGroup);
+    if(creatingSubscriptionGroup)$('#outbound-apply').textContent='Создать балансировщик';else $('#outbound-apply').textContent=muiT('mh.applyToDraft');
     openModal('mihomo-outbound-modal');
     requestAnimationFrame(()=>{if(typeof syncInkBars==='function')syncInkBars();});
     if(editingOriginal.native&&!window.MUIBalancerServers?.active()){await switchOutboundMode('yaml',editingOriginal);}else $('#mihomo-outbound-form').elements.name.focus();
@@ -1118,12 +1124,13 @@
     if(!handler)return;
     const form=$('#mihomo-outbound-form');
     if(!form||form.elements.kind.value!=='group'){handler.teardown();return;}
-    const selectedIDs=Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value);
+    const selectedIDs=Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value).filter(Boolean);
     const group={...clone(editingOriginal||{}),
       name:form.elements.name.value.trim()||editingOriginal?.name||'',
+      ...(creatingSubscriptionGroup?{proxies:Array.from(form.elements.proxies.selectedOptions,o=>o.value)}:{}),
       subscriptionIds:editingSubscriptionGroup?selectedIDs:[]};
     const active=handler.attach({
-      form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,
+      form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,creating:creatingSubscriptionGroup,
       // Existing groups can be probed; new or renamed unsaved groups cannot.
       persistedName:editingOriginal?.id?editingOriginal.name:'',
       updateDefaults:()=>syncGroupDefaultOptions(),
@@ -1143,7 +1150,10 @@
     const select=$('#mihomo-outbound-form').elements.subscriptionIds;
     if(!select)return;
     select.replaceChildren();
+    select.multiple=!creatingSubscriptionGroup;
+    select.size=creatingSubscriptionGroup?1:4;
     if(!editingSubscriptionGroup)return;
+    if(creatingSubscriptionGroup)select.add(new Option('Выберите подписку…',''));
     for(const source of balancerSubscriptions){
       const option=new Option(source.name+' ('+String(source.nodeCount||0)+')',source.id);
       option.selected=(item.subscriptionIds||[]).includes(source.id)||source.group===item.name;
@@ -1160,7 +1170,7 @@
       const node=draft.outbounds.find(candidate=>candidate.name===option.value);
       if(!node?.sourceSubscriptionId)continue;
       if(ids.has(node.sourceSubscriptionId))option.selected=!(editingOriginal?.excludedSubscriptionMembers||[]).includes(option.value);
-      else if(previouslyAttached.has(node.sourceSubscriptionId))option.selected=false;
+      else if(creatingSubscriptionGroup||previouslyAttached.has(node.sourceSubscriptionId))option.selected=false;
     }
     syncGroupDefaultOptions();
   }
@@ -1288,9 +1298,31 @@
     }
     for(const rule of rules)if(rule.target===oldName)rule.target=newName;
   }
+  async function createSubscriptionBalancer(){
+    if(dirty){showImportError('Сначала сохраните изменения Mihomo Settings');return;}
+    const form=$('#mihomo-outbound-form');let payload;
+    try{payload=window.MUIBalancerServers?.creationPayload?.();}catch(error){showImportError(error.message);return;}
+    if(!payload?.sourceId){showImportError('Выберите подписку');return;}
+    if(!form.elements.name.value.trim()){showImportError('Укажите название балансировщика');return;}
+    setImportBusy(true);showImportError('');
+    try{
+      await api('/api/mihomo/subscriptions/groups',{method:'POST',body:JSON.stringify({...payload,
+        group:form.elements.name.value.trim(),groupType:form.elements.type.value,
+        settings:{testUrl:form.elements.testUrl.value,interval:Number(form.elements.interval.value)||0,
+          timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,
+          strategy:form.elements.strategy.value,disableUdp:form.elements.disableUdp.checked,
+          defaultSelected:form.elements.defaultSelected.value}
+      })});
+      window.MUIBalancerServers?.teardown();closeModal($('#mihomo-outbound-modal'));
+      toast('Балансировщик создан');
+      try{await refresh();syncFromState();}catch(error){toast('Балансировщик сохранён. Обновите страницу.',true);}
+    }catch(error){showImportError(error.message);}finally{setImportBusy(false);}
+  }
+
   async function saveOutboundDraft(event){
     event.preventDefault();if(outboundBusy)return;
     if(outboundMode==='form'&&!event.currentTarget.reportValidity())return;
+    if(creatingSubscriptionGroup){await createSubscriptionBalancer();return;}
     setImportBusy(true);showImportError('');
     const applyingGroup=$('#mihomo-outbound-form').elements.kind.value==='group';
     const dialog=applyingGroup?openMihomoStatusDialog('apply'):null;
@@ -1330,6 +1362,7 @@
         // before staging the group for the outer Mihomo Save action.
         await refresh();
         const live=app.state?.state||{};
+        if(!dirty)syncFromState();
         const activeNodes=live.outbounds||[];
         const byName=new Map(activeNodes.map(node=>[node.name,node]));
         const group=response.outbounds[0];
@@ -2059,7 +2092,7 @@
   }
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
   $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
-  $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openCreate();};
+  $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}openOutboundModal('', 'group');};
   $('#mihomo-add-source').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openSource();};
   $('#mihomo-add-rule').onclick=()=>openRuleModal();
   $('#mihomo-warp').onclick=openWarpModal;

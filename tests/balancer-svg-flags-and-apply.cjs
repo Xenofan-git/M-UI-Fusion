@@ -8,7 +8,7 @@ const html=fs.readFileSync('web/index.html','utf8');
 const i18n=fs.readFileSync('web/i18n.js','utf8');
 const locales=fs.readFileSync('web/i18n-locales.js','utf8');
 assert(js.includes('class="fbs-tab-icon"'),'SVG icon expected');
-assert(js.includes('tabIcon(\'refresh\')')&&js.includes('tabIcon(\'filter\')'));
+assert(!js.includes('tabIcon(\'refresh\')')&&js.includes('tabIcon(\'filter\')'));
 assert(!js.includes('🟢 Обновление')&&!js.includes('🟢 Фильтры'));
 assert(js.includes('const existing=new Map([...body.querySelectorAll'), 'rows must survive background polling');
 assert(!js.slice(js.indexOf(' function renderRows(){'),js.indexOf(' function teardown(){')).includes('body.replaceChildren()'), 'avoid re-creating 130 flag SVGs');
@@ -54,7 +54,7 @@ for(const k of keys){
  assert.equal((locales.match(new RegExp('"'+k+'":','g'))||[]).length,9,'missing locale '+k);
 }
 for(const [file,version] of [
- ['mihomo-balancer-servers.js','139'],['mihomo-settings.js','134'],['mihomo-settings.css','132'],
+ ['mihomo-balancer-servers.js','140'],['mihomo-settings.js','135'],['mihomo-settings.css','132'],
  ['outbound-subscriptions.css','122'],['i18n.js','123'],['i18n-locales.js','119']
 ])assert(html.includes('static/'+file+'?v='+version),'asset cache '+file);
 console.log('PASS: SVG balancer tabs, stable flags, clipboard fallback, filter preview, centered Apply status, 11 translations');

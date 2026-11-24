@@ -35,6 +35,7 @@ func materializeGroupSubscriptions(state State, outbounds []MihomoOutbound) ([]M
 		sources[source.ID] = source
 	}
 	managedNodeSource := make(map[string]string)
+	managedNodes := make(map[string]MihomoOutbound)
 	sourceNodes := make(map[string][]string)
 	for _, node := range state.Outbounds {
 		if node.Kind != "proxy" || node.SourceSubscriptionID == "" {
@@ -42,6 +43,7 @@ func materializeGroupSubscriptions(state State, outbounds []MihomoOutbound) ([]M
 		}
 		sourceNodes[node.SourceSubscriptionID] = append(sourceNodes[node.SourceSubscriptionID], node.Name)
 		managedNodeSource[node.Name] = node.SourceSubscriptionID
+		managedNodes[node.Name] = node
 	}
 	result := make([]MihomoOutbound, len(outbounds))
 	copy(result, outbounds)
@@ -94,6 +96,9 @@ func materializeGroupSubscriptions(state State, outbounds []MihomoOutbound) ([]M
 		}
 		memberSet := map[string]bool{}
 		for _, member := range group.Proxies {
+			if node, ok := managedNodes[member]; ok && known[node.SourceSubscriptionID] && !sharedGroupNodeAllowed(*group, node) {
+				continue
+			}
 			if excluded[member] && managedNodeSource[member] != "" {
 				continue
 			}
@@ -107,7 +112,7 @@ func materializeGroupSubscriptions(state State, outbounds []MihomoOutbound) ([]M
 		}
 		for _, sourceID := range selected {
 			for _, member := range sourceNodes[sourceID] {
-				if excluded[member] {
+				if excluded[member] || !sharedGroupNodeAllowed(*group, managedNodes[member]) {
 					continue
 				}
 				if !memberSet[member] {

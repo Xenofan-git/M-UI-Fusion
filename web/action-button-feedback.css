@@ -239,3 +239,47 @@ html body .mui-dialog #mui-dialog-cancel#mui-dialog-cancel:hover {
   color: #482071 !important;
   -webkit-text-fill-color: #482071 !important;
 }
+
+/* Literal fallbacks for old Windows Chrome, above all skin overrides. */
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save#mihomo-save,
+html body #mihomo-outbound-modal #outbound-apply#outbound-apply {
+ --lb-fill: #08745a !important;
+ --lb-text: #ffffff !important;
+ background: #08745a !important;
+ background-image: none !important;
+ border: 1px solid #075a46 !important;
+ color: #ffffff !important;
+ -webkit-text-fill-color: #ffffff !important;
+ opacity: 1 !important;
+ filter: none !important;
+ text-shadow: none !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save#mihomo-save:disabled,
+html body #mihomo-outbound-modal #outbound-apply#outbound-apply:disabled {
+ background: #526b64 !important;
+ color: #ffffff !important;
+ -webkit-text-fill-color: #ffffff !important;
+ opacity: 1 !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save#mihomo-save::after,
+html body #mihomo-outbound-modal #outbound-apply#outbound-apply::after {
+ content: none !important;
+ opacity: 0 !important;
+}
+html body #mihomo-outbound-modal #mihomo-outbound-close#mihomo-outbound-close {
+ --lb-text: #54228d !important;
+ color: #54228d !important;
+ -webkit-text-fill-color: #54228d !important;
+ background: #f3f0f8 !important;
+ background-image: none !important;
+ border: 1px solid #7522b7 !important;
+ opacity: 1 !important;
+ font-size: 22px !important;
+ line-height: 1 !important;
+ width: 32px;
+ height: 32px;
+ display: flex !important;
+ align-items: center;
+ justify-content: center;
+ flex-shrink: 0;
+}

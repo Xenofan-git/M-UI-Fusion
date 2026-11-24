@@ -9,14 +9,14 @@ const rgb=s=>s.match(/\d+/g).slice(0,3).map(Number);
  const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});
- await page.setContent('<html><head><style>'+css+'</style></head><body><form id="login-form"><button id="login-button" class="login-button" type="button">Войти</button></form><div id="outsub-modal"><form id="outsub-form"><button class="primary-btn" id="outsub-submit" type="button">Создать балансировщик</button></form></div><div class="modal-backdrop mui-dialog"><section class="mui-dialog-panel"><footer class="modal-footer"><button id="mui-dialog-cancel" class="outline-btn">Отмена</button><button class="danger-btn">Подтвердить</button></footer></section></div><form id="editor"><label class="mihomo-field"><span>Узлы</span><select name="proxies" multiple></select></label></form></body></html>');
+ await page.setContent('<html><head><style>'+css+'</style></head><body><form id="login-form"><button id="login-button" class="login-button" type="button">Войти</button></form><div id="outsub-modal"><form id="outsub-form"><button class="primary-btn" id="outsub-submit" type="button">Создать балансировщик</button></form></div><div class="modal-backdrop mui-dialog"><section class="mui-dialog-panel"><footer class="modal-footer"><button id="mui-dialog-cancel" class="outline-btn">Отмена</button><button class="danger-btn">Подтвердить</button></footer></section></div><div id="mihomo-settings-root"><div class="mihomo-actionbar"><button class="primary-btn" id="mihomo-save">Сохранить</button></div></div><div id="mihomo-outbound-modal"><button id="mihomo-outbound-close" class="modal-close">×</button><button id="outbound-apply" class="primary-btn">Применить</button></div><form id="editor"><label class="mihomo-field"><span>Узлы</span><select name="proxies" multiple></select></label></form></body></html>');
  let n=0,min=Infinity;
  for(const theme of ['shadcn','md3','liquid'])for(const dark of [false,true])for(const skin of ['','graphite','ivory','emerald','aurora']){
   await page.evaluate(({theme,dark,skin})=>{const r=document.documentElement;r.setAttribute('data-ui-theme',theme);r.classList.toggle('dark',dark);r.setAttribute('data-theme',dark?'dark':'light');document.body.classList.toggle('dark',dark);if(skin)r.setAttribute('data-color-skin',skin);else r.removeAttribute('data-color-skin')},{theme,dark,skin});
-  for(const sel of ['#login-button','#outsub-submit','.mui-dialog .outline-btn']){
+  for(const sel of ['#login-button','#outsub-submit','.mui-dialog .outline-btn','#mihomo-save','#outbound-apply','#mihomo-outbound-close']){
    const b=page.locator(sel);
    for(const disabled of [false,true]){
-    if(disabled&&sel.includes('outline-btn'))continue;
+    if(disabled&&(sel.includes('outline-btn')||sel.includes('close')))continue;
     await b.evaluate((e,d)=>e.disabled=d,disabled);
     const v=await b.evaluate(e=>{const s=getComputedStyle(e);return [s.webkitTextFillColor,s.backgroundColor,s.opacity,s.backgroundImage]});
     const a=lum(rgb(v[0])),z=lum(rgb(v[1])),ratio=(Math.max(a,z)+.05)/(Math.min(a,z)+.05);

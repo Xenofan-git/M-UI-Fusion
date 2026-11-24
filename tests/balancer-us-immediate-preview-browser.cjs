@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=139'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=140'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
  .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');
@@ -224,9 +224,9 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    });
    assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-filtered')),false,
      'backend already considers US nodes unfiltered');
-   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-excluded')),true,
-     'reproduce persistent dimming caused only by stale selected=false');
-   assert.equal(await firstUSA.locator('input[type=checkbox]').isChecked(),false);
+   assert.equal(await firstUSA.evaluate(el=>el.classList.contains('fbs-row-excluded')),false,
+     'matching nodes must recover immediately despite stale selected=false');
+   assert.equal(await firstUSA.locator('input[type=checkbox]').isChecked(),true);
    await page.evaluate(()=>window.MUIBalancerServers.saveSourceSettings());
    assert.equal(await page.evaluate(()=>window.__serverFiltersUSA),false,
      'provider accepted removal of USA from the excluded filter');
@@ -249,11 +249,11 @@ const tmp=path.join(web,'.usa-filter-preview-test.html');
    assert.equal(await manualOff.evaluate(el=>el.classList.contains('fbs-row-excluded')),true,
      'unrelated manually unchecked member must remain dimmed by user choice');
    assert.equal(await page.locator('.fbs-filtered-divider button').innerText(),
-     '▾ Скрыто фильтрами · 14','only original RU exclusions remain grouped');
+     '▾ Исключено фильтрами · 14','only original RU exclusions remain grouped');
    assert.equal(await page.evaluate(firstName=>[...window.__filterDebug.context().form.elements.proxies.options]
      .find(o=>o.value===firstName)?.selected,names[0]),true,
      'restored proxy must also be selected in the parent group form');
-   assert.equal(await page.evaluate(()=>window.__filterDebug.context().subs[0].filterExclude),savedRU);
+   assert.equal(await page.evaluate(()=>window.__filterDebug.context().group.subscriptionFilterExclude),savedRU);
    // Reproduce REAL Windows telemetry: linked source id exists in the
    // group but the source selection options are empty (source=false).
    // No subscription metadata has been loaded yet. The single-provider

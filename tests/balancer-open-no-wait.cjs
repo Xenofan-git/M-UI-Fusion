@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const js=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert(html.includes('static/mihomo-settings.js?v=134'),'cache-bust the no-wait editor handler');
+assert(html.includes('static/mihomo-settings.js?v=135'),'cache-bust the no-wait editor handler');
 assert(js.includes('const cached=app.state?.state?.outboundSubscriptions'),
  'editor needs to reuse canonical state snapshot');
 const begin=js.indexOf("  async function openOutboundModal(id='',requestedKind='proxy'){");
@@ -19,7 +19,7 @@ async function run(cacheMode){
  const input={focus:()=>events.push('focus')};
  const box={elements:{name:input}};
  const ui={
-  editingSubscriptionGroup:false,balancerSubscriptions:[],editingOriginal:null,
+  editingSubscriptionGroup:false,creatingSubscriptionGroup:false,balancerSubscriptions:[],editingOriginal:null,
   draft:{outbounds:[group],basics:{outboundTestUrl:'https://www.gstatic.com/generate_204'}},
   currentTab:'subscriptions',app:{state:cacheMode==='valid'?{state:{outboundSubscriptions:[source]}}:cacheMode==='empty'?{state:{outboundSubscriptions:[]}}:cacheMode==='wrong'?{state:{outboundSubscriptions:[{id:'other',name:'other',group:'OTHER'}]}}:{}},
   window:{MUIBalancerServers:{teardown:()=>events.push('teardown'),active:()=>true}},
@@ -30,7 +30,7 @@ async function run(cacheMode){
   setOutboundMode:()=>events.push('setFormMode'),
   setYAML:()=>events.push('setYAML'),
   showImportError:()=>{},
-  $:id=>id==='#mihomo-outbound-form'?box:{value:'',textContent:''},
+  $:id=>id==='#mihomo-outbound-form'?box:{value:'',textContent:'',style:{},dataset:{}},
   openModal:()=>events.push('openModal'),
   requestAnimationFrame:()=>{},
   muiT:()=>'',newManualBalancerDefaults:()=>({}),

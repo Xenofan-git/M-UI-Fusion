@@ -3,7 +3,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{chromium}=requ
 const source=fs.readFileSync('web/mihomo-settings.js','utf8');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert(html.includes('static/mihomo-settings.js?v=134'));
+assert(html.includes('static/mihomo-settings.js?v=135'));
 const slice=(start,end)=>{
  const a=source.indexOf(start),b=source.indexOf(end,a+start.length);
  assert(a>=0&&b>a,'cannot extract '+start);
@@ -31,6 +31,7 @@ const dict={
      window.outboundMode='yaml';
      window.editingOutbound='group-id';
      window.editingSubscriptionGroup=false;
+     window.creatingSubscriptionGroup=false;
      window.editingOriginal={id:'group-id',name:'FOREIGN'};
      window.outboundBusy=false;
      window.draft={outbounds:[{id:'group-id',kind:'group',name:'FOREIGN',proxies:['Old']}],routingRules:[]};
