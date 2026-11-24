@@ -113,6 +113,27 @@
     if(draft.basics.ipv4Domains.length)fixed.push({name:'MUI-IPV4',kind:'builtin',type:'direct',address:'Basics / IPv4'});
     return fixed.concat(draft.outbounds.map(item=>({...item,address:outboundAddress(item)})));
   }
+  // The saved subscription metadata only contains a filtered node's name,
+  // protocol, flag and country code (not its connection/credentials). Match
+  // by full display name, after removing a known source prefix, and protocol.
+  // This is a VIEW filter: keep every outbound in the draft, group memberships,
+  // routing references, URLTest schedules and runtime Mihomo config untouched.
+  function filteredOutboundIdentity(name,protocol){
+    const label=String(name||'').normalize('NFC').trim();
+    const sep=label.indexOf(' | ');
+    const nodeName=sep>=0?label.slice(sep+3).trim():label;
+    return nodeName+'\u0000'+String(protocol||'').toLowerCase();
+  }
+  function excludedSubscriptionOutbounds(){
+    const sources=app.state?.state?.outboundSubscriptions||[];
+    const names=new Set();
+    for(const source of sources){
+      for(const node of source?.filteredNodes||[]){
+        if(node?.name)names.add(filteredOutboundIdentity(node.name,node.protocol));
+      }
+    }
+    return names;
+  }
   function delayLabel(name){const value=delayResults.get(name);return value==='Testing'?muiT('mh.testing'):value||'';}
   // Display only: hide a provider label already identified by the balancer name.
   // Never change Mihomo's actual selected member or the stored proxy name.
@@ -280,11 +301,24 @@
   function renderOutbounds(){
     const manual=currentTab==='balancers',subscribed=currentTab==='subscriptions';
     const box=$(manual?'#mihomo-balancer-table':subscribed?'#mihomo-subscription-balancer-table':'#mihomo-outbound-table');
-    const rows=outboundRows().filter(item=>
+    const allRows=outboundRows().filter(item=>
       manual?item.kind==='group'&&!isSubscriptionGroup(item):
       subscribed?isSubscriptionGroup(item):
       item.kind!=='group'
-    ),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
+    );
+    const hideFiltered=!manual&&!subscribed&&$('#mihomo-hide-filtered-outbounds')?.checked===true;
+    const hiddenKeys=hideFiltered?excludedSubscriptionOutbounds():null;
+    const rows=hiddenKeys?allRows.filter(item=>
+      item.kind!=='proxy'||!hiddenKeys.has(filteredOutboundIdentity(item.name,item.type))
+    ):allRows;
+    const hiddenCount=$('#mihomo-hidden-filtered-count');
+    if(hiddenCount){
+      const count=allRows.length-rows.length;
+      const label='Скрыто: '+count;
+      if(hiddenCount.textContent!==label)hiddenCount.textContent=label;
+      hiddenCount.hidden=!hideFiltered;
+    }
+    const showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
     const markup=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
       const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
       return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(item.kind==='group'?groupTypeLabel(type):type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?`<td data-outbound-traffic="${esc(item.name)}"></td>`:''}<td>${item.kind==='group'
@@ -1981,6 +2015,14 @@
   ensureModals();
   setupRuleHelp();
   $$('.mihomo-tab',root).forEach(button=>button.onclick=()=>setTab(button.dataset.mihomoTab));
+  const hideFilteredToggle=$('#mihomo-hide-filtered-outbounds');
+  if(hideFilteredToggle){
+    try{hideFilteredToggle.checked=localStorage.getItem('mui-hide-filtered-outbounds')==='1';}catch{}
+    hideFilteredToggle.onchange=()=>{
+      try{localStorage.setItem('mui-hide-filtered-outbounds',hideFilteredToggle.checked?'1':'0');}catch{}
+      if(currentTab==='outbounds')renderOutbounds();
+    };
+  }
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
   $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
   $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openCreate();};

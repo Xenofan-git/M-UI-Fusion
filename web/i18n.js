@@ -2591,6 +2591,11 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     'inbounds.securityNoneHelp':'不使用额外安全协议（TLS、Reality 等）。'
   });
 
+  // Pure display preference: does not change Mihomo's actual proxy list.
+  Object.assign(DICT.ru,{'mh.hideFilteredOutbounds':'Исключить отфильтрованные серверы'});
+  Object.assign(DICT.en,{'mh.hideFilteredOutbounds':'Hide filtered-out servers'});
+  Object.assign(DICT['zh-CN'],{'mh.hideFilteredOutbounds':'隐藏已过滤的服务器'});
+
   function muiGetLang() {
     var stored = null;
     try { stored = localStorage.getItem('mui-language'); } catch (e) {}

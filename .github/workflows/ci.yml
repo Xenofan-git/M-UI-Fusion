@@ -54,6 +54,8 @@ jobs:
         run: node tests/inbound-security-layout.cjs
       - name: Verify Add Flag picker renders SVG and saves actual flag conditions
         run: node tests/outsub-flag-insertion.cjs
+      - name: Verify filtered-out subscription nodes can be hidden visually without changing routes
+        run: node tests/outbounds-hide-filtered.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
       - name: Test centered Mihomo Save and Restart operation dialogs

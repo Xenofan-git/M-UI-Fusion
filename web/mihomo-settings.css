@@ -194,6 +194,22 @@ body.dark .mihomo-tab:hover{background:rgba(255,255,255,.05)}
 /* ---- 工具条与主要按钮（SwiftUI 胶囊/圆角样式） ---- */
 .mihomo-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:18px}
 .mihomo-toolbar .mihomo-spacer{flex:1}
+.mihomo-outbound-filter-toggle{
+  display:inline-flex;align-items:center;gap:9px;cursor:pointer;
+  font-size:13.5px;font-weight:450;line-height:1.5;color:var(--text);
+  user-select:none;-webkit-user-select:none;
+}
+.mihomo-outbound-filter-toggle input{
+  width:17px;height:17px;flex:none;margin:0;cursor:pointer;
+  accent-color:var(--skin-accent,#009B77);
+}
+.mihomo-outbound-filter-toggle:has(input:focus-visible){
+  outline:2px solid var(--skin-accent,#009B77);outline-offset:4px;border-radius:3px;
+}
+.mihomo-outbound-filter-count{
+  white-space:nowrap;font-size:12.5px;
+}
+
 .mihomo-primary,.mihomo-tool{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   height:var(--ctl);padding:0 16px;border-radius:var(--radius-sm);
