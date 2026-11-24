@@ -11,7 +11,7 @@ const css=read('web/color-skins.css');
 const keys=[
  'static/color-skins.css?v=116',
  'static/mihomo-settings.css?v=132',
- 'static/mihomo-settings.js?v=131',
+ 'static/mihomo-settings.js?v=132',
  'static/i18n.js?v=123',
  'static/i18n-locales.js?v=119'
 ];
