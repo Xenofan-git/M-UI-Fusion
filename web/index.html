@@ -14,7 +14,7 @@
   <script src="static/color-skins.js"></script>
   <link rel="stylesheet" href="static/liquid-glass.css">
   <link rel="stylesheet" href="static/liquid-tabbar.css" data-ui-only="liquid">
-  <link rel="stylesheet" href="static/mihomo-settings.css?v=139">
+  <link rel="stylesheet" href="static/mihomo-settings.css?v=140">
   <link rel="stylesheet" href="static/multi-control.css">
   <link rel="stylesheet" href="static/inbound-sync.css">
   <link rel="stylesheet" href="static/cross-subscriptions.css">
@@ -1134,12 +1134,12 @@
           <div class="outsub-list" id="outsub-list"></div>
         </div></div><div class="mihomo-pane" data-mihomo-pane="routing"><div class="mihomo-toolbar"><button type="button" class="mihomo-primary" id="mihomo-add-rule"><svg class="sf-symbol" aria-hidden="true"><use href="#sf-plus"></use></svg> Add Rule</button><span class="mihomo-spacer"></span><span class="mihomo-muted">Rules match from top to bottom; MATCH is always last.</span></div><div id="mihomo-rule-table"></div></div><div class="mihomo-pane" data-mihomo-pane="smart-health">
   <div id="smart-health-root" class="basics-sections">
-    <details class="basics-section" open><summary>Общие</summary><div class="basics-section-body">
-      <div class="basics-row"><div><label for="smart-health-enabled">Smart Health Monitor</label><p>Адаптивный опрос узлов и независимая диагностика доступности сети.</p></div><div class="basics-control switch-control"><label class="switch"><input id="smart-health-enabled" type="checkbox"><span></span></label></div></div>
+    <details class="basics-section smart-health-general" open><summary>Общие</summary><div class="basics-section-body">
+      <div class="basics-row"><div><label for="smart-health-enabled">Smart Health Monitor</label><p>Адаптивный опрос узлов и независимая диагностика доступности сети.</p></div><div class="basics-control switch-control"><label class="smart-health-switch"><input id="smart-health-enabled" type="checkbox" role="switch"><span></span></label></div></div>
       <div class="basics-row"><div><label>Режим работы</label><p id="smart-health-info"></p></div><div class="basics-control"><strong id="smart-health-mode" role="status">Загрузка…</strong></div></div>
       <p id="smart-health-pending" class="mihomo-muted" hidden>Для передачи расписания проверок между ядром и монитором сохраните настройки и один раз перезапустите Mihomo. При смене режимов перезапуск не нужен.</p>
     </div></details>
-    <details class="basics-section" open><summary>Интервалы опроса</summary><div class="basics-section-body">
+    <details class="basics-section smart-health-intervals" open><summary>Интервалы опроса</summary><div class="basics-section-body">
       <div class="basics-row"><div><label for="smart-health-normal">Штатный, сек.</label><p>Хотя бы один прокси доступен.</p></div><div class="basics-control"><input id="smart-health-normal" type="number" min="30" max="3600" value="180"></div></div>
       <div class="basics-row"><div><label for="smart-health-degraded">Ускоренный, сек.</label><p>Контрольные сервисы доступны, прокси не отвечают.</p></div><div class="basics-control"><input id="smart-health-degraded" type="number" min="10" max="3600" value="60"></div></div>
       <div class="basics-row"><div><label for="smart-health-offline">Аварийный, сек.</label><p>Проверяются только выбранные контрольные сервисы.</p></div><div class="basics-control"><input id="smart-health-offline" type="number" min="5" max="3600" value="10"></div></div>
@@ -1147,7 +1147,7 @@
     <details class="basics-section smart-health-controls-section" open><summary>Контрольные сервисы</summary><div class="basics-section-body">
       <p class="mihomo-muted">Запросы IPv4 напрямую. Выбирайте российские ресурсы; доступность зависит от маршрута и оператора.</p>
       <div class="smart-health-catalog">
-        <div class="smart-health-catalog-toolbar"><button type="button" class="mihomo-primary" id="smart-health-add" disabled><span aria-hidden="true">+</span> Добавить контрольный сервис</button><span class="mihomo-muted" id="smart-health-count"></span></div>
+        <div class="smart-health-catalog-toolbar"><button type="button" class="smart-health-action" id="smart-health-add" disabled><span aria-hidden="true">+</span> Добавить контрольный сервис</button><span class="mihomo-muted" id="smart-health-count"></span></div>
         <div id="smart-health-services"></div>
       </div>
       <p class="mihomo-muted">Нажмите на название для редактирования. Изменения применяются после сохранения настроек монитора.</p>
@@ -1161,11 +1161,11 @@
           <label for="smart-health-editor-protocol">Протокол</label><select id="smart-health-editor-protocol"><option>HTTPS</option><option>DoH</option><option>DoT</option></select>
           <p class="mihomo-muted" id="smart-health-editor-hint"></p><p role="alert" id="smart-health-editor-error" class="smart-health-editor-error"></p>
         </div>
-        <footer class="modal-footer"><button type="button" class="outline-btn" id="smart-health-editor-cancel">Отмена</button><button type="submit" class="primary-btn" id="smart-health-editor-submit">Добавить</button></footer>
+        <footer class="modal-footer"><button type="button" class="smart-health-action" id="smart-health-editor-cancel">Отмена</button><button type="submit" class="smart-health-action" id="smart-health-editor-submit">Добавить</button></footer>
       </form>
     </dialog>
-    <div class="mihomo-toolbar"><button type="button" class="mihomo-primary" id="smart-health-save" disabled>Сохранить настройки монитора</button><span id="smart-health-message" class="mihomo-muted" role="status"></span></div>
-    <details class="basics-section" open><summary>Журнал событий</summary><div class="basics-section-body"><div id="smart-health-events"></div></div></details>
+    <div class="mihomo-toolbar smart-health-actions"><button type="button" class="smart-health-action" id="smart-health-save" disabled>Сохранить настройки монитора</button><span id="smart-health-message" class="mihomo-muted" role="status"></span></div>
+    <details class="basics-section smart-health-journal" open><summary>Журнал событий</summary><div class="basics-section-body"><div id="smart-health-events"></div></div></details>
   </div>
 </div></div></div><div hidden><button id="test-config"></button><button id="generate-config"></button><button id="copy-config"></button><textarea id="raw-config"></textarea></div></section>
         <section class="view" id="view-logs"><div class="page-head"><div><div class="eyebrow">Runtime Logs</div><h1>运行日志</h1><p class="subtitle">Mihomo stdout/stderr 和面板操作记录。</p></div><button class="outline-btn" id="clear-log-view">刷新日志</button></div><div class="log-box" id="logs-box">暂无日志</div></section>
@@ -1927,7 +1927,7 @@
   <script src="static/mihomo-balancer-servers.js?v=144"></script>
   <script src="static/mihomo-rule-lists.js"></script>
   <script src="static/mihomo-settings.js?v=141"></script>
-  <script src="static/smart-health.js?v=3"></script>
+  <script src="static/smart-health.js?v=4"></script>
   <script src="static/multi-control.js"></script>
   <script src="static/inbound-sync.js"></script>
   <script src="static/cross-subscriptions.js"></script>

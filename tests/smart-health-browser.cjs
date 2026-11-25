@@ -32,7 +32,7 @@ try{
  assert(row.x>=0&&row.x+row.width<=width,'catalog overflows viewport');
  const section=await page.locator('.smart-health-controls-section').evaluate(e=>getComputedStyle(e).borderTopStyle);assert.equal(section,'solid');
  assert.equal(await page.locator('[data-smart-service="yandex-dot"]').isChecked(),false);
- await page.locator('label.switch').filter({has:page.locator('#smart-health-enabled')}).click();
+ await page.locator('label.smart-health-switch').filter({has:page.locator('#smart-health-enabled')}).click();
  await page.locator('[data-smart-service="yandex-dot"]').check();
  await page.locator('[data-smart-service="vk"]').uncheck();
  await page.locator('#smart-health-offline').fill('12');
@@ -95,10 +95,10 @@ try{
  assert.equal(await dialog.count(),0,'catalog edit must not prompt restart');
  await page.evaluate(()=>{window.__data.status={mode:'offline',pending:false,healthy:0,events:[{mode:'offline',at:'2026-11-25T18:00:00Z'}],controls:[{id:'yandex-doh',ok:false,milliseconds:2000}]};});
  await page.locator('[data-mihomo-tab="smart-health"]').click();
- await page.waitForFunction(()=>document.querySelector('#smart-health-mode').textContent.includes('Нет ответа'));
+ await page.waitForFunction(()=>document.querySelector('#smart-health-mode').textContent.includes('нет ответа'));
  assert.match(await page.locator('[data-smart-result="yandex-doh"]').textContent(),/Нет ответа/);
  assert.equal(await page.locator('[data-smart-result="yandex-dot"]').textContent(),'—');
- assert.match(await page.locator('#smart-health-events').textContent(),/Нет ответа/);
+ assert.match(await page.locator('#smart-health-events').textContent(),/Аварийный — нет ответа/);
  await page.close();
  }
  console.log('PASS: monitor tab checkbox selection, intervals, independent save, pending restart, status and events, draft preservation on desktop/mobile');

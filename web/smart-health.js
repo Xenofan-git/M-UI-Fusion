@@ -2,8 +2,8 @@
   const root=document.getElementById('smart-health-root');
   if(!root)return;
   const el=id=>document.getElementById('smart-health-'+id);
-  const modes={disabled:'Отключён',pending:'Ожидает перезапуска Mihomo',starting:'Подготовка проверки',normal:'Штатный',degraded:'Ускоренный',offline:'Нет ответа контрольных сервисов',unknown:'Результат проверки неизвестен',core_unavailable:'Ядро Mihomo недоступно'};
-  const en={disabled:'Disabled',pending:'Mihomo restart required',starting:'Preparing check',normal:'Normal',degraded:'Degraded',offline:'Control services unreachable',unknown:'Check result unknown',core_unavailable:'Mihomo unavailable'};
+  const modes={disabled:'Отключён',pending:'Ожидает перезапуска Mihomo',starting:'Подготовка проверки',normal:'Штатный',degraded:'Ускоренный',offline:'Аварийный — нет ответа контрольных сервисов',unknown:'Результат проверки неизвестен',core_unavailable:'Ядро Mihomo недоступно'};
+  const en={disabled:'Disabled',pending:'Mihomo restart required',starting:'Preparing check',normal:'Normal',degraded:'Degraded',offline:'Emergency — control services unreachable',unknown:'Check result unknown',core_unavailable:'Mihomo unavailable'};
   const ru=()=>window.muiGetLang?.()==='ru'||!window.muiGetLang;
   const mode=s=>(ru()?modes:en)[s]||s||'—';
   const format=t=>t&&new Date(t).getFullYear()>1970?new Date(t).toLocaleString():'—';
@@ -60,6 +60,7 @@
     editor.close();renderCatalog();markDirty();
   };
   function renderStatus(status){
+    el('mode').dataset.mode=status.mode;
     el('mode').textContent=mode(status.mode)+(status.running?(ru()?' · опрос…':' · checking…'):'');
     el('info').textContent=(ru()?'Доступно узлов: ':'Healthy nodes: ')+(status.healthy??0)+(ru()?' · групп: ':' · groups: ')+(status.groups??0)+' · '+(ru()?'последняя проверка: ':'last: ')+format(status.last)+' · '+(ru()?'следующая: ':'next: ')+format(status.next);
     el('pending').hidden=!status.pending;
@@ -68,11 +69,14 @@
       const r=results.get(node.dataset.smartResult);
       const text=!r?'—':r.ok?'✓ '+r.milliseconds+' ms':(ru()?'Нет ответа':'No response');
       node.textContent=text;
-      node.style.color=!r?'':r.ok?'#009B77':'var(--danger)';
+      node.dataset.mode=!r?'disabled':r.ok?'normal':'offline';
     });
     const list=el('events');
     const nodes=(status.events||[]).slice().reverse().map(e=>{
-      const item=document.createElement('p');item.className='mihomo-muted';item.textContent=format(e.at)+' · '+mode(e.mode);return item;
+      const item=document.createElement('div');item.className='smart-health-event';
+      const time=document.createElement('time');time.textContent=format(e.at);
+      const state=document.createElement('strong');state.className='smart-health-event-state';state.dataset.mode=e.mode;state.textContent=mode(e.mode);
+      item.append(time,state);return item;
     });
     if(!nodes.length){const p=document.createElement('p');p.className='mihomo-muted';p.textContent=ru()?'Нет событий':'No events';nodes.push(p)}
     list.replaceChildren(...nodes);

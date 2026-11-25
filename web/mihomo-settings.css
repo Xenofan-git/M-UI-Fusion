@@ -1610,3 +1610,167 @@ html body .smart-health-service-remove:hover{background:rgba(201,75,82,.12)!impo
   .smart-health-service-status{white-space:normal}
   html body .smart-health-service-remove{width:24px}
 }
+
+/* Smart Health Monitor: scoped, contrast-safe palette independent of UI layout.
+   No other Mihomo panels inherit these overrides. */
+html body #smart-health-root{
+ --sh-page:#edf0f2;--sh-card:#ffffff;--sh-head:#e9efed;--sh-line:#bfcfca;
+ --sh-ink:#23332e;--sh-muted:#52665e;--sh-field:#f4f7f5;
+ --sh-purple:#63399c;--sh-purple-bg:#f3edf9;--sh-purple-hover:#e6d9f5;--sh-purple-line:#9875c3;
+ --sh-green:#087451;--sh-amber:#895500;--sh-red:#b52c3b;--sh-blue:#235eaa;
+ --sh-off:#58635f;--sh-off-bg:#e6ebe8;--sh-off-edge:#bbc8c1;
+ --sh-knob:#fff;
+ display:grid;gap:12px;padding:12px;border:1px solid var(--sh-line);
+ background:var(--sh-page);color:var(--sh-ink);border-radius:12px;
+ overflow:visible;box-shadow:none;
+}
+html[data-color-skin="ivory"] body #smart-health-root{
+ --sh-page:#f0e9dc;--sh-card:#fffaf0;--sh-head:#efe5d4;--sh-line:#cec0aa;
+ --sh-ink:#3b3026;--sh-muted:#695a4b;--sh-field:#f9f1e4;
+}
+html body.dark #smart-health-root,
+html[data-theme="dark"] body #smart-health-root,
+html[data-color-skin="graphite"] body #smart-health-root,
+html[data-color-skin="emerald"] body #smart-health-root,
+html[data-color-skin="aurora"] body #smart-health-root{
+ --sh-page:#141d1a;--sh-card:#202a27;--sh-head:#2c3934;--sh-line:#50665b;
+ --sh-ink:#e6f0eb;--sh-muted:#adbfB6;--sh-field:#19231f;
+ --sh-purple:#dfc3ff;--sh-purple-bg:#352943;--sh-purple-hover:#49365e;--sh-purple-line:#ab89d3;
+ --sh-green:#70d9ac;--sh-amber:#f0c36e;--sh-red:#ff9ba3;--sh-blue:#91c4ff;
+ --sh-off:#b5c1bb;--sh-off-bg:#34413a;--sh-off-edge:#65776d;
+}
+html[data-color-skin="graphite"] body #smart-health-root{
+ --sh-page:#161a20;--sh-card:#222830;--sh-head:#303841;--sh-line:#505e69;--sh-field:#1b2027;
+}
+html[data-color-skin="aurora"] body #smart-health-root{
+ --sh-page:#1b1927;--sh-card:#282637;--sh-head:#353249;--sh-line:#615878;--sh-field:#211f30;
+}
+html body #smart-health-root > .basics-section{
+ margin:0;border:1px solid var(--sh-line)!important;border-radius:9px;
+ overflow:hidden;background:var(--sh-card);
+}
+html body #smart-health-root > .basics-section > summary{
+ background:var(--sh-head)!important;color:var(--sh-ink)!important;
+ padding-top:10px;padding-bottom:10px;font-size:15px;
+}
+html body #smart-health-root .basics-section-body{
+ background:var(--sh-card)!important;border-color:var(--sh-line);
+ padding:12px 16px;color:var(--sh-ink);
+}
+html body #smart-health-root .basics-row{
+ grid-template-columns:minmax(0,1fr) minmax(0,230px);gap:16px;
+ padding:10px 0;border-color:var(--sh-line);
+}
+html body #smart-health-root .basics-row label{color:var(--sh-ink)!important}
+html body #smart-health-root :is(.mihomo-muted,.basics-row p){color:var(--sh-muted)!important}
+html body #smart-health-root .basics-control>input,
+html body #smart-health-root .smart-health-editor-fields :is(input,select){
+ background:var(--sh-field)!important;color:var(--sh-ink)!important;
+ -webkit-text-fill-color:var(--sh-ink)!important;border:1px solid var(--sh-line)!important;
+ border-radius:7px;
+}
+html body #smart-health-root .basics-control>input{max-width:140px}
+html body #smart-health-root .smart-health-catalog{
+ background:var(--sh-field)!important;border:1px solid var(--sh-line)!important;
+}
+html body #smart-health-root .smart-health-service-row{border-color:var(--sh-line)}
+html body #smart-health-root .smart-health-service-name{
+ --lb-fill:transparent!important;--lb-text:var(--sh-ink)!important;
+ color:var(--sh-ink)!important;-webkit-text-fill-color:var(--sh-ink)!important;
+}
+html body #smart-health-root .smart-health-service-remove{
+ --lb-fill:transparent!important;--lb-text:var(--sh-red)!important;
+ color:var(--sh-red)!important;-webkit-text-fill-color:var(--sh-red)!important;
+}
+html body #smart-health-root .smart-health-protocol{color:var(--sh-muted)!important}
+html body #smart-health-root .smart-health-protocol[data-protocol="DoH"]{color:var(--sh-purple)!important}
+html body #smart-health-root .smart-health-protocol[data-protocol="DoT"]{color:var(--sh-green)!important}
+/* Explicit text, fill and Liquid Button custom properties in all states. */
+html body #smart-health-root :is(#smart-health-add,#smart-health-save,#smart-health-editor-submit,#smart-health-editor-cancel){
+ --lb-fill:var(--sh-purple-bg)!important;--lb-text:var(--sh-purple)!important;
+ background:var(--sh-purple-bg)!important;background-image:none!important;
+ color:var(--sh-purple)!important;-webkit-text-fill-color:var(--sh-purple)!important;
+ border:1px solid var(--sh-purple-line)!important;border-radius:7px!important;
+ opacity:1!important;filter:none!important;text-shadow:none!important;box-shadow:none!important;
+ padding:7px 13px!important;min-height:34px;height:auto!important;line-height:1.35!important;
+ font-size:13px;font-weight:600;white-space:normal;
+}
+html body #smart-health-root :is(#smart-health-add,#smart-health-save,#smart-health-editor-submit,#smart-health-editor-cancel) span{
+ color:inherit!important;-webkit-text-fill-color:inherit!important;
+}
+html body #smart-health-root :is(#smart-health-add,#smart-health-save,#smart-health-editor-submit,#smart-health-editor-cancel):hover:not(:disabled){
+ --lb-fill:var(--sh-purple-hover)!important;background:var(--sh-purple-hover)!important;
+ color:var(--sh-purple)!important;-webkit-text-fill-color:var(--sh-purple)!important;
+}
+html body #smart-health-root :is(#smart-health-add,#smart-health-save):disabled{
+ --lb-fill:var(--sh-off-bg)!important;--lb-text:var(--sh-off)!important;
+ background:var(--sh-off-bg)!important;color:var(--sh-off)!important;
+ -webkit-text-fill-color:var(--sh-off)!important;border-color:var(--sh-off-edge)!important;
+ opacity:1!important;cursor:not-allowed;
+}
+html body #smart-health-root :is(#smart-health-add,#smart-health-save,#smart-health-editor-submit,#smart-health-editor-cancel):is(:before,:after){content:none!important}
+html body #smart-health-root button:focus-visible{outline:2px solid var(--sh-purple)!important;outline-offset:2px}
+html body #smart-health-root .smart-health-actions{
+ margin:0;padding:12px 14px;background:var(--sh-card);border:1px solid var(--sh-line);border-radius:9px;
+ display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+/* The monitor toggle is intentionally local and not theme-dependent. */
+html body #smart-health-root .smart-health-switch #smart-health-enabled+span{
+ background:var(--sh-off-edge)!important;border:1px solid var(--sh-off-edge)!important;
+ box-shadow:none!important;
+}
+html body #smart-health-root .smart-health-switch #smart-health-enabled:checked+span{
+ background:#009b77!important;border-color:#009b77!important;
+}
+html body #smart-health-root .smart-health-switch #smart-health-enabled+span::after{
+ background:#fff!important;
+}
+html body #smart-health-root .smart-health-switch #smart-health-enabled:checked+span::after{
+ background:#fff!important;
+}
+html body #smart-health-root [data-mode]{
+ --sh-state:var(--sh-off);color:var(--sh-state)!important;-webkit-text-fill-color:var(--sh-state)!important;
+}
+html body #smart-health-root [data-mode="normal"]{--sh-state:var(--sh-green)}
+html body #smart-health-root :is([data-mode="degraded"],[data-mode="unknown"]){--sh-state:var(--sh-amber)}
+html body #smart-health-root :is([data-mode="offline"],[data-mode="core_unavailable"]){--sh-state:var(--sh-red)}
+html body #smart-health-root [data-mode="starting"]{--sh-state:var(--sh-blue)}
+html body #smart-health-root [data-mode="pending"]{--sh-state:var(--sh-purple)}
+html body #smart-health-root :is(#smart-health-mode,.smart-health-event-state){
+ display:inline-flex;align-items:flex-start;gap:7px;font-weight:650;font-size:14px;line-height:1.45;
+}
+html body #smart-health-root :is(#smart-health-mode,.smart-health-event-state)[data-mode]::before{
+ content:"";display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;background:var(--sh-state);margin-top:.36em;
+}
+html body #smart-health-root .smart-health-event{
+ display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr);align-items:start;gap:10px;
+ border-bottom:1px solid var(--sh-line);padding:9px 2px;
+}
+html body #smart-health-root .smart-health-event:last-child{border-bottom:0}
+html body #smart-health-root .smart-health-event time{
+ color:var(--sh-muted)!important;font-size:12px;line-height:1.7;font-variant-numeric:tabular-nums;
+}
+html body #smart-health-root .smart-health-event-state{overflow-wrap:anywhere}
+html body #smart-health-root #smart-health-events{max-height:310px;overflow:auto}
+html body #smart-health-root .smart-health-editor[open]{
+ background:var(--sh-card)!important;color:var(--sh-ink)!important;
+ border-color:var(--sh-line)!important;padding:0;
+}
+html body #smart-health-root .smart-health-editor :is(.modal-titlebar,.modal-footer){
+ background:var(--sh-head)!important;color:var(--sh-ink)!important;border-color:var(--sh-line);
+}
+html body #smart-health-root .smart-health-editor-error{color:var(--sh-red)!important}
+@media(max-width:600px){
+ html body #smart-health-root{padding:8px;gap:9px}
+ html body #smart-health-root .basics-section-body{padding:10px}
+ html body #smart-health-root .basics-row{grid-template-columns:minmax(0,1fr);gap:6px}
+ html body #smart-health-root .smart-health-event{grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 2px}
+}
+
+html body #smart-health-root .smart-health-switch{position:relative;display:inline-flex;align-items:center;width:42px;height:24px;cursor:pointer}
+html body #smart-health-root .smart-health-switch input{position:absolute;inset:0;opacity:0!important;width:100%;height:100%;margin:0;cursor:pointer;z-index:2}
+html body #smart-health-root .smart-health-switch span{display:block;position:relative;width:42px;height:24px;border-radius:14px;pointer-events:none}
+html body #smart-health-root .smart-health-switch span::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;transition:transform .15s}
+html body #smart-health-root .smart-health-switch input:checked+span::after{transform:translateX(18px)}
+html body #smart-health-root .smart-health-switch input:focus-visible+span{outline:2px solid var(--sh-purple);outline-offset:3px}
+html body #smart-health-root .smart-health-service-status[data-mode]{color:var(--sh-state)!important;-webkit-text-fill-color:var(--sh-state)!important}
