@@ -5,19 +5,21 @@ const start=html.indexOf('<div class="mihomo-pane" data-mihomo-pane="smart-healt
 const end=html.indexOf('</div></div><div hidden>',start);
 assert(start>=0&&end>start);
 const markup=html.slice(start,end);
-const catalog=[{id:'yandex-doh',name:'Яндекс DNS',protocol:'DoH'},{id:'yandex-dot',name:'Яндекс DNS',protocol:'DoT'},{id:'vk',name:'ВКонтакте',protocol:'HTTPS'}];
+const css=[...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(x=>x[1]).join('\n')+'\n'+fs.readFileSync('web/mihomo-settings.css','utf8');
+const catalog=[{id:'yandex-doh',name:'Яндекс DNS',protocol:'DoH',host:'common.dot.dns.yandex.net'},{id:'yandex-dot',name:'Яндекс DNS',protocol:'DoT',host:'common.dot.dns.yandex.net'},{id:'vk',name:'ВКонтакте',protocol:'HTTPS',host:'vk.com'}];
 (async()=>{
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
 try{
  for(const width of [390,1440]){
  const page=await browser.newPage({viewport:{width,height:900}});
- await page.setContent('<section class="view active"><button data-mihomo-tab="smart-health">Smart Health Monitor</button>'+markup+'</section>');
+ page.setDefaultTimeout(5000);
+ await page.setContent('<html><head><style>'+css+'\nbody{margin:0;padding:10px} .view.active{display:block!important} .mihomo-pane{display:block!important}</style></head><body><section class="view active"><button data-mihomo-tab="smart-health">Smart Health Monitor</button>'+markup+'</section></body></html>');
  await page.evaluate(catalog=>{
    window.muiGetLang=()=> 'ru';window.muiT=k=>k;window.__requests=[];window.__restarts=0;window.MUIMihomoSettings={restart:async()=>{window.__restarts++;window.__data.status={mode:'normal',pending:false,healthy:2};return true}};
    window.__data={settings:{enabled:false,normalSeconds:180,degradedSeconds:60,offlineSeconds:10,services:['yandex-doh','vk']},catalog,status:{mode:'disabled',pending:false,healthy:0,events:[],controls:[]}};
    window.api=async(url,opts={})=>{
     window.__requests.push({url,method:opts.method||'GET',body:opts.body});
-    if(opts.method==='PUT'){const next=JSON.parse(opts.body);const pending=next.enabled!==window.__data.settings.enabled||window.__data.status.pending;window.__data.settings=next;window.__data.status={mode:pending?'pending':'normal',pending,healthy:0,events:[],controls:[]};}
+    if(opts.method==='PUT'){const next=JSON.parse(opts.body);const pending=next.enabled!==window.__data.settings.enabled||window.__data.status.pending;window.__data.settings=next;window.__data.catalog=next.catalog;window.__data.status={mode:pending?'pending':'normal',pending,healthy:0,events:[],controls:[]};}
     return structuredClone(window.__data);
    };
  },catalog);
@@ -26,8 +28,11 @@ try{
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-smart-service]').length===3);
  assert.equal(await page.locator('#smart-health-normal').inputValue(),'180');
+ const row=await page.locator('.smart-health-service-row').first().boundingBox();assert(row.height<=42,'list too tall: '+row.height);
+ assert(row.x>=0&&row.x+row.width<=width,'catalog overflows viewport');
+ const section=await page.locator('.smart-health-controls-section').evaluate(e=>getComputedStyle(e).borderTopStyle);assert.equal(section,'solid');
  assert.equal(await page.locator('[data-smart-service="yandex-dot"]').isChecked(),false);
- await page.locator('#smart-health-enabled').check();
+ await page.locator('label.switch').filter({has:page.locator('#smart-health-enabled')}).click();
  await page.locator('[data-smart-service="yandex-dot"]').check();
  await page.locator('[data-smart-service="vk"]').uncheck();
  await page.locator('#smart-health-offline').fill('12');
@@ -37,7 +42,7 @@ try{
  await page.locator('#smart-health-save').click();
  await page.waitForFunction(()=>window.__requests.some(x=>x.method==='PUT'));
  const body=await page.evaluate(()=>JSON.parse(window.__requests.find(x=>x.method==='PUT').body));
- assert.deepEqual(body,{enabled:true,normalSeconds:180,degradedSeconds:60,offlineSeconds:12,services:['yandex-doh','yandex-dot']});
+ assert.deepEqual(body,{enabled:true,normalSeconds:180,degradedSeconds:60,offlineSeconds:12,services:['yandex-doh','yandex-dot'],catalog});
  await page.locator('#smart-health-pending').waitFor({state:'visible'});
  assert.match(await page.locator('#smart-health-mode').textContent(),/Ожидает перезапуска/);
  const dialog=page.locator('.mui-dialog-panel');
@@ -57,6 +62,37 @@ try{
  await page.waitForFunction(()=>window.__data.settings.offlineSeconds===14);
  assert.equal(await dialog.count(),0,'interval changes must not offer restart');
  assert.equal(await page.evaluate(()=>window.__restarts),1);
+ await page.locator('#smart-health-add').click();
+ const editor=page.locator('#smart-health-editor');
+ await editor.waitFor({state:'visible'});
+ const box=await editor.boundingBox();assert(box.x>=0&&box.x+box.width<=width,'editor overflows viewport');
+ await page.locator('#smart-health-editor-name').fill('РБК');
+ await page.locator('#smart-health-editor-host').fill('https://rbc.ru/');
+ await page.locator('#smart-health-editor-submit').click();
+ assert.match(await page.locator('#smart-health-editor-error').textContent(),/публичный домен/);
+ await page.locator('#smart-health-editor-host').fill('rbc.ru');
+ await page.locator('#smart-health-editor-submit').click();
+ await editor.waitFor({state:'hidden'});
+ assert.equal(await page.locator('[data-smart-service]').count(),4);
+ const customID=await page.locator('[data-smart-service^="custom-"]').getAttribute('data-smart-service');
+ assert.equal(await page.locator('[data-smart-service^="custom-"]').isChecked(),true);
+ await page.locator('[data-smart-edit="'+customID+'"]').click();
+ await page.locator('#smart-health-editor-name').fill('РБК Новости');
+ await page.locator('#smart-health-editor-submit').click();
+ assert.equal(await page.locator('[data-smart-edit="'+customID+'"]').textContent(),'РБК Новости');
+ await page.locator('[data-smart-remove="vk"]').click();
+ assert.equal(await page.locator('[data-smart-service="vk"]').count(),0);
+ await page.locator('#smart-health-add').click();
+ await page.locator('#smart-health-editor-cancel').click();
+ assert.equal(await page.locator('[data-smart-service]').count(),3);
+ await page.locator('[data-mihomo-tab="smart-health"]').click();
+ assert.equal(await page.locator('[data-smart-service="vk"]').count(),0,'polling reverted unsaved deletion');
+ await page.locator('#smart-health-save').click();
+ await page.waitForFunction(()=>window.__data.catalog.some(x=>x.name==='РБК Новости'));
+ assert.equal(await page.evaluate(()=>window.__data.catalog.some(x=>x.id==='vk')),false);
+ assert.equal(await page.evaluate(id=>window.__data.settings.services.includes(id),customID),true);
+ assert.equal(await page.evaluate(()=>window.__restarts),1);
+ assert.equal(await dialog.count(),0,'catalog edit must not prompt restart');
  await page.evaluate(()=>{window.__data.status={mode:'offline',pending:false,healthy:0,events:[{mode:'offline',at:'2026-11-25T18:00:00Z'}],controls:[{id:'yandex-doh',ok:false,milliseconds:2000}]};});
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelector('#smart-health-mode').textContent.includes('Нет ответа'));

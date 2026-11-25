@@ -9,7 +9,7 @@ assert(markup.includes('id="mihomo-hide-filtered-outbounds"'));
 assert(markup.includes('Исключить отфильтрованные серверы'));
 assert(markup.includes('id="mihomo-hidden-filtered-count"'));
 assert(markup.includes('static/mihomo-settings.js?v=141'));
-assert(markup.includes('static/mihomo-settings.css?v=138'));
+assert(markup.includes('static/mihomo-settings.css?v=139'));
 assert(markup.includes('static/i18n.js?v=124'));
 assert(go.includes('mihomo-settings.js?v=141'));
 assert(css.includes('.mihomo-outbound-filter-toggle'));

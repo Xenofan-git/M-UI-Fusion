@@ -1550,3 +1550,63 @@ html[data-color-skin="emerald"] body .mihomo-tabs [data-mihomo-tab="smart-health
 html[data-color-skin="aurora"] body .mihomo-tabs [data-mihomo-tab="smart-health"]{
   border-color:#f07b82!important;
 }
+
+/* Smart Health: compact, separately framed editable control catalog. */
+html body .smart-health-controls-section{
+  border:1px solid #689b88!important;
+  border-radius:9px;
+  margin:8px;
+}
+.smart-health-catalog{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px 10px;
+  background:var(--surface-subtle);
+}
+.smart-health-catalog-toolbar{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  gap:8px;padding:0 0 8px;
+}
+.smart-health-service-row{
+  display:grid;grid-template-columns:20px minmax(0,1fr) 62px minmax(70px,auto) 28px;
+  align-items:center;gap:9px;min-height:32px;padding:2px 0;
+  border-top:1px solid var(--line);
+}
+.smart-health-service-row input[type="checkbox"]{width:16px;height:16px;margin:0;accent-color:#009b77}
+html body .smart-health-service-name{
+  background:transparent!important;color:var(--text-strong)!important;
+  -webkit-text-fill-color:var(--text-strong)!important;
+  border:0!important;box-shadow:none!important;min-width:0;min-height:0;
+  text-align:left;padding:3px 0;font-size:14px;font-weight:500;overflow-wrap:anywhere;cursor:pointer;
+}
+html body .smart-health-service-name:hover{text-decoration:underline}
+.smart-health-protocol{font-size:12px;font-weight:600;color:var(--muted)}
+.smart-health-protocol[data-protocol="DoH"]{color:#8752ba}
+.smart-health-protocol[data-protocol="DoT"]{color:#078263}
+body.dark .smart-health-protocol[data-protocol="DoH"]{color:#d0b3ff}
+body.dark .smart-health-protocol[data-protocol="DoT"]{color:#73d4b1}
+.smart-health-service-status{text-align:right;font-size:12px;white-space:nowrap}
+html body .smart-health-service-remove{
+  width:28px;height:28px;min-height:0;min-width:0;padding:0;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  color:#c94b52!important;-webkit-text-fill-color:#c94b52!important;
+  font:22px/1 Arial,sans-serif;cursor:pointer;
+}
+html body .smart-health-service-remove:hover{background:rgba(201,75,82,.12)!important}
+.smart-health-editor:not([open]){display:none!important}
+.smart-health-editor[open]{
+  position:fixed;inset:0;margin:auto;max-width:calc(100vw - 24px);
+  max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;
+  background:var(--surface-modal,var(--surface-strong));color:var(--text-strong);
+  border:1px solid var(--line);border-radius:12px;
+}
+.smart-health-editor::backdrop{background:rgba(0,0,0,.48)}
+.smart-health-editor-fields{display:grid;gap:7px}
+.smart-health-editor-fields label{font-weight:550}
+.smart-health-editor-fields input,.smart-health-editor-fields select{width:100%;box-sizing:border-box}
+.smart-health-editor-error{color:var(--danger);font-size:13px}
+@media(max-width:480px){
+  .smart-health-service-row{grid-template-columns:18px minmax(0,1fr) 45px minmax(45px,auto) 24px;gap:5px}
+  .smart-health-service-status{white-space:normal}
+  html body .smart-health-service-remove{width:24px}
+}

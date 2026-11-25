@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,7 +23,7 @@ func TestSmartHealthDefaultsAndValidation(t *testing.T) {
 	if err := validateSmartHealth(cfg); err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range []SmartHealthSettings{{true, 180, 60, 10, nil}, {true, 180, 60, 10, []string{"unknown"}}, {true, 180, 60, 10, []string{"vk", "vk"}}, {true, 30, 60, 10, []string{"vk"}}} {
+	for _, c := range []SmartHealthSettings{{true, 180, 60, 10, nil, nil}, {true, 180, 60, 10, []string{"unknown"}, nil}, {true, 180, 60, 10, []string{"vk", "vk"}, nil}, {true, 30, 60, 10, []string{"vk"}, nil}} {
 		if validateSmartHealth(c) == nil {
 			t.Fatalf("accepted invalid settings: %#v", c)
 		}
@@ -171,7 +173,108 @@ func TestSmartHealthTabPlacement(t *testing.T) {
 	}
 	html := string(data)
 	r, s := strings.Index(html, "data-mihomo-tab=\"routing\""), strings.Index(html, "data-mihomo-tab=\"smart-health\"")
-	if r < 0 || s <= r || strings.Count(html, "data-mihomo-pane=\"smart-health\"") != 1 || !strings.Contains(html, "static/smart-health.js?v=2") {
+	if r < 0 || s <= r || strings.Count(html, "data-mihomo-pane=\"smart-health\"") != 1 || !strings.Contains(html, "static/smart-health.js?v=3") {
 		t.Fatal("wrong tab placement")
+	}
+}
+
+func TestSmartHealthEditableCatalogPersistence(t *testing.T) {
+	state := defaultState()
+	cfg := defaultSmartHealth()
+	cfg.Enabled = true
+	state.SmartHealth = &cfg
+	m := &CoreManager{state: state, dataDir: t.TempDir()}
+	a := &App{manager: m}
+	before, err := renderStateConfig(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog := cfg.catalog()
+	// Remove a default service, edit another and add a new one.
+	catalog = catalog[:len(catalog)-1]
+	catalog[3].Name = "VK Новости"
+	catalog = append(catalog, smartService{"custom-rbc", "РБК", "HTTPS", "rbc.ru"})
+	cfg.Catalog = catalog
+	cfg.Services = []string{"vk", "custom-rbc"}
+	body, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	a.handleSmartHealth(w, httptest.NewRequest(http.MethodPut, "/api/mihomo/smart-health", bytes.NewReader(body)))
+	if w.Code != 200 {
+		t.Fatalf("PUT failed %d %s", w.Code, w.Body.String())
+	}
+	if !reflect.DeepEqual(effectiveSmartHealth(m.state).catalog(), catalog) {
+		t.Fatal("catalog not applied")
+	}
+	after, err := renderStateConfig(m.state)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("catalog edit changed YAML")
+	}
+	loaded := &CoreManager{dataDir: m.dataDir}
+	if err = loaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	saved := effectiveSmartHealth(loaded.state)
+	if !smartSettingsEqual(cfg, saved) {
+		t.Fatalf("catalog not persisted: %#v", saved)
+	}
+	// Older UI which omits catalog should not restore the default list.
+	cfg.Catalog = nil
+	body, _ = json.Marshal(cfg)
+	w = httptest.NewRecorder()
+	a.handleSmartHealth(w, httptest.NewRequest(http.MethodPut, "/api/mihomo/smart-health", bytes.NewReader(body)))
+	if w.Code != 200 || !reflect.DeepEqual(effectiveSmartHealth(m.state).catalog(), catalog) {
+		t.Fatal("legacy save lost custom catalog")
+	}
+	// Removing a selected service without updating selection must be rejected.
+	cfg.Catalog = []smartService{{"other", "РБК", "HTTPS", "rbc.ru"}}
+	body, _ = json.Marshal(cfg)
+	w = httptest.NewRecorder()
+	a.handleSmartHealth(w, httptest.NewRequest(http.MethodPut, "/api/mihomo/smart-health", bytes.NewReader(body)))
+	if w.Code != 400 || !reflect.DeepEqual(effectiveSmartHealth(m.state).catalog(), catalog) {
+		t.Fatal("invalid edit applied")
+	}
+}
+
+func TestSmartHealthCustomControlValidation(t *testing.T) {
+	for _, host := range []string{"localhost", "localhost.local", "127.0.0.1", "100.64.0.1", "https://vk.com", "vk.com:443", "vk.com/path", "a@vk.com", "a..ru", "foo.internal", "-a.ru", "a-.ru", "1.2.3.4", "a.ru."} {
+		if smartValidHost(host) {
+			t.Fatalf("invalid endpoint accepted: %s", host)
+		}
+	}
+	for _, host := range []string{"rbc.ru", "vk.com", "common.dot.dns.yandex.net", "xn--e1afmkfd.xn--p1ai"} {
+		if !smartValidHost(host) {
+			t.Fatalf("valid domain rejected: %s", host)
+		}
+	}
+	for _, ip := range []string{"127.0.0.1", "10.0.0.1", "192.168.4.1", "100.70.0.1", "169.254.169.254", "172.16.0.1", "198.18.0.1", "224.0.0.1", "240.0.0.1", "192.0.2.1", "::1"} {
+		if smartPublicV4(netip.MustParseAddr(ip)) {
+			t.Fatalf("nonpublic address accepted: %s", ip)
+		}
+	}
+	if !smartPublicV4(netip.MustParseAddr("77.88.8.8")) {
+		t.Fatal("public DNS rejected")
+	}
+	cfg := defaultSmartHealth()
+	cfg.Catalog = []smartService{{"a", "Сервис", "HTTPS", "rbc.ru"}, {"b", "Дубликат", "HTTPS", "rbc.ru"}}
+	cfg.Services = []string{"a"}
+	if validateSmartHealth(cfg) == nil {
+		t.Fatal("duplicate endpoint accepted")
+	}
+	cfg.Catalog = []smartService{{"a", "Сервис", "HTTP", "rbc.ru"}}
+	if validateSmartHealth(cfg) == nil {
+		t.Fatal("unsupported protocol accepted")
+	}
+	cfg.Catalog = []smartService{{"a", "Сервис", "HTTPS", "rbc.ru"}, {"b", "DNS", "DoH", "rbc.ru"}}
+	if err := validateSmartHealth(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := smartPublicDial(context.Background(), "127.0.0.1:443"); err == nil {
+		t.Fatal("loopback dial allowed")
+	}
+	if _, err := smartPublicDial(context.Background(), "rbc.ru:80"); err == nil {
+		t.Fatal("unexpected port allowed")
 	}
 }

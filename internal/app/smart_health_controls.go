@@ -6,10 +6,12 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"mime"
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"time"
 )
@@ -17,10 +19,61 @@ import (
 // These are read-only availability checks. No proxy env, no redirects,
 // standard certificate verification, IPv4 only. Kernel/upstream routing is
 // outside this application's control.
+var smartForbiddenV4 = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("10.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"), netip.MustParsePrefix("127.0.0.0/8"),
+	netip.MustParsePrefix("169.254.0.0/16"), netip.MustParsePrefix("172.16.0.0/12"),
+	netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.88.99.0/24"), netip.MustParsePrefix("192.168.0.0/16"),
+	netip.MustParsePrefix("198.18.0.0/15"), netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"), netip.MustParsePrefix("224.0.0.0/4"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+}
+
+func smartPublicV4(ip netip.Addr) bool {
+	if !ip.Is4() || !ip.IsGlobalUnicast() {
+		return false
+	}
+	for _, p := range smartForbiddenV4 {
+		if p.Contains(ip) {
+			return false
+		}
+	}
+	return true
+}
+func smartPublicDial(ctx context.Context, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || !smartValidHost(host) || (port != "443" && port != "853") {
+		return nil, fmt.Errorf("invalid public control endpoint")
+	}
+	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip4", host)
+	if err != nil {
+		return nil, err
+	}
+	// Reject the entire result if any address is not public.
+	for _, ip := range ips {
+		if !smartPublicV4(ip.Unmap()) {
+			return nil, fmt.Errorf("non-public control endpoint")
+		}
+	}
+	d := net.Dialer{Timeout: 1500 * time.Millisecond}
+	for i, ip := range ips {
+		if i >= 4 {
+			break
+		}
+		conn, e := d.DialContext(ctx, "tcp4", net.JoinHostPort(ip.Unmap().String(), port))
+		if e == nil {
+			return conn, nil
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+	}
+	return nil, fmt.Errorf("control endpoint unavailable")
+}
 func smartControlTransport() *http.Transport {
-	d := &net.Dialer{Timeout: 3 * time.Second}
 	return &http.Transport{Proxy: nil, DisableKeepAlives: true, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-		return d.DialContext(ctx, "tcp4", address)
+		return smartPublicDial(ctx, address)
 	}, TLSHandshakeTimeout: 3 * time.Second}
 }
 func smartProbeControl(ctx context.Context, s smartService) bool {
@@ -176,23 +229,21 @@ func smartDoT(ctx context.Context, host string) bool {
 	if err != nil {
 		return false
 	}
-	d := tls.Dialer{NetDialer: &net.Dialer{Timeout: 3 * time.Second}, Config: &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}}
-	var conn net.Conn
+	var raw net.Conn
 	if host == smartYandexDNSHost {
-		var raw net.Conn
 		raw, err = smartYandexDial(ctx, "853")
-		if err == nil {
-			secured := tls.Client(raw, d.Config)
-			err = secured.HandshakeContext(ctx)
-			if err != nil {
-				raw.Close()
-			} else {
-				conn = secured
-			}
-		}
 	} else {
-		conn, err = d.DialContext(ctx, "tcp4", net.JoinHostPort(host, "853"))
+		raw, err = smartPublicDial(ctx, net.JoinHostPort(host, "853"))
 	}
+	if err != nil {
+		return false
+	}
+	secured := tls.Client(raw, &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12})
+	if err = secured.HandshakeContext(ctx); err != nil {
+		raw.Close()
+		return false
+	}
+	var conn net.Conn = secured
 
 	if err != nil {
 		return false

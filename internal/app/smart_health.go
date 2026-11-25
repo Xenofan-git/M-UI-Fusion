@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,11 +21,12 @@ import (
 const smartHealthMarker = "# m-ui: smart-health-schedule-v1"
 
 type SmartHealthSettings struct {
-	Enabled         bool     `json:"enabled"`
-	NormalSeconds   int      `json:"normalSeconds"`
-	DegradedSeconds int      `json:"degradedSeconds"`
-	OfflineSeconds  int      `json:"offlineSeconds"`
-	Services        []string `json:"services"`
+	Enabled         bool           `json:"enabled"`
+	NormalSeconds   int            `json:"normalSeconds"`
+	DegradedSeconds int            `json:"degradedSeconds"`
+	OfflineSeconds  int            `json:"offlineSeconds"`
+	Services        []string       `json:"services"`
+	Catalog         []smartService `json:"catalog,omitempty"`
 }
 type smartService struct {
 	ID       string `json:"id"`
@@ -48,7 +50,7 @@ var smartServices = []smartService{
 }
 
 func defaultSmartHealth() SmartHealthSettings {
-	return SmartHealthSettings{false, 180, 60, 10, []string{"yandex-doh", "yandex-dot", "yandex", "vk", "mail", "ozon"}}
+	return SmartHealthSettings{Enabled: false, NormalSeconds: 180, DegradedSeconds: 60, OfflineSeconds: 10, Services: []string{"yandex-doh", "yandex-dot", "yandex", "vk", "mail", "ozon"}}
 }
 func effectiveSmartHealth(s State) SmartHealthSettings {
 	if s.SmartHealth == nil {
@@ -56,7 +58,42 @@ func effectiveSmartHealth(s State) SmartHealthSettings {
 	}
 	result := *s.SmartHealth
 	result.Services = slices.Clone(result.Services)
+	result.Catalog = slices.Clone(result.Catalog)
 	return result
+}
+func (s SmartHealthSettings) catalog() []smartService {
+	if s.Catalog == nil {
+		return slices.Clone(smartServices)
+	}
+	return slices.Clone(s.Catalog)
+}
+
+var smartServiceID = regexp.MustCompile("^[a-zA-Z0-9_-]{1,64}$")
+var smartHostLabel = regexp.MustCompile("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
+
+func smartValidHost(host string) bool {
+	if len(host) > 253 || net.ParseIP(host) != nil || strings.ToLower(host) != host {
+		return false
+	}
+	labels := strings.Split(host, ".")
+	if len(labels) < 2 {
+		return false
+	}
+	for _, label := range labels {
+		if !smartHostLabel.MatchString(label) {
+			return false
+		}
+	}
+	last := labels[len(labels)-1]
+	if len(last) < 2 || !strings.ContainsAny(last, "abcdefghijklmnopqrstuvwxyz") {
+		return false
+	}
+	for _, suffix := range []string{"local", "localhost", "internal", "lan", "home", "test", "invalid", "example", "onion"} {
+		if last == suffix {
+			return false
+		}
+	}
+	return true
 }
 func validateSmartHealth(s SmartHealthSettings) error {
 	if s.NormalSeconds < 30 || s.NormalSeconds > 3600 || s.DegradedSeconds < 10 || s.DegradedSeconds > s.NormalSeconds || s.OfflineSeconds < 5 || s.OfflineSeconds > s.DegradedSeconds {
@@ -65,9 +102,23 @@ func validateSmartHealth(s SmartHealthSettings) error {
 	if len(s.Services) == 0 {
 		return fmt.Errorf("Выберите хотя бы один контрольный сервис")
 	}
+	catalog := s.catalog()
+	if len(catalog) < 1 || len(catalog) > 32 {
+		return fmt.Errorf("Каталог должен содержать от 1 до 32 сервисов")
+	}
+	ids := map[string]bool{}
+	endpoints := map[string]bool{}
+	for _, service := range catalog {
+		key := service.Protocol + " " + service.Host
+		if !smartServiceID.MatchString(service.ID) || ids[service.ID] || endpoints[key] || strings.TrimSpace(service.Name) == "" || len([]rune(service.Name)) > 80 || strings.ContainsAny(service.Name, "\r\n\t") || !slices.Contains([]string{"HTTPS", "DoH", "DoT"}, service.Protocol) || !smartValidHost(service.Host) {
+			return fmt.Errorf("Некорректный или повторный контрольный сервис")
+		}
+		ids[service.ID] = true
+		endpoints[key] = true
+	}
 	seen := map[string]bool{}
 	for _, id := range s.Services {
-		if seen[id] || !slices.ContainsFunc(smartServices, func(service smartService) bool { return service.ID == id }) {
+		if seen[id] || !ids[id] {
 			return fmt.Errorf("Неизвестный или повторный контрольный сервис")
 		}
 		seen[id] = true
@@ -210,7 +261,7 @@ type smartRuntime struct {
 }
 
 func smartSettingsEqual(a, b SmartHealthSettings) bool {
-	return a.Enabled == b.Enabled && a.NormalSeconds == b.NormalSeconds && a.DegradedSeconds == b.DegradedSeconds && a.OfflineSeconds == b.OfflineSeconds && slices.Equal(a.Services, b.Services)
+	return a.Enabled == b.Enabled && a.NormalSeconds == b.NormalSeconds && a.DegradedSeconds == b.DegradedSeconds && a.OfflineSeconds == b.OfflineSeconds && slices.Equal(a.Services, b.Services) && slices.Equal(a.catalog(), b.catalog())
 }
 func (m *CoreManager) smartModeLocked(mode string) {
 	s := &m.smartHealth.status
@@ -254,11 +305,15 @@ func (a *App) handleSmartHealth(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 400, apiResponse{Message: "Некорректные настройки"})
 			return
 		}
+		m.mu.Lock()
+		if input.Catalog == nil {
+			input.Catalog = slices.Clone(effectiveSmartHealth(m.state).Catalog)
+		}
 		if err := validateSmartHealth(input); err != nil {
+			m.mu.Unlock()
 			writeJSON(w, 400, apiResponse{Message: err.Error()})
 			return
 		}
-		m.mu.Lock()
 		old := m.state.SmartHealth
 		m.state.SmartHealth = &input
 		err := m.saveLocked()
@@ -277,7 +332,7 @@ func (a *App) handleSmartHealth(w http.ResponseWriter, r *http.Request) {
 	m.mu.Lock()
 	settings, status := effectiveSmartHealth(m.state), m.smartStatusLocked()
 	m.mu.Unlock()
-	writeJSON(w, 200, apiResponse{OK: true, Data: map[string]any{"settings": settings, "status": status, "catalog": smartServices}})
+	writeJSON(w, 200, apiResponse{OK: true, Data: map[string]any{"settings": settings, "status": status, "catalog": settings.catalog()}})
 }
 func smartLocalController(address string) (string, error) {
 	host, port := hostPortFromAddress(address)
@@ -384,13 +439,13 @@ func smartInterval(cfg SmartHealthSettings, mode string) time.Duration {
 	}
 	return time.Duration(seconds) * time.Second
 }
-func smartCheckControls(ctx context.Context, ids []string, firstSuccess bool) []smartServiceResult {
+func smartCheckControls(ctx context.Context, catalog []smartService, ids []string, firstSuccess bool) []smartServiceResult {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	queue := make(chan smartServiceResult, len(ids))
 	count := 0
 	for _, id := range ids {
-		for _, service := range smartServices {
+		for _, service := range catalog {
 			if service.ID != id {
 				continue
 			}
@@ -472,7 +527,9 @@ func (m *CoreManager) smartHealthTick() {
 	}
 	result := smartRunCycle(ctx, cfg, mode, cmd != nil,
 		func(ctx context.Context) smartScanResult { return smartScanGroups(ctx, plan, address, secret) },
-		smartCheckControls,
+		func(ctx context.Context, ids []string, first bool) []smartServiceResult {
+			return smartCheckControls(ctx, cfg.catalog(), ids, first)
+		},
 		func(ctx context.Context) bool { return watchdogProbe(ctx, address, secret) == "healthy" },
 	)
 	m.mu.Lock()
