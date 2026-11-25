@@ -146,6 +146,22 @@
     }catch(error){el('message').textContent=error.message}
     finally{inputs.forEach(x=>x.disabled=false);busy=false;el('save').disabled=!dirty||!loaded}
   };
+  const pane=root.closest('.mihomo-pane'),view=root.closest('.view');
+  const isVisible=()=>!!(pane?.classList.contains('active')&&view?.classList.contains('active'));
+  let wasVisible=false;
+  function onVisibility(){
+    const visible=isVisible();
+    if(visible&&!wasVisible){
+      root.querySelectorAll('details.smart-health-intervals,details.smart-health-controls-section').forEach(section=>section.open=false);
+      load();
+    }
+    wasVisible=visible;
+  }
+  // Reset only on entry, not on status polling or a click on an already open tab.
+  const visibilityObserver=new MutationObserver(onVisibility);
+  if(pane)visibilityObserver.observe(pane,{attributes:true,attributeFilter:['class']});
+  if(view)visibilityObserver.observe(view,{attributes:true,attributeFilter:['class']});
+  onVisibility();
   document.querySelector('[data-mihomo-tab="smart-health"]')?.addEventListener('click',load);
-  setInterval(()=>{if(root.closest('.mihomo-pane')?.classList.contains('active')&&root.closest('.view')?.classList.contains('active'))load()},5000);
+  setInterval(()=>{if(isVisible())load()},5000);
 })();

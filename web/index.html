@@ -14,7 +14,7 @@
   <script src="static/color-skins.js"></script>
   <link rel="stylesheet" href="static/liquid-glass.css">
   <link rel="stylesheet" href="static/liquid-tabbar.css" data-ui-only="liquid">
-  <link rel="stylesheet" href="static/mihomo-settings.css?v=142">
+  <link rel="stylesheet" href="static/mihomo-settings.css?v=143">
   <link rel="stylesheet" href="static/multi-control.css">
   <link rel="stylesheet" href="static/inbound-sync.css">
   <link rel="stylesheet" href="static/cross-subscriptions.css">
@@ -1139,12 +1139,12 @@
       <div class="basics-row"><div><label>Режим работы</label><p id="smart-health-info"></p></div><div class="basics-control"><strong id="smart-health-mode" role="status">Загрузка…</strong></div></div>
       <p id="smart-health-pending" class="mihomo-muted" hidden>Для передачи расписания проверок между ядром и монитором сохраните настройки и один раз перезапустите Mihomo. При смене режимов перезапуск не нужен.</p>
     </div></details>
-    <details class="basics-section smart-health-intervals" open><summary>Интервалы опроса</summary><div class="basics-section-body">
+    <details class="basics-section smart-health-intervals"><summary>Интервалы опроса</summary><div class="basics-section-body">
       <div class="basics-row"><div><label for="smart-health-normal">Штатный, сек.</label><p>Хотя бы один прокси доступен.</p></div><div class="basics-control"><input id="smart-health-normal" type="number" min="30" max="3600" value="180"></div></div>
       <div class="basics-row"><div><label for="smart-health-degraded">Ускоренный, сек.</label><p>Контрольные сервисы доступны, прокси не отвечают.</p></div><div class="basics-control"><input id="smart-health-degraded" type="number" min="10" max="3600" value="60"></div></div>
       <div class="basics-row"><div><label for="smart-health-offline">Аварийный, сек.</label><p>Проверяются только выбранные контрольные сервисы.</p></div><div class="basics-control"><input id="smart-health-offline" type="number" min="5" max="3600" value="10"></div></div>
     </div></details>
-    <details class="basics-section smart-health-controls-section" open><summary>Контрольные сервисы</summary><div class="basics-section-body">
+    <details class="basics-section smart-health-controls-section"><summary>Контрольные сервисы</summary><div class="basics-section-body">
       <p class="mihomo-muted">Запросы IPv4 напрямую. Выбирайте российские ресурсы; доступность зависит от маршрута и оператора.</p>
       <div class="smart-health-catalog">
         <div class="smart-health-catalog-toolbar"><button type="button" class="smart-health-action" id="smart-health-add" disabled><span aria-hidden="true">+</span> Добавить контрольный сервис</button><span class="mihomo-muted" id="smart-health-count"></span></div>
@@ -1928,7 +1928,7 @@
   <script src="static/mihomo-balancer-servers.js?v=144"></script>
   <script src="static/mihomo-rule-lists.js"></script>
   <script src="static/mihomo-settings.js?v=141"></script>
-  <script src="static/smart-health.js?v=5"></script>
+  <script src="static/smart-health.js?v=6"></script>
   <script src="static/multi-control.js"></script>
   <script src="static/inbound-sync.js"></script>
   <script src="static/cross-subscriptions.js"></script>

@@ -28,6 +28,7 @@ function contrast(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.
    const ratio=contrast(v.fg,v.bg);min=Math.min(min,ratio);checks++;
    assert(ratio>=4.5,skin+' '+theme+' '+width+' '+sel+' '+JSON.stringify(v)+' contrast '+ratio);assert.equal(v.opacity,'1');
   };
+  await page.locator('.smart-health-controls-section > summary').click();
   await check('#smart-health-add');await check('#smart-health-save');
   await page.locator('#smart-health-add').hover();await check('#smart-health-add');
   await check('#smart-health-mode','.smart-health-general .basics-section-body');
@@ -43,6 +44,7 @@ function contrast(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.
    colors.push(await page.locator('#smart-health-editor-protocol').evaluate(e=>getComputedStyle(e).color));
   }
   assert.equal(new Set(colors).size,4);
+  assert.equal(colors[0],dark?'rgb(145, 196, 255)':'rgb(35, 94, 170)');
   const gap=await page.evaluate(()=>document.querySelector('#smart-health-editor .modal-footer').getBoundingClientRect().top-document.querySelector('#smart-health-editor-hint').getBoundingClientRect().bottom);
   assert(gap<=24,'too much bottom space '+gap);
   await page.locator('#smart-health-editor-cancel').click();

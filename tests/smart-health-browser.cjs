@@ -27,6 +27,21 @@ try{
  await page.addScriptTag({content:js});
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-smart-service]').length===3);
+ assert.equal(await page.locator('.smart-health-intervals').getAttribute('open'),null);
+ assert.equal(await page.locator('.smart-health-controls-section').getAttribute('open'),null);
+ // Real pane entry/exit, including preserving unsaved draft while folded.
+ await page.locator('.smart-health-intervals > summary').click();
+ await page.locator('.smart-health-controls-section > summary').click();
+ await page.evaluate(()=>document.querySelector('[data-mihomo-pane="smart-health"]').classList.add('active'));
+ await page.waitForFunction(()=>!document.querySelector('.smart-health-intervals').open&&!document.querySelector('.smart-health-controls-section').open);
+ await page.locator('.smart-health-intervals > summary').click();
+ await page.locator('.smart-health-controls-section > summary').click();
+ await page.evaluate(()=>document.querySelector('[data-mihomo-pane="smart-health"]').classList.remove('active'));
+ await page.waitForTimeout(30);
+ await page.evaluate(()=>document.querySelector('[data-mihomo-pane="smart-health"]').classList.add('active'));
+ await page.waitForFunction(()=>!document.querySelector('.smart-health-intervals').open&&!document.querySelector('.smart-health-controls-section').open);
+ await page.locator('.smart-health-intervals > summary').click();
+ await page.locator('.smart-health-controls-section > summary').click();
  assert.equal(await page.locator('#smart-health-normal').inputValue(),'180');
  assert.equal(await page.locator('.smart-health-controls-section .smart-health-catalog #smart-health-save').count(),1);
  const row=await page.locator('.smart-health-service-row').first().boundingBox();assert(row.height<=42,'list too tall: '+row.height);

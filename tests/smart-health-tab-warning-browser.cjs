@@ -19,11 +19,11 @@ const exact='Тонкие настройки мониторинга здоров
  await page.addScriptTag({content:code});
  const tab=page.locator('[data-mihomo-tab="smart-health"]'),help=page.locator('.smart-health-tab-help'),pop=page.locator('#mihomo-rule-help-popup');
  const actual=await tab.evaluate(e=>({width:getComputedStyle(e).borderTopWidth,color:getComputedStyle(e).borderTopColor,style:getComputedStyle(e).borderTopStyle}));
- assert.equal(actual.width,'2px');assert.equal(actual.style,'solid');assert.match(actual.color,/rgb\((201, 46, 64|255, 133, 142)\)/);
+ assert.equal(actual.width,'1px');assert.equal(actual.style,'solid');assert.match(actual.color,/rgb\((201, 46, 64|255, 133, 142)\)/);
  const h=await help.evaluate(e=>{const s=getComputedStyle(e);return {width:s.width,height:s.height,radius:s.borderRadius,border:s.borderTopWidth,color:s.color,weight:s.fontWeight}});
- assert.equal(h.width,'24px');assert.equal(h.height,'24px');assert.equal(h.radius,'50%');assert.equal(h.border,'2px');assert.equal(h.weight,'700');assert.match(h.color,/rgb\((201, 46, 64|255, 133, 142)\)/);
+ assert.equal(h.width,'24px');assert.equal(h.height,'24px');assert.equal(h.radius,'50%');assert.equal(h.border,'1px');assert.equal(h.weight,'700');assert.match(h.color,/rgb\((201, 46, 64|255, 133, 142)\)/);
  await tab.evaluate(e=>e.classList.add('active'));
- assert.equal(await tab.evaluate(e=>getComputedStyle(e).borderTopWidth),'2px');
+ assert.equal(await tab.evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
  assert.equal(await tab.locator('button').count(),0,'no nested button');
  await help.scrollIntoViewIfNeeded();await page.waitForTimeout(150);await help.hover();await pop.waitFor({state:'visible'});assert.equal(await pop.textContent(),exact);
  const rect=await pop.boundingBox();assert(rect.x>=0&&rect.x+rect.width<=width,'popup clipped');
