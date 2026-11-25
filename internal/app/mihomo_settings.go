@@ -982,7 +982,7 @@ func normalizeMihomoGroup(item *MihomoOutbound) error {
 			return fmt.Errorf("Test URL 必须是完整的 http:// 或 https:// 地址")
 		}
 		if item.Interval == 0 && item.Native == nil {
-			item.Interval = 300
+			item.Interval = 60
 		}
 		if item.Interval < 0 || item.Timeout < 0 || item.Tolerance < 0 {
 			return fmt.Errorf("Interval、Timeout 和 Tolerance 不能为负数")
@@ -1498,7 +1498,7 @@ func mihomoProxyGroupConfig(item MihomoOutbound) map[string]any {
 	if item.Type != "select" {
 		result["url"] = valueOr(item.TestURL, defaultMihomoTestURL)
 		result["interval"] = item.Interval
-		result["lazy"] = true
+		result["lazy"] = false
 		if item.Timeout > 0 {
 			result["timeout"] = item.Timeout
 		}

@@ -55,6 +55,7 @@ type OutboundSubscription struct {
 	FilteredNodes    []FilteredSubscriptionNode `json:"filteredNodes,omitempty"`
 	LastAttempt      string                     `json:"lastAttempt,omitempty"`
 	LastUpdated      string                     `json:"lastUpdated,omitempty"`
+	RetryFailures    int                        `json:"retryFailures,omitempty"`
 	LastError        string                     `json:"lastError,omitempty"`
 	NodeCount        int                        `json:"nodeCount"`
 }
@@ -668,6 +669,7 @@ func (a *App) handleOutboundSubscriptionAction(w http.ResponseWriter, r *http.Re
 			changes.LastAttempt = current.LastAttempt
 			changes.LastUpdated = current.LastUpdated
 			changes.LastError = current.LastError
+			changes.RetryFailures = current.RetryFailures
 			changes.NodeCount = current.NodeCount
 			// Client cannot inject arbitrary filtered-node labels.
 			changes.FilteredNodes = current.FilteredNodes
@@ -1094,7 +1096,7 @@ func sharedSubscriptionGroupState(before State, sourceID, groupName, groupType, 
 	}
 	if creating {
 		group := MihomoOutbound{Kind: "group", Name: groupName, Type: groupType, SubscriptionManaged: true,
-			TestURL: defaultMihomoTestURL, Interval: 300, SubscriptionIDs: []string{sourceID}}
+			TestURL: defaultMihomoTestURL, Interval: 60, SubscriptionIDs: []string{sourceID}}
 		if groupType != "select" {
 			group.Timeout = 8000
 		}
@@ -1256,7 +1258,7 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 		// Defaults apply only to a newly created subscription balancer.
 		// Existing groups keep the user's own timeout/tolerance on refresh.
 		group := MihomoOutbound{Kind: "group", Name: sub.Group, Type: groupType, SubscriptionManaged: true,
-			TestURL: defaultMihomoTestURL, Interval: 300}
+			TestURL: defaultMihomoTestURL, Interval: 60}
 		if groupType != "select" {
 			group.Timeout = 8000 // milliseconds: tolerate slow LTE/VPN handshakes.
 		}
@@ -1273,6 +1275,7 @@ func (m *CoreManager) commitOutboundSubscriptionWithGroup(sub OutboundSubscripti
 	copySubs := append([]OutboundSubscription(nil), before.OutboundSubscriptions...)
 	found := false
 	sub.LastError = ""
+	sub.RetryFailures = 0
 	sub.LastAttempt = time.Now().UTC().Format(time.RFC3339)
 	sub.LastUpdated = sub.LastAttempt
 	sub.NodeCount = len(selected)
@@ -1394,6 +1397,9 @@ func (m *CoreManager) refreshOutboundSubscription(ctx context.Context, sub Outbo
 		for i := range m.state.OutboundSubscriptions {
 			if m.state.OutboundSubscriptions[i].ID == sub.ID {
 				m.state.OutboundSubscriptions[i].LastError = err.Error()
+				if m.state.OutboundSubscriptions[i].RetryFailures < 4 {
+					m.state.OutboundSubscriptions[i].RetryFailures++
+				}
 				m.state.OutboundSubscriptions[i].LastAttempt = time.Now().UTC().Format(time.RFC3339)
 			}
 		}
@@ -1474,6 +1480,31 @@ func (m *CoreManager) removeOutboundSubscription(sub OutboundSubscription, keepN
 	return nil
 }
 
+// Retry failed downloads independently of the normal refresh interval.
+func subscriptionRefreshDue(sub OutboundSubscription, now time.Time) bool {
+	if !sub.Enabled {
+		return false
+	}
+	last, _ := time.Parse(time.RFC3339, sub.LastAttempt)
+	if last.IsZero() {
+		return true
+	}
+	interval := time.Duration(sub.IntervalMinutes) * time.Minute
+	if sub.LastError != "" {
+		switch sub.RetryFailures {
+		case 0, 1:
+			interval = time.Minute
+		case 2:
+			interval = 2 * time.Minute
+		case 3:
+			interval = 4 * time.Minute
+		default:
+			interval = 5 * time.Minute
+		}
+	}
+	return now.Sub(last) >= interval
+}
+
 func (m *CoreManager) monitorOutboundSubscriptions() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
@@ -1485,11 +1516,7 @@ func (m *CoreManager) monitorOutboundSubscriptions() {
 		now := time.Now()
 		due := make([]OutboundSubscription, 0)
 		for _, sub := range m.state.OutboundSubscriptions {
-			if !sub.Enabled {
-				continue
-			}
-			last, _ := time.Parse(time.RFC3339, sub.LastAttempt)
-			if last.IsZero() || now.Sub(last) >= time.Duration(sub.IntervalMinutes)*time.Minute {
+			if subscriptionRefreshDue(sub, now) {
 				due = append(due, sub)
 			}
 		}
@@ -1508,7 +1535,7 @@ func (m *CoreManager) monitorOutboundSubscriptions() {
 				}
 			}
 			m.mu.Unlock()
-			if !found || !current.Enabled || current.URL != sub.URL {
+			if !found || current.URL != sub.URL || !subscriptionRefreshDue(current, time.Now()) {
 				m.subscriptionSyncMu.Unlock()
 				continue
 			}

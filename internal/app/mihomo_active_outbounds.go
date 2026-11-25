@@ -11,9 +11,11 @@ import (
 // result of an HTTP delay test. URLTest/Fallback/Select report one active
 // choice. LoadBalance selects per connection and may not have one "now".
 type mihomoCurrentOutbound struct {
-	Current       string `json:"current,omitempty"`
-	Applied       bool   `json:"applied"`
-	PerConnection bool   `json:"perConnection,omitempty"`
+	NoAvailable        bool   `json:"noAvailable,omitempty"`
+	CurrentUnavailable bool   `json:"currentUnavailable,omitempty"`
+	Current            string `json:"current,omitempty"`
+	Applied            bool   `json:"applied"`
+	PerConnection      bool   `json:"perConnection,omitempty"`
 }
 
 type mihomoCurrentOutbounds struct {
@@ -31,11 +33,15 @@ func currentOutboundsFromRuntime(state State, runtime map[string]balancerRuntime
 		if running {
 			if live, ok := runtime[group.Name]; ok {
 				entry.Applied = true
+				entry.NoAvailable = allBalancerMembersOffline(group, runtime)
 				selected := strings.TrimSpace(live.Now)
 				// Only members of the persisted group are valid: never show a
 				// stale result from another live configuration.
 				if selected != "" && containsString(group.Proxies, selected) {
-					entry.Current = selected
+					if !entry.NoAvailable {
+						entry.Current = selected
+						entry.CurrentUnavailable = runtimeProxyOffline(runtime, selected)
+					}
 				} else if strings.EqualFold(group.Type, "load-balance") {
 					entry.PerConnection = true
 				}

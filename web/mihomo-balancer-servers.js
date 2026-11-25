@@ -118,7 +118,7 @@
    const candidate=q('.fbs-candidate',panel);
    if(candidate.dataset.candidate===liveCandidate)return;
    candidate.dataset.candidate=liveCandidate;
-   const country=window.MUICountryFlags?.read(liveCandidate);
+   const country=liveCandidate==='Нет доступных узлов'||liveCandidate==='Текущий узел недоступен'?null:window.MUICountryFlags?.read(liveCandidate);
    const code=country?.code||'';
    const oldFlag=candidate.querySelector(':scope > img.outsub-flag-svg');
    if(oldFlag?.dataset.countryCode!==code){
@@ -129,7 +129,7 @@
      }
    }
    let label=candidate.querySelector(':scope > span.fbs-candidate-label');
-   if(!label){label=elt('span','fbs-candidate-label');candidate.append(label);}
+   if(!label){candidate.replaceChildren(...Array.from(candidate.children));label=elt('span','fbs-candidate-label');candidate.append(label);}
    const value=liveCandidate?rowName({name:liveCandidate}):'Нет данных от Mihomo';
    if(label.textContent!==value)label.textContent=value;
    candidate.title=liveCandidate||'Сначала примените конфигурацию группы';
@@ -456,7 +456,7 @@
    try{
      const data=await request('/api/mihomo/balancers/status?group='+encodeURIComponent(ctx.persistedName));
      if(!panel||context!==ctx)return false;
-     liveCandidate=data.candidate||'';
+     liveCandidate=data.noAvailable?'Нет доступных узлов':data.currentUnavailable?'Текущий узел недоступен':data.candidate||'';
      const existingByName=new Map(items.map(n=>[n.name,n]));
      // The chosen group scope, never all Outbounds, controls the table.
      // Manual edits may contain unsaved additions; a remote refresh must not
@@ -525,7 +525,7 @@
      renderRows();
      return true;
    }catch(error){
-     if(panel&&ctx===context){setStatus(error.message,true);renderRows();}
+     if(panel&&ctx===context){liveCandidate='';setStatus(error.message,true);renderRows();}
      return false;
    }
  }

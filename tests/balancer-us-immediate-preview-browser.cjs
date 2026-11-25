@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-balancer-servers.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-balancer-servers.js?v=143'));
+assert(html.includes('static/mihomo-balancer-servers.js?v=144'));
 const script=source.replace(' function renderRows(){',
  ' function renderRows(){window.__renderCount=(window.__renderCount||0)+1;')
  .replace(/\}\)\(\);\s*$/,'window.__filterDebug={renderRows,items:()=>items,context:()=>context,pending:unsavedFilterPreview,setBaseline:(id,keep,drop)=>filterEditBaseline.set(id,{keep,drop})};})();');

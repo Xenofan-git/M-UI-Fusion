@@ -98,7 +98,7 @@ func TestCreateSubscribedBalancerAtomic(t *testing.T) {
 	if group.Kind != "group" || group.Name != "EU-Pool" || group.Type != "fallback" || len(group.Proxies) != 1 {
 		t.Fatalf("wrong group: %+v", group)
 	}
-	if group.Interval != 300 || group.Timeout != 8000 || group.Tolerance != 0 {
+	if group.Interval != 60 || group.Timeout != 8000 || group.Tolerance != 0 {
 		t.Fatalf("fallback defaults are wrong: interval=%d timeout=%d tolerance=%d", group.Interval, group.Timeout, group.Tolerance)
 	}
 	if !reflect.DeepEqual(m.state.OutboundSubscriptions[0].ExcludedNodeKeys, sub.ExcludedNodeKeys) {
@@ -130,7 +130,7 @@ func TestCreateSubscribedURLTestDefaultsAndEditableSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	group := m.state.Outbounds[0]
-	if group.Interval != 300 || group.Timeout != 8000 || group.Tolerance != 100 {
+	if group.Interval != 60 || group.Timeout != 8000 || group.Tolerance != 100 {
 		t.Fatalf("wrong new URL-test defaults: %+v", group)
 	}
 	loaded := &CoreManager{dataDir: m.dataDir}

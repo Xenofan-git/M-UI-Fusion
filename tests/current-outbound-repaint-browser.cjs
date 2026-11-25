@@ -8,8 +8,8 @@ const {chromium}=require('playwright-core');
 const web=path.resolve(__dirname,'../web');
 const source=fs.readFileSync(path.join(web,'mihomo-settings.js'),'utf8');
 const html=fs.readFileSync(path.join(web,'index.html'),'utf8');
-assert(html.includes('static/mihomo-settings.js?v=138'));
-assert(html.includes('static/mihomo-settings.css?v=136'));
+assert(html.includes('static/mihomo-settings.js?v=139'));
+assert(html.includes('static/mihomo-settings.css?v=137'));
 const chunk=(a,b)=>{
  const start=source.indexOf(a),end=source.indexOf(b,start);
  assert(start>=0&&end>start,a+' -> '+b);
@@ -28,7 +28,7 @@ const script=[
  "let activeGroupRequest=null,balancerSubscriptions=[],currentTab='subscriptions';",
  "const vpnGateStatusHTML=()=>'';const testOutbound=()=>{};",
  "window.__currentName='INT | lv 0.1X - LTE №51 - Латвия';",
- "const api=async()=>({running:true,groups:{'Foreign-quatro-vpn':{applied:true,current:window.__currentName}}});",
+ "const api=async()=>({running:true,groups:{'Foreign-quatro-vpn':{applied:true,current:window.__currentName,noAvailable:!!window.__noAvailable,currentUnavailable:!!window.__currentUnavailable}}});",
  chunk('  function outboundAddress(', '  function paintCurrentGroupNode('),
  chunk('  function paintCurrentGroupNode(', '  function outboundSupportsDelay('),
  chunk('  function outboundSupportsDelay(', '  function moveOutbound(id,delta){'),
@@ -119,6 +119,13 @@ const fixture='<!doctype html><html><head><meta charset="UTF-8">'+
      src:window.__newFlag.getAttribute('src')
    }));
    assert(changed.replaced&&changed.unchangedAfter&&changed.src.includes('ru.svg'),JSON.stringify(changed));
+   await page.evaluate(()=>{window.__noAvailable=true;Object.assign(__test.activeGroupResults.get('Foreign-quatro-vpn'),{noAvailable:true,current:''});__test.renderOutbounds();});
+   assert.equal(await page.locator('[data-active-group]').textContent(),'Нет доступных узлов');
+   assert.equal(await page.locator('.mihomo-current-country-flag').count(),0);
+   await page.evaluate(()=>{window.__noAvailable=false;window.__currentUnavailable=true;Object.assign(__test.activeGroupResults.get('Foreign-quatro-vpn'),{noAvailable:false,currentUnavailable:true,current:window.__currentName});__test.renderOutbounds();});
+   assert.equal(await page.locator('[data-active-group]').textContent(),'Текущий узел недоступен');
+   await page.evaluate(()=>{window.__currentUnavailable=false;__test.activeGroupResults.get('Foreign-quatro-vpn').currentUnavailable=false;__test.renderOutbounds();});
+   assert.match(await page.locator('.mihomo-current-country-label').textContent(),/Москва/);
    // When membership REALLY changes, structural table markup must update.
    await page.evaluate(()=>{__test.draft.outbounds[0].proxies.push('RU');__test.renderOutbounds()});
    assert.match(await page.locator('#mihomo-subscription-balancer-table').textContent(),/2 узлов/);

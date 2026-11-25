@@ -39,13 +39,15 @@ type balancerStatusNode struct {
 	CheckedAt   string `json:"checkedAt,omitempty"`
 }
 type balancerStatusResponse struct {
-	Group      string               `json:"group"`
-	Candidate  string               `json:"candidate,omitempty"`
-	Available  bool                 `json:"available"`
-	Nodes      []balancerStatusNode `json:"nodes"`
-	Sources    []string             `json:"sources"`
-	Message    string               `json:"message,omitempty"`
-	Subscribed bool                 `json:"subscribed"`
+	Group              string               `json:"group"`
+	NoAvailable        bool                 `json:"noAvailable,omitempty"`
+	CurrentUnavailable bool                 `json:"currentUnavailable,omitempty"`
+	Candidate          string               `json:"candidate,omitempty"`
+	Available          bool                 `json:"available"`
+	Nodes              []balancerStatusNode `json:"nodes"`
+	Sources            []string             `json:"sources"`
+	Message            string               `json:"message,omitempty"`
+	Subscribed         bool                 `json:"subscribed"`
 }
 
 func balancerSubscriptionSnapshot(state State, name string) (MihomoOutbound, []OutboundSubscription, []MihomoOutbound, bool) {
@@ -204,6 +206,24 @@ func fetchBalancerRuntime(ctx context.Context, endpoint, secret string) (map[str
 	err = json.NewDecoder(io.LimitReader(response.Body, 5<<20)).Decode(&data)
 	return data.Proxies, err
 }
+
+// Missing or untested runtime values must not be mistaken for failures.
+func runtimeProxyOffline(runtime map[string]balancerRuntimeProxy, name string) bool {
+	p, ok := runtime[name]
+	return ok && p.Alive != nil && !*p.Alive && len(p.History) > 0
+}
+func allBalancerMembersOffline(group MihomoOutbound, runtime map[string]balancerRuntimeProxy) bool {
+	if len(group.Proxies) == 0 {
+		return false
+	}
+	for _, name := range group.Proxies {
+		if !runtimeProxyOffline(runtime, name) {
+			return false
+		}
+	}
+	return true
+}
+
 func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, nodes []MihomoOutbound, runtime map[string]balancerRuntimeProxy, available bool) balancerStatusResponse {
 	members := make(map[string]bool, len(group.Proxies))
 	for _, name := range group.Proxies {
@@ -211,7 +231,11 @@ func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, n
 	}
 	result := balancerStatusResponse{Group: group.Name, Available: available, Nodes: make([]balancerStatusNode, 0, len(nodes)), Sources: make([]string, 0, len(sources))}
 	if runtimeGroup, ok := runtime[group.Name]; ok {
-		result.Candidate = runtimeGroup.Now
+		result.NoAvailable = available && allBalancerMembersOffline(group, runtime)
+		if !result.NoAvailable {
+			result.Candidate = runtimeGroup.Now
+			result.CurrentUnavailable = runtimeProxyOffline(runtime, runtimeGroup.Now)
+		}
 	}
 	for _, src := range sources {
 		result.Sources = append(result.Sources, src.Name)

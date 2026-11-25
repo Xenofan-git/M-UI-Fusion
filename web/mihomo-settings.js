@@ -186,6 +186,8 @@
     if(!group)return 'Определяется…';
     if(!group.running)return 'Mihomo недоступен';
     if(!group.applied)return 'Группа не применена';
+    if(group.noAvailable)return 'Нет доступных узлов';
+    if(group.currentUnavailable)return 'Текущий узел недоступен';
     if(group.current)return currentNodeMeta(name,group.current).label;
     if(group.perConnection)return 'Выбор для каждого соединения';
     return 'Текущий не определён';
@@ -205,7 +207,7 @@
   // the local vector image is available even on older Windows browsers.
   function paintCurrentGroupNode(node,name){
     const group=activeGroupResults.get(name);
-    if(!group?.running||!group.applied||!group.current){
+    if(!group?.running||!group.applied||!group.current||group.noAvailable||group.currentUnavailable){
       node.textContent=groupResultLabel(name);
       node.title=groupResultTitle(name);
       return;
@@ -1088,7 +1090,7 @@
     ensureModals();editingOutbound=id;
     editingOriginal=clone(requestedItem||(requestedKind==='group'&&!editingSubscriptionGroup
       ?{...newManualBalancerDefaults(),port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,strategy:'consistent-hashing'}
-      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,
+      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:60,
         // Defaults for newly created subscription balancers; never alter saved groups.
         ...(requestedKind==='group'?{timeout:8000,tolerance:100}:{}),
         strategy:'consistent-hashing'}));
@@ -1232,7 +1234,7 @@
           else delete native['default-selected'];
         }else{
           native.url=item.testUrl||defaultTestURL;
-          native.interval=item.interval||300;
+          native.interval=item.interval||60;
           if(item.timeout>0)native.timeout=item.timeout;else delete native.timeout;
           if(item.type==='url-test'&&item.tolerance>0)native.tolerance=item.tolerance;
           else delete native.tolerance;

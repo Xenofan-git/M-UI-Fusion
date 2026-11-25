@@ -39,14 +39,15 @@ const ratio=(x,y)=>(Math.max(lum(x),lum(y))+.05)/(Math.min(lum(x),lum(y))+.05);
   if((!dark&&!skin)||skin==='ivory')assert.equal(bg,'rgb(255, 255, 255)',JSON.stringify({theme,dark,skin,bg}));
   await page.mouse.move(1,1);
   const check=async()=>{
-    const v=await item.evaluate(e=>{const s=getComputedStyle(e),t=getComputedStyle(e.querySelector('.fbs-add-name'));return [s.backgroundColor,t.webkitTextFillColor,t.fontSize,e.offsetHeight]});
+    const v=await item.evaluate(e=>{const s=getComputedStyle(e),t=getComputedStyle(e.querySelector('.fbs-add-name'));return [s.backgroundColor,t.webkitTextFillColor,t.fontSize,e.offsetHeight,getComputedStyle(e.querySelector(".fbs-protocol")).webkitTextFillColor]});
     assert(v[2]==='15px'&&v[3]>=40&&ratio(v[0],v[1])>=4.5,JSON.stringify({theme,dark,skin,v}));
+    assert.equal(v[4],skin==='ivory'||(!dark&&!skin)?'rgb(105, 65, 165)':'rgb(208, 179, 255)');assert(ratio(v[0],v[4])>=4.5,JSON.stringify({theme,dark,skin,v}));
     checks++;
   };
   await check();await item.hover();await check();
   const cross=page.locator('.fbs-remove-member').first();
-  const v=await cross.evaluate(e=>{const s=getComputedStyle(e);return [s.backgroundColor,s.webkitTextFillColor,s.opacity]});
-  assert(v[2]==='1'&&ratio(v[0],v[1])>=4.5,JSON.stringify({theme,dark,skin,v}));checks++;
+  const v=await cross.evaluate(e=>{const s=getComputedStyle(e);return [getComputedStyle(e.closest(".fbs-editor")).backgroundColor,s.webkitTextFillColor,s.opacity,s.borderTopWidth,s.backgroundColor]});
+  assert(v[2]==='1'&&v[3]==='0px'&&v[4]==='rgba(0, 0, 0, 0)',JSON.stringify({theme,dark,skin,v}));checks++;
  }
  await row('Germany A').locator('.fbs-remove-member').click();
  assert.equal(await row('Germany A').count(),0);

@@ -93,7 +93,7 @@ try{
   await page.waitForFunction(()=>!document.querySelector('#mihomo-outbound-modal').classList.contains('open'),null,{timeout:10000});
   const creation=writes.find(w=>w.url==='/api/mihomo/subscriptions/groups');
   assert(creation,JSON.stringify(writes));assert.equal(creation.body.group,'RUSSIA-TEST');assert.equal(creation.body.filterKeep,'🇷🇺');assert.equal(creation.body.sourceId,source.id);
-  assert.equal(creation.body.settings.interval,300);
+  assert.equal(creation.body.settings.interval,60);
   const writeCount=writes.filter(w=>w.url==='/api/mihomo/subscriptions/groups').length;assert.equal(writeCount,1);
   await page.locator('#mihomo-add-sub-balancer').click();
   assert.equal(await picker.inputValue(),'','reopening must clear previous source');

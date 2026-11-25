@@ -1495,12 +1495,12 @@ html body #mihomo-outbound-modal .fbs-editor .fbs-remove-member::after{content:n
 .fbs-manual-table th.fbs-remove-heading{width:48px}
 .fbs-manual-table td.fbs-remove-cell{text-align:center;padding:4px}
 html body #mihomo-outbound-modal .fbs-editor .fbs-remove-member{
- --lb-fill:var(--fbs-remove-bg)!important;--lb-text:var(--fbs-remove-text)!important;
+ --lb-fill:transparent!important;--lb-text:var(--fbs-remove-text)!important;
  display:inline-flex;align-items:center;justify-content:center;
  width:30px;height:30px;min-width:30px;padding:0!important;
- background:var(--fbs-remove-bg)!important;background-image:none!important;
+ background:transparent!important;background-image:none!important;
  color:var(--fbs-remove-text)!important;-webkit-text-fill-color:var(--fbs-remove-text)!important;
- border:1px solid var(--fbs-remove-text)!important;border-radius:7px!important;
+ border:0!important;border-radius:7px!important;
  font-size:22px!important;font-weight:500;line-height:1!important;
  cursor:pointer;box-shadow:none!important;opacity:1!important;transition:none!important;
 }
@@ -1515,3 +1515,15 @@ html body #mihomo-outbound-modal .fbs-editor .fbs-add-result:focus-visible{
  outline:2px solid var(--fbs-picker-accent)!important;outline-offset:-2px;
 }
 @media(max-width:650px){.fbs-table.fbs-manual-table{min-width:658px}}
+
+/* Distinguish protocols from node names in the manual picker. */
+.fbs-editor{--fbs-picker-protocol:#6941a5}
+html.dark .fbs-editor,body.dark .fbs-editor,
+html[data-theme="dark"] .fbs-editor,html[data-theme="ultra-dark"] .fbs-editor,
+html[data-color-skin="graphite"] .fbs-editor,html[data-color-skin="emerald"] .fbs-editor,
+html[data-color-skin="aurora"] .fbs-editor{--fbs-picker-protocol:#d0b3ff}
+html[data-color-skin="ivory"] .fbs-editor{--fbs-picker-protocol:#6941a5}
+html body #mihomo-outbound-modal .fbs-editor .fbs-add-result small.fbs-protocol{
+ color:var(--fbs-picker-protocol)!important;-webkit-text-fill-color:var(--fbs-picker-protocol)!important;
+ font-weight:600;
+}
