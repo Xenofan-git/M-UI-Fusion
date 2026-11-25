@@ -626,6 +626,7 @@ type State struct {
 }
 
 type CoreManager struct {
+	diagnostic         *diagnosticRecorder
 	smartHealth        smartRuntime
 	coreLifecycle      sync.Mutex // serialize lifecycle operations and watchdog actions
 	coreDone           chan struct{}
@@ -730,6 +731,7 @@ func Run(buildVersion string) {
 	if err := manager.writeConfig(); err != nil {
 		log.Printf("write config: %v", err)
 	}
+	manager.startDiagnostic()
 	go manager.monitorTraffic()
 	// 已保存的 VPNGate 出站在面板启动时就恢复拨号，不用等用户再点一次保存。
 	go manager.syncVPNGateTasks()
@@ -4710,6 +4712,7 @@ func (m *CoreManager) launchCoreLocked(corePath, configPath string, config []byt
 	m.watchdog.failures = 0
 	m.watchdog.status = "starting"
 	m.addLogLocked("Mihomo 已启动")
+	m.diagnosticLocked("core_start", map[string]int{"pid": cmd.Process.Pid})
 	go m.captureLogs(stdout)
 	go m.captureLogs(stderr)
 	go func() {
@@ -4717,6 +4720,7 @@ func (m *CoreManager) launchCoreLocked(corePath, configPath string, config []byt
 		m.mu.Lock()
 		if m.cmd == cmd {
 			m.addLogLocked("Mihomo 已退出: " + errorText(err))
+			m.diagnosticLocked("core_exit", map[string]any{"pid": cmd.Process.Pid, "error": err != nil})
 			m.cmd = nil
 			m.coreDone = nil
 		}

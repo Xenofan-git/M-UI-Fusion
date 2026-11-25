@@ -132,6 +132,13 @@ func (m *CoreManager) coreWatchdogTick(now time.Time) {
 		return
 	}
 	defer m.coreLifecycle.Unlock()
+	defer func() {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		if m.diagnostic != nil {
+			m.diagnosticLocked("watchdog_check", m.watchdogStatusLocked(time.Now()))
+		}
+	}()
 	m.mu.Lock()
 	w := &m.watchdog
 	if !effectiveMihomoBasics(m.state).WatchdogEnabled || !w.wanted {
@@ -194,6 +201,7 @@ func (m *CoreManager) coreWatchdogTick(now time.Time) {
 	w.attempts = append(w.attempts, now)
 	w.status = "recovering"
 	m.addLogLocked("Mihomo Watchdog: automatic recovery (" + status + ")")
+	m.diagnosticLocked("watchdog_recovery", map[string]any{"reason": status, "attempts": len(w.attempts)})
 	corePath := w.corePath
 	m.mu.Unlock()
 	// Validate before terminating a running process. Do not disclose config or

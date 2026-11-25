@@ -308,6 +308,7 @@ func (m *CoreManager) smartModeLocked(mode string) {
 		s.Events = s.Events[len(s.Events)-100:]
 	}
 	m.addLogLocked("Smart Health Monitor: " + mode)
+	m.diagnosticLocked("health_mode", diagnosticHealthFrom(*s, nil))
 }
 func (m *CoreManager) smartStatusLocked() smartStatus {
 	s := m.smartHealth.status
@@ -612,6 +613,8 @@ func (m *CoreManager) smartHealthTick() {
 	if r.status.Next.Before(time.Now()) {
 		r.status.Next = time.Now().Add(time.Second)
 	}
+	duration := time.Since(started).Milliseconds()
+	m.diagnosticLocked("health_cycle", diagnosticHealthFrom(r.status, &duration))
 }
 
 type smartCycleResult struct {
