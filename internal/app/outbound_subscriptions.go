@@ -1344,9 +1344,12 @@ func (m *CoreManager) reloadAfterSubscription() error {
 		m.mu.Lock()
 		if readErr == nil && afterErr == nil && sha256.Sum256(before) == sha256.Sum256(after) {
 			m.watchdog.appliedDigest = sha256.Sum256(after)
+			m.smartHealth.applied = smartPlanFromConfig(after)
+			m.smartHealth.status.Next = time.Time{}
 			m.watchdog.controller, m.watchdog.secret = controller, secret
 		} else {
 			m.watchdog.appliedDigest = [sha256.Size]byte{}
+			m.smartHealth.applied = nil
 		}
 		m.mu.Unlock()
 		return nil

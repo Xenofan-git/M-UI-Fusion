@@ -22,7 +22,7 @@ func TestMihomoTabIconsAreDistinctAndConsistent(t *testing.T) {
 		t.Fatal("Mihomo Settings tab bar ending missing")
 	}
 	bar := s[beginning : beginning+ending]
-	tabs := []string{"basics", "outbounds", "balancers", "sources", "subscriptions", "routing"}
+	tabs := []string{"basics", "outbounds", "balancers", "sources", "subscriptions", "routing", "smart-health"}
 	if strings.Count(bar, `<svg class="mihomo-tab-glyph"`) != len(tabs) {
 		t.Fatal("every tab must use a matching, independent SVG glyph")
 	}

@@ -611,6 +611,7 @@ type TrafficTotals struct {
 }
 
 type State struct {
+	SmartHealth           *SmartHealthSettings    `json:"smartHealth,omitempty"`
 	Settings              Settings                `json:"settings"`
 	Inbounds              []Inbound               `json:"inbounds"`
 	Outbounds             []MihomoOutbound        `json:"outbounds,omitempty"`
@@ -625,6 +626,7 @@ type State struct {
 }
 
 type CoreManager struct {
+	smartHealth        smartRuntime
 	coreLifecycle      sync.Mutex // serialize lifecycle operations and watchdog actions
 	coreDone           chan struct{}
 	watchdog           coreWatchdogRuntime
@@ -745,6 +747,7 @@ func Run(buildVersion string) {
 	// Subscriptions begin after Mihomo startup; never race its initial config.
 	go manager.monitorOutboundSubscriptions()
 	go manager.monitorCoreWatchdog()
+	go manager.monitorSmartHealth()
 	peerContext, stopPeers := context.WithCancel(context.Background())
 	defer stopPeers()
 	if peers, err := newPeerNetwork(dataDir); err != nil {
@@ -1043,6 +1046,7 @@ func (a *App) panelRoutes(serveSubscriptions bool) http.Handler {
 	mux.HandleFunc("/api/multi-control", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/multi-control/", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/mihomo/settings", a.auth(a.handleMihomoSettings))
+	mux.HandleFunc("/api/mihomo/smart-health", a.auth(a.handleSmartHealth))
 	mux.HandleFunc("/api/mihomo/rules", a.auth(a.handleMihomoRoutingRules))
 	mux.HandleFunc("/api/mihomo/editor", a.auth(a.handleMihomoEditorChanges))
 	mux.HandleFunc("/api/mihomo/subscriptions", a.auth(a.handleOutboundSubscriptions))
@@ -2759,6 +2763,12 @@ func renderStateConfig(state State) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if smart := effectiveSmartHealth(state); smart.Enabled {
+		if err := validateSmartHealth(smart); err != nil {
+			return nil, err
+		}
+		proxyGroups = applySmartHealthSchedule(proxies, proxyGroups)
+	}
 	config := map[string]any{
 		"allow-lan":                state.Settings.AllowLAN,
 		"bind-address":             "*",
@@ -2828,7 +2838,11 @@ func renderStateConfig(state State) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return appendManagedMetadata(data, state.Inbounds), nil
+	data = appendManagedMetadata(data, state.Inbounds)
+	if effectiveSmartHealth(state).Enabled {
+		data = append(data, []byte("\n"+smartHealthMarker+"\n")...)
+	}
+	return data, nil
 }
 
 func appendManagedMetadata(config []byte, inbounds []Inbound) []byte {
@@ -4690,6 +4704,8 @@ func (m *CoreManager) launchCoreLocked(corePath, configPath string, config []byt
 	done := make(chan struct{})
 	m.coreDone = done
 	m.watchdog.appliedDigest = sha256.Sum256(config)
+	m.smartHealth.applied = smartPlanFromConfig(config)
+	m.smartHealth.status.Next = time.Time{}
 	m.watchdog.corePath, m.watchdog.controller, m.watchdog.secret = corePath, controller, secret
 	m.watchdog.failures = 0
 	m.watchdog.status = "starting"
