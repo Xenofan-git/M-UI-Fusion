@@ -11,8 +11,8 @@ const css=read('web/color-skins.css');
 const keys=[
  'static/color-skins.css?v=116',
  'static/mihomo-settings.css?v=137',
- 'static/mihomo-settings.js?v=139',
- 'static/i18n.js?v=123',
+ 'static/mihomo-settings.js?v=140',
+ 'static/i18n.js?v=124',
  'static/i18n-locales.js?v=119'
 ];
 for(const asset of keys)assert.ok(html.includes(asset),'missing cache-busting for '+asset);

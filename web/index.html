@@ -1006,7 +1006,7 @@
 <body>
   <script src="static/icons-lucide.js" data-ui-only="shadcn"></script><script src="static/icons-material.js" data-ui-only="md3"></script><script src="static/sf-symbols.js"></script>
   <script src="static/i18n-locales.js?v=119"></script>
-  <script src="static/i18n.js?v=123"></script>
+  <script src="static/i18n.js?v=124"></script>
   <div class="ambient-backdrop" aria-hidden="true">
     <div class="aurora-orb orb-1"></div>
     <div class="aurora-orb orb-2"></div>
@@ -1087,6 +1087,7 @@
                       <div class="basics-row"><div><label for="basics-ipv6" data-i18n="mihomo.basic.ipv6">IPv6</label><p>允许 Mihomo 解析和使用 IPv6 地址。</p></div><div class="basics-control switch-control"><label class="switch"><input id="basics-ipv6" name="ipv6" type="checkbox"><span></span></label></div></div>
                       <div class="basics-row"><div><label for="basics-tcpConcurrent" data-i18n="mihomo.basic.tcpConcurrent">TCP Concurrent</label><p>并发连接 DNS 返回的多个 IP，使用最先成功的连接。</p></div><div class="basics-control switch-control"><label class="switch"><input id="basics-tcpConcurrent" name="tcpConcurrent" type="checkbox"><span></span></label></div></div>
                       <div class="basics-row"><div><label for="basics-unifiedDelay" data-i18n="mihomo.basic.unifiedDelay">Unified Delay</label><p>统一测速口径，减少不同代理协议握手时间的影响。</p></div><div class="basics-control switch-control"><label class="switch"><input id="basics-unifiedDelay" name="unifiedDelay" type="checkbox"><span></span></label></div></div>
+                      <div class="basics-row"><div><label for="basics-watchdogEnabled">Mihomo Watchdog</label><p data-i18n="mihomo.basic.watchdogHint">Automatically recover the local core after a crash or confirmed API freeze. Manual stop is respected.</p><p id="basics-watchdog-status" role="status" aria-live="polite"></p></div><div class="basics-control switch-control"><label class="switch"><input id="basics-watchdogEnabled" name="watchdogEnabled" type="checkbox"><span></span></label></div></div>
                     </div></details>
                     <details class="basics-section"><summary data-i18n="mihomo.basic.sniffer">Sniffer · определение доменов</summary><div class="basics-section-body">
                       <div class="basics-row"><div><label for="basics-sniffer-enabled" data-i18n="mihomo.basic.sniffer-enabled">Включить Sniffer</label><p>Распознавать домены из HTTP Host, TLS SNI и QUIC, даже когда SOCKS5 передаёт только IP-адрес.</p></div><div class="basics-control switch-control"><label class="switch"><input id="basics-sniffer-enabled" name="snifferEnabled" data-sniffer-field="enabled" type="checkbox"><span></span></label></div></div>
@@ -1890,7 +1891,7 @@
   <script src="static/swiftui-components.js"></script>
   <script src="static/mihomo-balancer-servers.js?v=144"></script>
   <script src="static/mihomo-rule-lists.js"></script>
-  <script src="static/mihomo-settings.js?v=139"></script>
+  <script src="static/mihomo-settings.js?v=140"></script>
   <script src="static/multi-control.js"></script>
   <script src="static/inbound-sync.js"></script>
   <script src="static/cross-subscriptions.js"></script>

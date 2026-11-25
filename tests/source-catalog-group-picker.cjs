@@ -19,9 +19,9 @@ assert(!html.slice(cardStart,sourcesStart).includes('id="outsub-root"'),'catalog
 assert(html.includes('static/outbound-subscriptions.js?v=122'));
 assert(html.includes('static/outbound-subscriptions.css?v=125'));
 assert(html.includes('static/mihomo-balancer-servers.js?v=144'));
-assert(html.includes('static/mihomo-settings.js?v=139'));
+assert(html.includes('static/mihomo-settings.js?v=140'));
 assert(html.includes('static/mihomo-settings.css?v=137'));
-assert(html.includes('static/i18n.js?v=123'));
+assert(html.includes('static/i18n.js?v=124'));
 assert(src.includes("sourcePicker.name='sourceId'"));
 assert(src.includes("sourceLabel=make('label','outsub-source-choice-label','Выбрать подписку')"));
 assert(src.includes("sourceChoice.add(new Option(display,source.id))"));

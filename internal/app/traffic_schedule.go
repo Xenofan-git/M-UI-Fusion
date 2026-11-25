@@ -248,7 +248,7 @@ func (m *CoreManager) applyScheduledTrafficResets() {
 	// listeners only learn that from a new configuration.
 	if restored && running {
 		go func() {
-			if err := m.restartCore(); err != nil {
+			if err := m.restartCoreIfRunning(); err != nil {
 				m.mu.Lock()
 				m.addLogLocked("应用流量重置失败: " + err.Error())
 				m.mu.Unlock()

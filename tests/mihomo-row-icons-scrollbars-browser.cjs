@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const {chromium}=require('playwright-core');
 const index=fs.readFileSync('web/index.html','utf8');
 assert(index.includes('static/color-skins.css?v=116'));
-assert(index.includes('static/mihomo-settings.js?v=139'));
+assert(index.includes('static/mihomo-settings.js?v=140'));
 const css=[
   'liquid-glass.css','mihomo-settings.css','liquid-button.css'
 ].map(name=>fs.readFileSync('web/'+name,'utf8')).join('\n')+

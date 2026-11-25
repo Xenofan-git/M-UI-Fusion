@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const js=fs.readFileSync('web/mihomo-settings.js','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert(html.includes('static/mihomo-settings.js?v=139'),'cache-bust the no-wait editor handler');
+assert(html.includes('static/mihomo-settings.js?v=140'),'cache-bust the no-wait editor handler');
 assert(js.includes('const cached=app.state?.state?.outboundSubscriptions'),
  'editor needs to reuse canonical state snapshot');
 const begin=js.indexOf("  async function openOutboundModal(id='',requestedKind='proxy'){");

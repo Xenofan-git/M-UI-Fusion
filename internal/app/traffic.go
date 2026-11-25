@@ -122,7 +122,7 @@ func (m *CoreManager) enforceClientLimits() {
 	m.mu.Unlock()
 	if newlyDepleted && running {
 		go func() {
-			if err := m.restartCore(); err != nil {
+			if err := m.restartCoreIfRunning(); err != nil {
 				m.mu.Lock()
 				m.addLogLocked("应用客户端配额失败: " + err.Error())
 				m.mu.Unlock()

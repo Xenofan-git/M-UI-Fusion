@@ -25,7 +25,7 @@
     interval:180,timeout:8000,tolerance:100,disableUdp:false,
     subscriptionIds:[],excludedSubscriptionMembers:[]
   });
-  const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
+  const defaultBasics=()=>({watchdogEnabled:false,mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
   const activeGroupResults=new Map();
   // The global /api/state poll calls render() every 5 seconds. Keep table
@@ -1604,6 +1604,14 @@
   function renderBasicsIndicators(){
     $('#basics-mode-warning').hidden=draft.basics.mode==='rule';
     $('#basics-dns-log').checked=draft.basics.logLevel==='debug';
+    const watchdogStatus=$('#basics-watchdog-status');
+    if(watchdogStatus){
+      const watchdog=app.state?.mihomoWatchdog;
+      const state=watchdog?.state||'disabled';
+      const key='mihomo.basic.watchdogStatus.'+state;
+      const next=muiT(key)+(watchdog?.attempts?' · '+muiT('mihomo.basic.watchdogAttempts')+': '+watchdog.attempts+'/3':'');
+      if(watchdogStatus.textContent!==next)watchdogStatus.textContent=next;
+    }
   }
   function renderBasicsTags(name){
     const box=$('[data-basics-tags="'+name+'"] [data-tag-items]');

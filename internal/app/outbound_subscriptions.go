@@ -4,6 +4,7 @@ package app
 // links for clients: they ingest remote proxies into the managed Outbounds list.
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -1323,8 +1324,10 @@ func (m *CoreManager) persistSubscriptionStateLocked(before, next State) error {
 }
 
 func (m *CoreManager) reloadAfterSubscription() error {
+	m.coreLifecycle.Lock()
+	defer m.coreLifecycle.Unlock()
 	m.mu.Lock()
-	running := m.runningLocked()
+	running := m.runningLocked() && m.watchdog.wanted
 	controller := m.state.Settings.APIAddress
 	secret := m.state.Settings.APISecret
 	dataDir := m.dataDir
@@ -1332,13 +1335,23 @@ func (m *CoreManager) reloadAfterSubscription() error {
 	if !running {
 		return nil
 	}
-	// Mihomo supports a native config hot-reload. Prefer it to killing the
-	// process, which would sever all user sessions on each subscription tick.
+	// Record the exact reloaded file only if it did not change during reload.
+	// This keeps watchdog recovery from applying an unvalidated pending config.
+	path := filepath.Join(dataDir, "config.yaml")
+	before, readErr := os.ReadFile(path)
 	if err := reloadMihomoConfigController(controller, secret, dataDir); err == nil {
+		after, afterErr := os.ReadFile(path)
+		m.mu.Lock()
+		if readErr == nil && afterErr == nil && sha256.Sum256(before) == sha256.Sum256(after) {
+			m.watchdog.appliedDigest = sha256.Sum256(after)
+			m.watchdog.controller, m.watchdog.secret = controller, secret
+		} else {
+			m.watchdog.appliedDigest = [sha256.Size]byte{}
+		}
+		m.mu.Unlock()
 		return nil
 	}
-	// The controller may be turned off/rebound; use the reliable normal path.
-	if err := m.restartCore(); err != nil {
+	if err := m.restartCoreManaged(); err != nil {
 		return fmt.Errorf("конфигурация сохранена, но Mihomo не смог применить её: %w", err)
 	}
 	return nil
