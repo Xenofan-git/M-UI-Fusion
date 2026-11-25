@@ -107,7 +107,7 @@ const dict={
        outbounds:[{kind:'proxy',name:'Live',sourceSubscriptionId:'sub1'}],
        outboundSubscriptions:[{id:'sub1',group:'FOREIGN'}]
      }}};
-     window.refresh=async()=>{};
+     window.refresh=async()=>{};window.dirty=true;
      window.__marked=0;
    });
    await page.locator('#launch').click();

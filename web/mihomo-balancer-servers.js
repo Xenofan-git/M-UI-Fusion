@@ -348,6 +348,21 @@
        tr.append(name);
        const ping=elt('td','fbs-ping');ping.title='ICMP echo до хоста (не показатель исправности VPN)';tr.append(ping);
        const delay=elt('td','fbs-delay');delay.title='Проверка HTTP-задержки через Mihomo';tr.append(delay);
+       if(!context.subscribed){
+         const cell=elt('td','fbs-remove-cell');
+         const remove=elt('button','fbs-remove-member','×');
+         remove.type='button';
+         remove.title='Удалить из балансировщика';
+         remove.setAttribute('aria-label','Удалить из балансировщика: '+item.name);
+         remove.onclick=()=>{
+           if(!context||context.subscribed)return;
+           selected.delete(item.name);
+           items=items.filter(row=>row.name!==item.name);
+           updateSelection();renderRows();
+           setStatus('Узел удалён из состава балансировщика. Нажмите «Применить», затем «Сохранить».');
+         };
+         cell.append(remove);tr.append(cell);
+       }
      }
      const filtered=isFilteredRow(item);
      const enabled=!filtered&&previewSelected(item);
@@ -380,7 +395,7 @@
    }
    if(!listing.length){
      const row=elt('tr','fbs-empty-row'),td=elt('td','fbs-empty','Серверы не найдены');
-     td.colSpan=5;row.append(td);body.append(row);
+     td.colSpan=context.subscribed?5:6;row.append(td);body.append(row);
    }
    const filteredCount=listing.filter(isFilteredRow).length;
    if(filteredCount&&!pendingPreview){
@@ -566,6 +581,10 @@
    '<div class="fbs-settings-actions"><button type="button" class="outline-btn fbs-source-save">Сохранить настройки подписки</button><span class="fbs-save-hint">Фильтры сохраняются также при нажатии «Применить к конфигурации». Другие параметры группы — после «Сохранить».</span></div></div>';
    if(!context.subscribed){
      const toolbar=q('.fbs-toolbar',wrapper);
+     q('.fbs-table',wrapper).classList.add('fbs-manual-table');
+     const heading=elt('th','fbs-remove-heading');
+     heading.scope='col';heading.setAttribute('aria-label','Удаление из балансировщика');
+     q('.fbs-table thead tr',wrapper).append(heading);
      q('.fbs-options',wrapper).hidden=true;
      const picker=elt('div','fbs-manual-picker');
      picker.innerHTML='<button type="button" class="outline-btn fbs-add-toggle">＋ Добавить Outbound</button>'+
