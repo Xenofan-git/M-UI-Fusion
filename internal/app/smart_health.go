@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"slices"
@@ -33,20 +34,21 @@ type smartService struct {
 	Name     string `json:"name"`
 	Protocol string `json:"protocol"`
 	Host     string `json:"host"`
+	TLSName  string `json:"tlsName,omitempty"`
 }
 
 var smartServices = []smartService{
-	{"yandex-doh", "Яндекс DNS", "DoH", "common.dot.dns.yandex.net"},
-	{"yandex-dot", "Яндекс DNS", "DoT", "common.dot.dns.yandex.net"},
-	{"yandex", "Яндекс", "HTTPS", "ya.ru"},
-	{"vk", "ВКонтакте", "HTTPS", "vk.com"},
-	{"mail", "Mail.ru", "HTTPS", "mail.ru"},
-	{"ozon", "Ozon", "HTTPS", "ozon.ru"},
-	{"wildberries", "Wildberries", "HTTPS", "wildberries.ru"},
-	{"avito", "Авито", "HTTPS", "avito.ru"},
-	{"gosuslugi", "Госуслуги", "HTTPS", "gosuslugi.ru"},
-	{"mts", "МТС", "HTTPS", "mts.ru"},
-	{"beeline", "Билайн", "HTTPS", "beeline.ru"},
+	{"yandex-doh", "Яндекс DNS", "DoH", "common.dot.dns.yandex.net", ""},
+	{"yandex-dot", "Яндекс DNS", "DoT", "common.dot.dns.yandex.net", ""},
+	{"yandex", "Яндекс", "HTTPS", "ya.ru", ""},
+	{"vk", "ВКонтакте", "HTTPS", "vk.com", ""},
+	{"mail", "Mail.ru", "HTTPS", "mail.ru", ""},
+	{"ozon", "Ozon", "HTTPS", "ozon.ru", ""},
+	{"wildberries", "Wildberries", "HTTPS", "wildberries.ru", ""},
+	{"avito", "Авито", "HTTPS", "avito.ru", ""},
+	{"gosuslugi", "Госуслуги", "HTTPS", "gosuslugi.ru", ""},
+	{"mts", "МТС", "HTTPS", "mts.ru", ""},
+	{"beeline", "Билайн", "HTTPS", "beeline.ru", ""},
 }
 
 func defaultSmartHealth() SmartHealthSettings {
@@ -95,6 +97,33 @@ func smartValidHost(host string) bool {
 	}
 	return true
 }
+func smartValidEndpoint(host string) bool {
+	if ip, err := netip.ParseAddr(host); err == nil {
+		return smartPublicV4(ip)
+	}
+	return smartValidHost(host)
+}
+func (s smartService) tlsName() string {
+	if s.TLSName != "" {
+		return s.TLSName
+	}
+	return s.Host
+}
+func smartValidServiceEndpoint(s smartService) bool {
+	if !smartValidEndpoint(s.Host) {
+		return false
+	}
+	if s.Protocol == "Do53" {
+		return s.TLSName == ""
+	}
+	if s.TLSName != "" && !smartValidHost(s.TLSName) {
+		return false
+	}
+	if ip, err := netip.ParseAddr(s.Host); err == nil && ip.Is4() {
+		return s.TLSName != ""
+	}
+	return true
+}
 func validateSmartHealth(s SmartHealthSettings) error {
 	if s.NormalSeconds < 30 || s.NormalSeconds > 3600 || s.DegradedSeconds < 10 || s.DegradedSeconds > s.NormalSeconds || s.OfflineSeconds < 5 || s.OfflineSeconds > s.DegradedSeconds {
 		return fmt.Errorf("Интервалы: штатный 30–3600 сек., ускоренный 10–штатный, аварийный 5–ускоренный")
@@ -109,8 +138,8 @@ func validateSmartHealth(s SmartHealthSettings) error {
 	ids := map[string]bool{}
 	endpoints := map[string]bool{}
 	for _, service := range catalog {
-		key := service.Protocol + " " + service.Host
-		if !smartServiceID.MatchString(service.ID) || ids[service.ID] || endpoints[key] || strings.TrimSpace(service.Name) == "" || len([]rune(service.Name)) > 80 || strings.ContainsAny(service.Name, "\r\n\t") || !slices.Contains([]string{"HTTPS", "DoH", "DoT"}, service.Protocol) || !smartValidHost(service.Host) {
+		key := service.Protocol + " " + service.Host + " " + service.tlsName()
+		if !smartServiceID.MatchString(service.ID) || ids[service.ID] || endpoints[key] || strings.TrimSpace(service.Name) == "" || len([]rune(service.Name)) > 80 || strings.ContainsAny(service.Name, "\r\n\t") || !slices.Contains([]string{"HTTPS", "DoH", "DoT", "Do53"}, service.Protocol) || !smartValidServiceEndpoint(service) {
 			return fmt.Errorf("Некорректный или повторный контрольный сервис")
 		}
 		ids[service.ID] = true

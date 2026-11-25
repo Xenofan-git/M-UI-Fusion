@@ -7,15 +7,23 @@
   const ru=()=>window.muiGetLang?.()==='ru'||!window.muiGetLang;
   const mode=s=>(ru()?modes:en)[s]||s||'—';
   const format=t=>t&&new Date(t).getFullYear()>1970?new Date(t).toLocaleString():'—';
-  let dirty=false,busy=false,loaded=false,lastSettings="",catalog=[],selected=new Set(),editingID=null;
+  let dirty=false,busy=false,polling=false,revision=0,loaded=false,lastSettings="",catalog=[],selected=new Set(),editingID=null;
   const editor=el('editor');
   const count=()=>{el('count').textContent=(ru()?'Выбрано: ':'Selected: ')+selected.size+' / '+catalog.length;};
-  function markDirty(){dirty=true;el('save').disabled=busy||!loaded;count();}
+  function markDirty(){revision++;dirty=true;el('save').disabled=busy||!loaded;count();}
+  const isIPv4=host=>/^\d{1,3}(\.\d{1,3}){3}$/.test(host)&&host.split('.').every(x=>String(Number(x))===x&&Number(x)<=255);
+  const isDomain=host=>host.includes('.')&&host.split('.').every(x=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(x))&&/[a-z]/.test(host.split('.').slice(-1)[0]);
   function updateEditorHint(){
-    el('editor-hint').textContent=({HTTPS:'HTTPS · 443 · HEAD /',DoH:'DoH · 443 · /dns-query',DoT:'DoT · 853'})[el('editor-protocol').value]||'';
+    const protocol=el('editor-protocol').value,host=el('editor-host').value.trim();
+    el('editor-protocol').dataset.protocol=protocol;
+    const tls=protocol!=='Do53'&&(isIPv4(host)||!!el('editor-tls').value.trim());
+    el('editor-tls-row').hidden=!tls;
+    el('editor-tls').required=protocol!=='Do53'&&isIPv4(host);
+    el('editor-hint').textContent=({HTTPS:'HTTPS · 443 · HEAD /',DoH:'DoH · 443 · /dns-query',DoT:'DoT · 853 · TLS',Do53:'Do53 · 53 · UDP / TCP'})[protocol]||'';
   }
   function openEditor(id=null){
-    if(busy||!loaded)return;
+    if(busy||!loaded||editor.open)return;
+    revision++;
     if(!id&&catalog.length>=32){el('message').textContent='Максимум 32 контрольных сервиса';return;}
     editingID=id;
     const item=catalog.find(x=>x.id===id);
@@ -24,6 +32,7 @@
     el('editor-name').value=item?.name||'';
     el('editor-host').value=item?.host||'';
     el('editor-protocol').value=item?.protocol||'HTTPS';
+    el('editor-tls').value=item?.tlsName||'';
     el('editor-error').textContent='';
     updateEditorHint();
     editor.showModal();el('editor-name').focus();
@@ -47,16 +56,20 @@
   el('add').onclick=()=>openEditor();
   el('editor-cancel').onclick=()=>editor.close();
   el('editor-protocol').onchange=updateEditorHint;
+  el('editor-host').oninput=updateEditorHint;
   el('editor-form').onsubmit=event=>{
     event.preventDefault();
     const name=el('editor-name').value.trim(),host=el('editor-host').value.trim().toLowerCase(),protocol=el('editor-protocol').value;
-    if(!name||!host.includes('.')||!host.split('.').every(x=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(x))||!/[a-z]/.test(host.split('.').slice(-1)[0])){el('editor-error').textContent='Укажите название и публичный домен без схемы, пути или порта.';return;}
-    if(catalog.some(x=>x.id!==editingID&&x.host===host&&x.protocol===protocol)){el('editor-error').textContent='Этот сервис уже есть в списке.';return;}
+    const tlsName=protocol==='Do53'?'':el('editor-tls').value.trim().toLowerCase();
+    if(!name||(!isDomain(host)&&!isIPv4(host))){el('editor-error').textContent='Укажите название и публичный домен или IPv4 без схемы, пути или порта.';return;}
+    if((tlsName&&!isDomain(tlsName))||(protocol!=='Do53'&&isIPv4(host)&&!tlsName)){el('editor-error').textContent='Укажите доменное имя для проверки TLS-сертификата.';return;}
+    if(catalog.some(x=>x.id!==editingID&&x.host===host&&x.protocol===protocol&&(x.tlsName||x.host)===(tlsName||host))){el('editor-error').textContent='Этот сервис уже есть в списке.';return;}
+    const entry={name,host,protocol};if(tlsName)entry.tlsName=tlsName;
     let id=editingID;
     if(!id){
       do{id='custom-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);}while(catalog.some(x=>x.id===id));
-      catalog.push({id,name,host,protocol});selected.add(id);
-    }else{catalog=catalog.map(x=>x.id===id?{id,name,host,protocol}:x);}
+      catalog.push({id,...entry});selected.add(id);
+    }else{catalog=catalog.map(x=>x.id===id?{id,...entry}:x);}
     editor.close();renderCatalog();markDirty();
   };
   function renderStatus(status){
@@ -95,11 +108,14 @@
     renderStatus(data.status);
   }
   async function load(){
-    if(busy||editor.open)return;
-    busy=true;
-    try{fill(await api('/api/mihomo/smart-health'))}
-    catch(error){el('message').textContent=error.message}
-    finally{busy=false;el('save').disabled=!dirty||!loaded}
+    if(busy||polling||editor.open)return;
+    polling=true;
+    const requested=revision;
+    try{
+      const data=await api('/api/mihomo/smart-health');
+      if(!busy&&!editor.open&&requested===revision){fill(data);el('save').disabled=!dirty||!loaded;}
+    }catch(error){if(!busy&&requested===revision)el('message').textContent=error.message}
+    finally{polling=false;}
   }
   root.addEventListener('change',event=>{
     if(event.target.matches('input')&&!editor.contains(event.target)&&!event.target.matches('[data-smart-service]'))markDirty();
@@ -107,7 +123,7 @@
   el('save').onclick=async()=>{
     if(busy||!loaded||editor.open)return;
     if(!selected.size){el('message').textContent='Выберите хотя бы один контрольный сервис.';return;}
-    busy=true;el('save').disabled=true;
+    revision++;busy=true;el('save').disabled=true;
     const inputs=[...root.querySelectorAll('input,button')].filter(x=>x!==el('save')&&!editor.contains(x));inputs.forEach(x=>x.disabled=true);
     try{
       const body={enabled:el('enabled').checked,normalSeconds:Number(el('normal').value),degradedSeconds:Number(el('degraded').value),offlineSeconds:Number(el('offline').value),services:catalog.filter(x=>selected.has(x.id)).map(x=>x.id),catalog:catalog.map(x=>({...x}))};

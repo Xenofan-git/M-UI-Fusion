@@ -42,15 +42,22 @@ func smartPublicV4(ip netip.Addr) bool {
 	return true
 }
 func smartPublicDial(ctx context.Context, address string) (net.Conn, error) {
+	return smartPublicNetworkDial(ctx, "tcp4", address)
+}
+func smartPublicNetworkDial(ctx context.Context, network, address string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
-	if err != nil || !smartValidHost(host) || (port != "443" && port != "853") {
+	if err != nil || !smartValidEndpoint(host) || !(network == "tcp4" && (port == "443" || port == "853" || port == "53") || network == "udp4" && port == "53") {
 		return nil, fmt.Errorf("invalid public control endpoint")
 	}
-	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip4", host)
-	if err != nil {
-		return nil, err
+	var ips []netip.Addr
+	if ip, e := netip.ParseAddr(host); e == nil {
+		ips = []netip.Addr{ip}
+	} else {
+		ips, err = net.DefaultResolver.LookupNetIP(ctx, "ip4", host)
+		if err != nil {
+			return nil, err
+		}
 	}
-	// Reject the entire result if any address is not public.
 	for _, ip := range ips {
 		if !smartPublicV4(ip.Unmap()) {
 			return nil, fmt.Errorf("non-public control endpoint")
@@ -61,7 +68,7 @@ func smartPublicDial(ctx context.Context, address string) (net.Conn, error) {
 		if i >= 4 {
 			break
 		}
-		conn, e := d.DialContext(ctx, "tcp4", net.JoinHostPort(ip.Unmap().String(), port))
+		conn, e := d.DialContext(ctx, network, net.JoinHostPort(ip.Unmap().String(), port))
 		if e == nil {
 			return conn, nil
 		}
@@ -71,23 +78,33 @@ func smartPublicDial(ctx context.Context, address string) (net.Conn, error) {
 	}
 	return nil, fmt.Errorf("control endpoint unavailable")
 }
-func smartControlTransport() *http.Transport {
-	return &http.Transport{Proxy: nil, DisableKeepAlives: true, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-		return smartPublicDial(ctx, address)
+func smartControlTransport(s smartService) *http.Transport {
+	return &http.Transport{Proxy: nil, DisableKeepAlives: true, TLSClientConfig: &tls.Config{ServerName: s.tlsName(), MinVersion: tls.VersionTLS12}, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		if s.Host == smartYandexDNSHost && s.Protocol == "DoH" {
+			return smartYandexDial(ctx, "443")
+		}
+		return smartPublicDial(ctx, net.JoinHostPort(s.Host, "443"))
 	}, TLSHandshakeTimeout: 3 * time.Second}
 }
 func smartProbeControl(ctx context.Context, s smartService) bool {
+	if !smartValidServiceEndpoint(s) {
+		return false
+	}
 	switch s.Protocol {
 	case "DoH":
-		return smartDoH(ctx, s.Host)
+		return smartDoH(ctx, s)
 	case "DoT":
-		return smartDoT(ctx, s.Host)
+		return smartDoT(ctx, s)
+	case "Do53":
+		return smartDo53(ctx, func(ctx context.Context, network string) (net.Conn, error) {
+			return smartPublicNetworkDial(ctx, network, net.JoinHostPort(s.Host, "53"))
+		})
 	case "HTTPS":
-		req, err := http.NewRequestWithContext(ctx, http.MethodHead, "https://"+s.Host+"/", nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, "https://"+s.tlsName()+"/", nil)
 		if err != nil {
 			return false
 		}
-		tr := smartControlTransport()
+		tr := smartControlTransport(s)
 		defer tr.CloseIdleConnections()
 		client := &http.Client{Transport: tr, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 		resp, err := client.Do(req)
@@ -95,8 +112,6 @@ func smartProbeControl(ctx context.Context, s smartService) bool {
 			return false
 		}
 		defer resp.Body.Close()
-		// TLS-authenticated response, including access-denied or rate-limited,
-		// proves the endpoint is reachable, not that the whole Internet is usable.
 		return resp.StatusCode >= 200 && resp.StatusCode < 500
 	}
 	return false
@@ -193,23 +208,18 @@ func smartYandexDial(ctx context.Context, port string) (net.Conn, error) {
 	}
 	return nil, last
 }
-func smartDoH(ctx context.Context, host string) bool {
+func smartDoH(ctx context.Context, s smartService) bool {
 	q, err := smartDNSQuestion()
 	if err != nil {
 		return false
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://"+host+"/dns-query", bytes.NewReader(q))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://"+s.tlsName()+"/dns-query", bytes.NewReader(q))
 	if err != nil {
 		return false
 	}
 	req.Header.Set("Content-Type", "application/dns-message")
 	req.Header.Set("Accept", "application/dns-message")
-	tr := smartControlTransport()
-	if host == smartYandexDNSHost {
-		tr.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
-			return smartYandexDial(ctx, "443")
-		}
-	}
+	tr := smartControlTransport(s)
 	defer tr.CloseIdleConnections()
 	client := &http.Client{Transport: tr, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)
@@ -224,34 +234,36 @@ func smartDoH(ctx context.Context, host string) bool {
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 65536))
 	return err == nil && smartDNSAnswer(q, data)
 }
-func smartDoT(ctx context.Context, host string) bool {
+func smartDoT(ctx context.Context, s smartService) bool {
 	q, err := smartDNSQuestion()
 	if err != nil {
 		return false
 	}
 	var raw net.Conn
-	if host == smartYandexDNSHost {
+	if s.Host == smartYandexDNSHost {
 		raw, err = smartYandexDial(ctx, "853")
 	} else {
-		raw, err = smartPublicDial(ctx, net.JoinHostPort(host, "853"))
+		raw, err = smartPublicDial(ctx, net.JoinHostPort(s.Host, "853"))
 	}
 	if err != nil {
 		return false
 	}
-	secured := tls.Client(raw, &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12})
+	secured := tls.Client(raw, &tls.Config{ServerName: s.tlsName(), MinVersion: tls.VersionTLS12})
 	if err = secured.HandshakeContext(ctx); err != nil {
 		raw.Close()
 		return false
 	}
-	var conn net.Conn = secured
+	defer secured.Close()
+	return smartDNSStream(ctx, secured, q)
+}
 
-	if err != nil {
-		return false
-	}
-	defer conn.Close()
+// DNS over TCP/TLS uses a length-prefixed message. Context bounds all I/O.
+func smartDNSStream(ctx context.Context, conn net.Conn, q []byte) bool {
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = conn.SetDeadline(deadline)
 	}
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
 	framed := binary.BigEndian.AppendUint16(nil, uint16(len(q)))
 	framed = append(framed, q...)
 	n, err := conn.Write(framed)
@@ -269,4 +281,45 @@ func smartDoT(ctx context.Context, host string) bool {
 	answer := make([]byte, length)
 	_, err = io.ReadFull(conn, answer)
 	return err == nil && smartDNSAnswer(q, answer)
+}
+
+// A bounded UDP attempt followed by TCP fallback. Only a matching valid
+// DNS answer counts as success; no arbitrary-port or LAN probing.
+func smartDo53(ctx context.Context, dial func(context.Context, string) (net.Conn, error)) bool {
+	q, err := smartDNSQuestion()
+	if err != nil {
+		return false
+	}
+	udpCtx, cancel := context.WithTimeout(ctx, 1200*time.Millisecond)
+	ok := func() bool {
+		conn, err := dial(udpCtx, "udp4")
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+		deadline, _ := udpCtx.Deadline()
+		_ = conn.SetDeadline(deadline)
+		stop := context.AfterFunc(udpCtx, func() { _ = conn.Close() })
+		defer stop()
+		n, err := conn.Write(q)
+		if err != nil || n != len(q) {
+			return false
+		}
+		answer := make([]byte, 65535)
+		n, err = conn.Read(answer)
+		return err == nil && smartDNSAnswer(q, answer[:n])
+	}()
+	cancel()
+	if ok {
+		return true
+	}
+	if ctx.Err() != nil {
+		return false
+	}
+	tcp, err := dial(ctx, "tcp4")
+	if err != nil {
+		return false
+	}
+	defer tcp.Close()
+	return smartDNSStream(ctx, tcp, q)
 }

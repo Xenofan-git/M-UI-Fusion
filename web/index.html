@@ -14,7 +14,7 @@
   <script src="static/color-skins.js"></script>
   <link rel="stylesheet" href="static/liquid-glass.css">
   <link rel="stylesheet" href="static/liquid-tabbar.css" data-ui-only="liquid">
-  <link rel="stylesheet" href="static/mihomo-settings.css?v=140">
+  <link rel="stylesheet" href="static/mihomo-settings.css?v=141">
   <link rel="stylesheet" href="static/multi-control.css">
   <link rel="stylesheet" href="static/inbound-sync.css">
   <link rel="stylesheet" href="static/cross-subscriptions.css">
@@ -1149,6 +1149,7 @@
       <div class="smart-health-catalog">
         <div class="smart-health-catalog-toolbar"><button type="button" class="smart-health-action" id="smart-health-add" disabled><span aria-hidden="true">+</span> Добавить контрольный сервис</button><span class="mihomo-muted" id="smart-health-count"></span></div>
         <div id="smart-health-services"></div>
+        <div class="mihomo-toolbar smart-health-actions"><button type="button" class="smart-health-action" id="smart-health-save" disabled>Сохранить настройки монитора</button><span id="smart-health-message" class="mihomo-muted" role="status"></span></div>
       </div>
       <p class="mihomo-muted">Нажмите на название для редактирования. Изменения применяются после сохранения настроек монитора.</p>
     </div></details>
@@ -1157,14 +1158,14 @@
         <header class="modal-titlebar" id="smart-health-editor-title">Добавить контрольный сервис</header>
         <div class="modal-content smart-health-editor-fields">
           <label for="smart-health-editor-name">Название</label><input id="smart-health-editor-name" required maxlength="80" autocomplete="off">
-          <label for="smart-health-editor-host">Домен</label><input id="smart-health-editor-host" required maxlength="253" placeholder="example.ru" autocomplete="off" autocapitalize="none" spellcheck="false">
-          <label for="smart-health-editor-protocol">Протокол</label><select id="smart-health-editor-protocol"><option>HTTPS</option><option>DoH</option><option>DoT</option></select>
+          <label for="smart-health-editor-host">Домен, IP</label><input id="smart-health-editor-host" required maxlength="253" placeholder="example.ru или 77.88.8.8" autocomplete="off" autocapitalize="none" spellcheck="false">
+          <label for="smart-health-editor-protocol">Протокол</label><select id="smart-health-editor-protocol"><option value="HTTPS">HTTPS</option><option value="DoH">DoH</option><option value="DoT">DoT</option><option value="Do53">Do53</option></select>
+          <div id="smart-health-editor-tls-row" hidden><label for="smart-health-editor-tls">Имя TLS-сервера</label><input id="smart-health-editor-tls" maxlength="253" placeholder="common.dot.dns.yandex.net" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
           <p class="mihomo-muted" id="smart-health-editor-hint"></p><p role="alert" id="smart-health-editor-error" class="smart-health-editor-error"></p>
         </div>
         <footer class="modal-footer"><button type="button" class="smart-health-action" id="smart-health-editor-cancel">Отмена</button><button type="submit" class="smart-health-action" id="smart-health-editor-submit">Добавить</button></footer>
       </form>
     </dialog>
-    <div class="mihomo-toolbar smart-health-actions"><button type="button" class="smart-health-action" id="smart-health-save" disabled>Сохранить настройки монитора</button><span id="smart-health-message" class="mihomo-muted" role="status"></span></div>
     <details class="basics-section smart-health-journal" open><summary>Журнал событий</summary><div class="basics-section-body"><div id="smart-health-events"></div></div></details>
   </div>
 </div></div></div><div hidden><button id="test-config"></button><button id="generate-config"></button><button id="copy-config"></button><textarea id="raw-config"></textarea></div></section>
@@ -1927,7 +1928,7 @@
   <script src="static/mihomo-balancer-servers.js?v=144"></script>
   <script src="static/mihomo-rule-lists.js"></script>
   <script src="static/mihomo-settings.js?v=141"></script>
-  <script src="static/smart-health.js?v=4"></script>
+  <script src="static/smart-health.js?v=5"></script>
   <script src="static/multi-control.js"></script>
   <script src="static/inbound-sync.js"></script>
   <script src="static/cross-subscriptions.js"></script>

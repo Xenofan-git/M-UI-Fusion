@@ -28,6 +28,7 @@ try{
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-smart-service]').length===3);
  assert.equal(await page.locator('#smart-health-normal').inputValue(),'180');
+ assert.equal(await page.locator('.smart-health-controls-section .smart-health-catalog #smart-health-save').count(),1);
  const row=await page.locator('.smart-health-service-row').first().boundingBox();assert(row.height<=42,'list too tall: '+row.height);
  assert(row.x>=0&&row.x+row.width<=width,'catalog overflows viewport');
  const section=await page.locator('.smart-health-controls-section').evaluate(e=>getComputedStyle(e).borderTopStyle);assert.equal(section,'solid');
@@ -62,8 +63,25 @@ try{
  await page.waitForFunction(()=>window.__data.settings.offlineSeconds===14);
  assert.equal(await dialog.count(),0,'interval changes must not offer restart');
  assert.equal(await page.evaluate(()=>window.__restarts),1);
+ await page.evaluate(()=>{
+   const original=window.api;window.__pendingPoll=false;
+   window.api=async(url,opts={})=>{
+     if(!opts.method||opts.method==='GET'){
+       window.__pendingPoll=true;window.api=original;
+       await new Promise(resolve=>window.__releasePoll=resolve);
+     }
+     return original(url,opts);
+   };
+ });
+ await page.locator('[data-mihomo-tab="smart-health"]').click();
+ await page.waitForFunction(()=>window.__pendingPoll);
+ await page.locator('[data-smart-edit="yandex-doh"]').click();
+ await page.locator('#smart-health-editor').waitFor({state:'visible'});
+ await page.locator('#smart-health-editor-cancel').click();
  await page.locator('#smart-health-add').click();
  const editor=page.locator('#smart-health-editor');
+ await page.evaluate(()=>{window.__releasePoll();});
+
  await editor.waitFor({state:'visible'});
  const box=await editor.boundingBox();assert(box.x>=0&&box.x+box.width<=width,'editor overflows viewport');
  await page.locator('#smart-health-editor-name').fill('РБК');
@@ -82,6 +100,22 @@ try{
  assert.equal(await page.locator('[data-smart-edit="'+customID+'"]').textContent(),'РБК Новости');
  await page.locator('[data-smart-remove="vk"]').click();
  assert.equal(await page.locator('[data-smart-service="vk"]').count(),0);
+ await page.locator('#smart-health-add').click();
+ assert.deepEqual(await page.locator('#smart-health-editor-protocol option').allTextContents(),['HTTPS','DoH','DoT','Do53']);
+ for(const sel of ['name','host','protocol'])assert((await page.locator('#smart-health-editor-'+sel).boundingBox()).height>=42);
+ await page.locator('#smart-health-editor-name').fill('DNS IP');
+ await page.locator('#smart-health-editor-host').fill('77.88.8.8');
+ await page.locator('#smart-health-editor-protocol').selectOption('DoT');
+ await page.locator('#smart-health-editor-tls-row').waitFor({state:'visible'});
+ assert.equal(await page.locator('#smart-health-editor-tls').getAttribute('required'),'');
+ await page.locator('#smart-health-editor-tls').fill('common.dot.dns.yandex.net');
+ await page.locator('#smart-health-editor-protocol').selectOption('Do53');
+ await page.locator('#smart-health-editor-tls-row').waitFor({state:'hidden'});
+ assert.match(await page.locator('#smart-health-editor-hint').textContent(),/UDP \/ TCP/);
+ await page.locator('#smart-health-editor-submit').click();
+ const dnsID=await page.locator('[data-smart-edit]').filter({hasText:'DNS IP'}).getAttribute('data-smart-edit');
+ assert(dnsID);
+ await page.locator('[data-smart-remove="'+dnsID+'"]').click();
  await page.locator('#smart-health-add').click();
  await page.locator('#smart-health-editor-cancel').click();
  assert.equal(await page.locator('[data-smart-service]').count(),3);

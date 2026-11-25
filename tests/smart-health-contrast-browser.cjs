@@ -5,7 +5,7 @@ const start=html.indexOf('<div class="mihomo-pane" data-mihomo-pane="smart-healt
 const markup=html.slice(start,end);
 const styles=[...html.matchAll(/<link rel="stylesheet" href="static\/([^"?]+\.css)(?:\?[^"]+)?"([^>]*)>|<style>([\s\S]*?)<\/style>/g)];
 const states=['normal','degraded','offline','core_unavailable','starting','pending','unknown','disabled'];
-const catalog=[{id:'vk',name:'ВКонтакте',protocol:'HTTPS',host:'vk.com'}];
+const catalog=[{id:'vk',name:'ВКонтакте',protocol:'HTTPS',host:'vk.com'},{id:'doh',name:'DoH',protocol:'DoH',host:'common.dot.dns.yandex.net'},{id:'dot',name:'DoT',protocol:'DoT',host:'common.dot.dns.yandex.net'},{id:'do53',name:'Do53',protocol:'Do53',host:'77.88.8.8'}];
 function rgb(s){return s.match(/[\d.]+/g).slice(0,3).map(Number)}
 function lum(s){return rgb(s).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((a,x,i)=>a+x*[.2126,.7152,.0722][i],0)}
 function contrast(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)}
@@ -34,7 +34,17 @@ function contrast(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.
   for(const state of states)await check('.smart-health-event-state[data-mode="'+state+'"]','.smart-health-journal .basics-section-body');
   await check('[data-smart-result="vk"]','.smart-health-catalog');
   assert.equal(await page.locator('#smart-health-enabled+span').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(0, 155, 119)');
+  for(const protocol of ['HTTPS','DoH','DoT','Do53'])await check('.smart-health-protocol[data-protocol="'+protocol+'"]','.smart-health-catalog');
   await page.locator('#smart-health-add').click();await check('#smart-health-editor-submit');await check('#smart-health-editor-cancel');
+  const colors=[];
+  for(const protocol of ['HTTPS','DoH','DoT','Do53']){
+   await page.locator('#smart-health-editor-protocol').selectOption(protocol);
+   await check('#smart-health-editor-protocol');
+   colors.push(await page.locator('#smart-health-editor-protocol').evaluate(e=>getComputedStyle(e).color));
+  }
+  assert.equal(new Set(colors).size,4);
+  const gap=await page.evaluate(()=>document.querySelector('#smart-health-editor .modal-footer').getBoundingClientRect().top-document.querySelector('#smart-health-editor-hint').getBoundingClientRect().bottom);
+  assert(gap<=24,'too much bottom space '+gap);
   await page.locator('#smart-health-editor-cancel').click();
   const bounds=await page.locator('#smart-health-root').boundingBox();assert(bounds.x>=0&&bounds.x+bounds.width<=width+1);
   await page.close();

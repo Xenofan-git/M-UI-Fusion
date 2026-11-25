@@ -1774,3 +1774,39 @@ html body #smart-health-root .smart-health-switch span::after{content:"";positio
 html body #smart-health-root .smart-health-switch input:checked+span::after{transform:translateX(18px)}
 html body #smart-health-root .smart-health-switch input:focus-visible+span{outline:2px solid var(--sh-purple);outline-offset:3px}
 html body #smart-health-root .smart-health-service-status[data-mode]{color:var(--sh-state)!important;-webkit-text-fill-color:var(--sh-state)!important}
+
+/* Compact control-service editor; equal-size fields, no empty error block. */
+html body #smart-health-root #smart-health-editor .smart-health-editor-fields{
+ display:grid;gap:6px;padding:14px 20px 12px;min-height:0!important;
+}
+html body #smart-health-root #smart-health-editor .smart-health-editor-fields :is(input,select){
+ min-height:42px!important;height:42px!important;padding:8px 12px!important;
+ font-size:15px!important;line-height:1.4!important;border-radius:7px!important;
+}
+html body #smart-health-root #smart-health-editor .smart-health-editor-fields label{
+ font-size:14px;line-height:1.4;margin:5px 0 0;
+}
+html body #smart-health-root #smart-health-editor-tls-row{display:grid;gap:6px}
+html body #smart-health-root #smart-health-editor-tls-row[hidden]{display:none!important}
+html body #smart-health-root #smart-health-editor-hint{margin:4px 0 0!important;line-height:1.4}
+html body #smart-health-root #smart-health-editor-error{margin:0!important}
+html body #smart-health-root #smart-health-editor-error:empty{display:none!important}
+html body #smart-health-root #smart-health-editor .modal-footer{padding:9px 16px!important;min-height:0!important}
+
+/* Protocol palette: encrypted DNS and ordinary DNS retain distinct colors. */
+html body #smart-health-root .smart-health-protocol[data-protocol="HTTPS"]{color:var(--sh-ink)!important}
+html body #smart-health-root .smart-health-protocol[data-protocol="Do53"]{color:var(--sh-amber)!important}
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol[data-protocol="DoT"],
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol option[value="DoT"]{color:var(--sh-green)!important;-webkit-text-fill-color:var(--sh-green)!important}
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol[data-protocol="DoH"],
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol option[value="DoH"]{color:var(--sh-purple)!important;-webkit-text-fill-color:var(--sh-purple)!important}
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol[data-protocol="Do53"],
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol option[value="Do53"]{color:var(--sh-amber)!important;-webkit-text-fill-color:var(--sh-amber)!important}
+html body #smart-health-root #smart-health-editor #smart-health-editor-protocol option[value="HTTPS"]{color:var(--sh-ink)!important;-webkit-text-fill-color:var(--sh-ink)!important}
+
+html body #smart-health-root .smart-health-protocol[data-protocol]{-webkit-text-fill-color:currentColor!important}
+
+html body #smart-health-root .smart-health-catalog > .smart-health-actions{
+ margin:8px 0 0;padding:10px 0 2px;border:0;border-top:1px solid var(--sh-line);
+ border-radius:0;background:transparent;
+}

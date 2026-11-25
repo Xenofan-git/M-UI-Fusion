@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -173,7 +175,7 @@ func TestSmartHealthTabPlacement(t *testing.T) {
 	}
 	html := string(data)
 	r, s := strings.Index(html, "data-mihomo-tab=\"routing\""), strings.Index(html, "data-mihomo-tab=\"smart-health\"")
-	if r < 0 || s <= r || strings.Count(html, "data-mihomo-pane=\"smart-health\"") != 1 || !strings.Contains(html, "static/smart-health.js?v=4") {
+	if r < 0 || s <= r || strings.Count(html, "data-mihomo-pane=\"smart-health\"") != 1 || !strings.Contains(html, "static/smart-health.js?v=5") {
 		t.Fatal("wrong tab placement")
 	}
 }
@@ -193,7 +195,7 @@ func TestSmartHealthEditableCatalogPersistence(t *testing.T) {
 	// Remove a default service, edit another and add a new one.
 	catalog = catalog[:len(catalog)-1]
 	catalog[3].Name = "VK Новости"
-	catalog = append(catalog, smartService{"custom-rbc", "РБК", "HTTPS", "rbc.ru"})
+	catalog = append(catalog, smartService{"custom-rbc", "РБК", "HTTPS", "rbc.ru", ""})
 	cfg.Catalog = catalog
 	cfg.Services = []string{"vk", "custom-rbc"}
 	body, err := json.Marshal(cfg)
@@ -229,7 +231,7 @@ func TestSmartHealthEditableCatalogPersistence(t *testing.T) {
 		t.Fatal("legacy save lost custom catalog")
 	}
 	// Removing a selected service without updating selection must be rejected.
-	cfg.Catalog = []smartService{{"other", "РБК", "HTTPS", "rbc.ru"}}
+	cfg.Catalog = []smartService{{"other", "РБК", "HTTPS", "rbc.ru", ""}}
 	body, _ = json.Marshal(cfg)
 	w = httptest.NewRecorder()
 	a.handleSmartHealth(w, httptest.NewRequest(http.MethodPut, "/api/mihomo/smart-health", bytes.NewReader(body)))
@@ -258,16 +260,16 @@ func TestSmartHealthCustomControlValidation(t *testing.T) {
 		t.Fatal("public DNS rejected")
 	}
 	cfg := defaultSmartHealth()
-	cfg.Catalog = []smartService{{"a", "Сервис", "HTTPS", "rbc.ru"}, {"b", "Дубликат", "HTTPS", "rbc.ru"}}
+	cfg.Catalog = []smartService{{"a", "Сервис", "HTTPS", "rbc.ru", ""}, {"b", "Дубликат", "HTTPS", "rbc.ru", ""}}
 	cfg.Services = []string{"a"}
 	if validateSmartHealth(cfg) == nil {
 		t.Fatal("duplicate endpoint accepted")
 	}
-	cfg.Catalog = []smartService{{"a", "Сервис", "HTTP", "rbc.ru"}}
+	cfg.Catalog = []smartService{{"a", "Сервис", "HTTP", "rbc.ru", ""}}
 	if validateSmartHealth(cfg) == nil {
 		t.Fatal("unsupported protocol accepted")
 	}
-	cfg.Catalog = []smartService{{"a", "Сервис", "HTTPS", "rbc.ru"}, {"b", "DNS", "DoH", "rbc.ru"}}
+	cfg.Catalog = []smartService{{"a", "Сервис", "HTTPS", "rbc.ru", ""}, {"b", "DNS", "DoH", "rbc.ru", ""}}
 	if err := validateSmartHealth(cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -276,5 +278,95 @@ func TestSmartHealthCustomControlValidation(t *testing.T) {
 	}
 	if _, err := smartPublicDial(context.Background(), "rbc.ru:80"); err == nil {
 		t.Fatal("unexpected port allowed")
+	}
+}
+
+func TestSmartHealthIPAndDo53Settings(t *testing.T) {
+	cfg := defaultSmartHealth()
+	for _, tc := range []struct {
+		protocol, host, tls string
+		ok                  bool
+	}{
+		{"Do53", "77.88.8.8", "", true},
+		{"Do53", "dns.example.ru", "", true},
+		{"Do53", "77.88.8.8", "dns.example.ru", false},
+		{"DoH", "77.88.8.8", "common.dot.dns.yandex.net", true},
+		{"DoT", "77.88.8.8", "common.dot.dns.yandex.net", true},
+		{"HTTPS", "77.88.8.8", "common.dot.dns.yandex.net", true},
+		{"DoH", "77.88.8.8", "", false},
+		{"DoT", "77.88.8.8", "127.0.0.1", false},
+		{"Do53", "192.168.4.1", "", false},
+		{"Do53", "::1", "", false},
+		{"Do53", "127.0.0.1", "", false},
+	} {
+		cfg.Catalog = []smartService{{"test", "Test", tc.protocol, tc.host, tc.tls}}
+		cfg.Services = []string{"test"}
+		if (validateSmartHealth(cfg) == nil) != tc.ok {
+			t.Fatalf("validation mismatch: %#v", tc)
+		}
+	}
+}
+func TestSmartHealthDo53Transport(t *testing.T) {
+	for _, mode := range []string{"udp", "truncated", "bad", "unavailable"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			calls := []string{}
+			dial := func(_ context.Context, network string) (net.Conn, error) {
+				calls = append(calls, network)
+				if mode == "unavailable" {
+					return nil, fmt.Errorf("fixture unavailable")
+				}
+				client, server := net.Pipe()
+				go func() {
+					defer server.Close()
+					_ = server.SetDeadline(time.Now().Add(time.Second))
+					q := make([]byte, 512)
+					var n int
+					if network == "tcp4" {
+						size := make([]byte, 2)
+						if _, e := io.ReadFull(server, size); e != nil {
+							return
+						}
+						n = int(binary.BigEndian.Uint16(size))
+						if n > len(q) {
+							return
+						}
+						if _, e := io.ReadFull(server, q[:n]); e != nil {
+							return
+						}
+					} else {
+						var e error
+						n, e = server.Read(q)
+						if e != nil {
+							return
+						}
+					}
+					response := append([]byte(nil), q[:n]...)
+					binary.BigEndian.PutUint16(response[2:4], 0x8180)
+					binary.BigEndian.PutUint16(response[6:8], 1)
+					response = append(response, 0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 77, 88, 8, 8)
+					if mode == "truncated" && network == "udp4" {
+						response[2] |= 2
+					}
+					if mode == "bad" {
+						response[0] ^= 1
+					}
+					if network == "tcp4" {
+						response = append(binary.BigEndian.AppendUint16(nil, uint16(len(response))), response...)
+					}
+					_, _ = server.Write(response)
+				}()
+				return client, nil
+			}
+			got := smartDo53(ctx, dial)
+			want := mode == "udp" || mode == "truncated"
+			if got != want {
+				t.Fatalf("got %v want %v", got, want)
+			}
+			if len(calls) == 0 || calls[0] != "udp4" || (mode == "udp" && len(calls) != 1) || (mode != "udp" && (len(calls) != 2 || calls[1] != "tcp4")) {
+				t.Fatalf("unexpected transport calls %v", calls)
+			}
+		})
 	}
 }
