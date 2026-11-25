@@ -1534,9 +1534,11 @@ html body #mihomo-settings-root .mihomo-tabs > .smart-health-tab-group{
  display:inline-flex!important;align-items:stretch;flex:0 0 auto;
  box-sizing:border-box;border:1px solid var(--sh-warning)!important;
  border-radius:8px!important;gap:0;white-space:nowrap;
+ background:transparent!important;box-shadow:none!important;overflow:hidden;
 }
 html body #mihomo-settings-root .smart-health-tab-group > .mihomo-tab{
  border:0!important;box-shadow:none!important;flex:1 0 auto;
+ background:transparent!important;background-image:none!important;border-radius:0!important;
  padding-right:5px!important;margin:0!important;
 }
 html body #mihomo-settings-root .smart-health-tab-group > .smart-health-tab-help{
@@ -1565,7 +1567,7 @@ html[data-ui-theme="shadcn"] body #mihomo-settings-root .smart-health-tab-group 
  color:var(--sc-muted-fg)!important;background:transparent!important;
 }
 html[data-ui-theme="shadcn"] body #mihomo-settings-root .smart-health-tab-group > .mihomo-tab.active{
- color:var(--sc-fg)!important;background:var(--sc-bg)!important;
+ color:var(--sc-fg)!important;background:transparent!important;
 }
 html[data-ui-theme="md3"] body #mihomo-settings-root .smart-health-tab-group > .mihomo-tab{
  height:46px!important;padding-left:20px!important;
@@ -1582,6 +1584,18 @@ html body #mihomo-settings-root .mihomo-tabs.has-liquid-tabbar .smart-health-tab
 }
 html body #mihomo-settings-root .mihomo-tabs.has-liquid-tabbar .smart-health-tab-group > .mihomo-tab.active{
  color:var(--teal,var(--lt-text))!important;
+}
+
+/* A single surface, including the gap and warning glyph. */
+html[data-ui-theme="shadcn"] body #mihomo-settings-root .smart-health-tab-group:has(>.mihomo-tab.active){
+ background:var(--sc-bg)!important;
+}
+html body #mihomo-settings-root .smart-health-tab-group > :is(.mihomo-tab,.smart-health-tab-help):is(:hover,:active,:focus-visible,.active){
+ background:transparent!important;background-image:none!important;box-shadow:none!important;
+}
+html body #mihomo-settings-root .smart-health-tab-group > :is(.mihomo-tab,.smart-health-tab-help)::before,
+html body #mihomo-settings-root .smart-health-tab-group > :is(.mihomo-tab,.smart-health-tab-help)::after{
+ box-shadow:none!important;background:none!important;
 }
 
 /* Smart Health: compact, separately framed editable control catalog. */

@@ -44,7 +44,7 @@ assert.ok(css.includes('#mihomo-rule-modal #mihomo-rule-payload-field[hidden]'))
 assert.ok(css.includes('#mihomo-rule-modal #mihomo-rule-advanced[hidden]'));
 const index=fs.readFileSync('web/index.html','utf8');
 assert.ok(index.includes('static/mihomo-settings.js?v=141'));
-assert.ok(index.includes('static/mihomo-settings.css?v=144'));
+assert.ok(index.includes('static/mihomo-settings.css?v=145'));
 const i18n=fs.readFileSync('web/i18n.js','utf8');
 assert.ok(i18n.includes("'mh.ruleConditionsTitle':'Условия'"));
 assert.ok(i18n.includes("'mh.ruleNoConditions':'Условий нет: весь оставшийся трафик"));

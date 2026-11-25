@@ -23,14 +23,22 @@ const exact='Тонкие настройки мониторинга здоров
  assert.equal(actual.width,'1px');assert.equal(actual.style,'solid');assert.match(actual.color,/rgb\((201, 46, 64|255, 133, 142)\)/);
  const h=await help.evaluate(e=>{const s=getComputedStyle(e);return {width:s.width,height:s.height,radius:s.borderRadius,border:s.borderTopWidth,color:s.color,weight:s.fontWeight}});
  assert.equal(h.width,'24px');assert.equal(h.height,'24px');assert.equal(h.radius,'0px');assert.equal(h.border,'0px');assert.equal(h.weight,'700');assert.match(h.color,/rgb\((201, 46, 64|255, 133, 142)\)/);
+ const sharedSurface=async()=>{
+  for(const control of [tab,help]){
+   const surface=await control.evaluate(e=>{const s=getComputedStyle(e);return [s.backgroundColor,s.backgroundImage,s.boxShadow]});
+   assert.deepEqual(surface,['rgba(0, 0, 0, 0)','none','none']);
+  }
+ };
+ await sharedSurface();
  await tab.evaluate(e=>e.classList.add('active'));
+ await sharedSurface();
  assert.equal(await group.evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
  assert.equal(await tab.evaluate(e=>getComputedStyle(e).borderTopWidth),'0px');
  const g=await group.boundingBox(),t=await tab.boundingBox(),hbox=await help.boundingBox();
  assert(t.x>=g.x&&hbox.x+hbox.width<=g.x+g.width+1);
  assert(t.y>=g.y&&hbox.y+hbox.height<=g.y+g.height+1);
  assert.equal(await tab.locator('button').count(),0,'no nested button');
- await help.scrollIntoViewIfNeeded();await page.waitForTimeout(150);await help.hover();await pop.waitFor({state:'visible'});assert.equal(await pop.textContent(),exact);
+ await help.scrollIntoViewIfNeeded();await page.waitForTimeout(150);await help.hover();await sharedSurface();await pop.waitFor({state:'visible'});assert.equal(await pop.textContent(),exact);
  const rect=await pop.boundingBox();assert(rect.x>=0&&rect.x+rect.width<=width,'popup clipped');
  await page.mouse.move(1,850);await pop.waitFor({state:'hidden'});
  await help.click();await pop.waitFor({state:'visible'});

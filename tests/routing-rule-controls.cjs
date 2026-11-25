@@ -47,6 +47,6 @@ assert.ok(css.includes('.mihomo-rule-switch input:checked+.mihomo-rule-switch-tr
 assert.ok(css.includes('.mihomo-rule-drop-target>td'));
 assert.ok(css.includes('.mihomo-rule-drag'));
 assert.ok(html.includes('mihomo-settings.js?v=141'));
-assert.ok(html.includes('mihomo-settings.css?v=144'));
+assert.ok(html.includes('mihomo-settings.css?v=145'));
 assert.ok(html.includes('i18n.js?v=124'));
 console.log('PASS: backend persisted disabled state, fixed MATCH, drag/drop and mobile pointer controls');
