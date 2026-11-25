@@ -151,6 +151,11 @@ try{
  assert.match(await page.locator('[data-smart-result="yandex-doh"]').textContent(),/Нет ответа/);
  assert.equal(await page.locator('[data-smart-result="yandex-dot"]').textContent(),'—');
  assert.match(await page.locator('#smart-health-events').textContent(),/Аварийный — нет ответа/);
+ await page.evaluate(()=>{window.__data.status={mode:'normal',pending:false,healthy:117,events:[{mode:'starting',at:'2026-11-25T18:00:00Z'},{mode:'normal',at:'2026-11-25T18:01:00Z'}],controls:[]};});
+ await page.locator('[data-mihomo-tab="smart-health"]').click();
+ await page.waitForFunction(()=>document.querySelector('#smart-health-mode').textContent==='Штатный');
+ assert.equal(await page.locator('.smart-health-event-state[data-mode="starting"]').textContent(),'Инициализация монитора');
+ assert.equal(await page.locator('.smart-health-event-state[data-mode="normal"]').textContent(),'Штатный');
  await page.close();
  }
  console.log('PASS: monitor tab checkbox selection, intervals, independent save, pending restart, status and events, draft preservation on desktop/mobile');

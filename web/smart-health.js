@@ -2,8 +2,8 @@
   const root=document.getElementById('smart-health-root');
   if(!root)return;
   const el=id=>document.getElementById('smart-health-'+id);
-  const modes={disabled:'Отключён',pending:'Ожидает перезапуска Mihomo',starting:'Подготовка проверки',normal:'Штатный',degraded:'Ускоренный',offline:'Аварийный — нет ответа контрольных сервисов',unknown:'Результат проверки неизвестен',core_unavailable:'Ядро Mihomo недоступно'};
-  const en={disabled:'Disabled',pending:'Mihomo restart required',starting:'Preparing check',normal:'Normal',degraded:'Degraded',offline:'Emergency — control services unreachable',unknown:'Check result unknown',core_unavailable:'Mihomo unavailable'};
+  const modes={disabled:'Отключён',pending:'Ожидает перезапуска Mihomo',starting:'Инициализация монитора',normal:'Штатный',degraded:'Ускоренный',offline:'Аварийный — нет ответа контрольных сервисов',unknown:'Результат проверки неизвестен',core_unavailable:'Ядро Mihomo недоступно'};
+  const en={disabled:'Disabled',pending:'Mihomo restart required',starting:'Initializing monitor',normal:'Normal',degraded:'Degraded',offline:'Emergency — control services unreachable',unknown:'Check result unknown',core_unavailable:'Mihomo unavailable'};
   const ru=()=>window.muiGetLang?.()==='ru'||!window.muiGetLang;
   const mode=s=>(ru()?modes:en)[s]||s||'—';
   const format=t=>t&&new Date(t).getFullYear()>1970?new Date(t).toLocaleString():'—';
