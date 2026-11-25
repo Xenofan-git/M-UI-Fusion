@@ -48,6 +48,10 @@ const rgb=s=>s.match(/\d+/g).slice(0,3).map(Number);
   if(name==='Russia'){assert(await page.locator('.fbs-options').isHidden());continue;}
   assert(await page.locator('.fbs-keep').isVisible(),name+' keep missing');
   assert(await page.locator('.fbs-drop').isVisible(),name+' drop missing');
+  for(const selector of ['.fbs-keep','.fbs-drop']){
+   const v=await page.locator(selector).evaluate(e=>({height:e.getBoundingClientRect().height,font:getComputedStyle(e).fontSize}));
+   assert(v.height>=168&&v.font==='15px',JSON.stringify(v));
+  }
   const rect=await page.locator('.fbs-keep').boundingBox(),table=await page.locator('.fbs-table-wrap').boundingBox();
   assert(rect.y>=table.y+table.height,name+' filters above table');
   if(name==='RUSSIA'){

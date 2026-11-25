@@ -38,6 +38,30 @@ try{
   const check=(sel)=>modal.locator(sel);
   await page.waitForFunction(()=>document.querySelectorAll('.fbs-table-body tr[data-node]').length===3);
   assert(await check('.fbs-keep').isVisible());
+  const verifyFilterFields=async()=>{
+   const lum=s=>s.match(/\d+/g).slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);
+   const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+   const fields=await check('.fbs-filter-fields textarea').evaluateAll(es=>es.map(e=>{
+    const s=getComputedStyle(e),r=e.getBoundingClientRect();return {height:e.offsetHeight,width:e.offsetWidth,x:r.x,y:r.y,font:s.fontSize,line:s.lineHeight,resize:s.resize,ink:s.webkitTextFillColor,bg:s.backgroundColor,border:s.borderTopColor,style:s.borderTopStyle,opacity:s.opacity};
+   }));
+   assert.equal(fields.length,2);
+   for(const f of fields){
+    assert(f.height>=168&&f.width>120&&f.font==='15px'&&f.line==='24px'&&f.resize==='vertical'&&f.style==='solid'&&f.opacity==='1',JSON.stringify(f));
+    assert(ratio(f.ink,f.bg)>=4.5,JSON.stringify(f));
+   }
+   assert.notEqual(fields[0].border,fields[1].border);
+   if(width>650)assert(Math.abs(fields[0].y-fields[1].y)<2);
+   else assert(fields[1].y>=fields[0].y+fields[0].height);
+   return Math.min(...fields.map(f=>ratio(f.ink,f.bg)));
+  };
+  let min=Infinity,count=0;
+  for(const theme of ['shadcn','md3','liquid'])for(const dark of [false,true])for(const skin of ['','graphite','ivory','emerald','aurora']){
+   await page.evaluate(({theme,dark,skin})=>{const r=document.documentElement;r.setAttribute('data-ui-theme',theme);r.setAttribute('data-theme',dark?'dark':'light');document.body.classList.toggle('dark',dark);if(skin)r.setAttribute('data-color-skin',skin);else r.removeAttribute('data-color-skin');for(const link of document.querySelectorAll('link[data-ui-only]'))link.disabled=link.dataset.uiOnly!==theme;},{theme,dark,skin});
+   min=Math.min(min,await verifyFilterFields());count+=2;
+  }
+  await page.evaluate(()=>{const r=document.documentElement;r.setAttribute('data-ui-theme','shadcn');r.setAttribute('data-theme','light');document.body.classList.remove('dark');r.removeAttribute('data-color-skin');for(const link of document.querySelectorAll('link[data-ui-only]'))link.disabled=link.dataset.uiOnly!=='shadcn';});
+  console.log('PASS filter field dimensions and contrast',width,count,'checks minimum',min.toFixed(2));
+
   assert.equal(await check('[data-sub-pane=update]').count(),0);
   assert.equal(await check('.fbs-refresh-source').count(),0);
   assert(await check('#mihomo-outbound-close').isVisible());
@@ -52,6 +76,7 @@ try{
   await page.locator('#mihomo-add-sub-balancer').click();
   assert(await modal.isVisible());
   assert.equal(await modal.getAttribute('data-creating-subscription'),'true');
+  await verifyFilterFields();
   assert(await check('.fbs-table-wrap').isVisible());
   assert(await check('.fbs-keep').isVisible());
   assert.equal(await check('[data-sub-pane=update]').count(),0);
