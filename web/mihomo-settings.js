@@ -639,6 +639,9 @@
       ' aria-label="'+esc(label)+'" aria-controls="mihomo-rule-help-popup" aria-expanded="false">!</button>';
   }
   function ruleHelpText(button){
+    if(button.dataset.mihomoHelp==='smart-health')return window.muiGetLang?.()==='ru'
+      ? 'Тонкие настройки мониторинга здоровья серверов. Рекомендуется не менять значения по умолчанию. Меняйте если только знаете зачем.'
+      : 'Advanced server health monitoring settings. Keeping the default values is recommended. Change them only if you know why.';
     if(button.dataset.mihomoHelp==='no-resolve')return muiT('mh.noResolveHelpText');
     const type=String(button.dataset.mihomoRuleType||'').toUpperCase();
     const parts=ruleHelpDescriptions[type];
@@ -2021,8 +2024,8 @@
   }
 
   async function restartMihomoFromSettings(){
-    if(mihomoActionBusy)return;
-    if(dirty){toast(muiT('mh.saveFirst'),true);return;}
+    if(mihomoActionBusy)return false;
+    if(dirty){toast(muiT('mh.saveFirst'),true);return false;}
     mihomoActionBusy=true;
     const button=$('#mihomo-restart');
     button.disabled=true;
@@ -2031,7 +2034,8 @@
       await api('/api/core/restart',{method:'POST'});
       dialog.set('success',muiT('mh.operationRestartSuccess'));
       await refresh();
-    }catch(error){dialog.set('error',error.message);}
+      return true;
+    }catch(error){dialog.set('error',error.message);return false;}
     finally{mihomoActionBusy=false;syncButtons();}
   }
 
@@ -2143,6 +2147,6 @@
     balancerSubscriptions=Array.isArray(event.detail?.subscriptions)?event.detail.subscriptions:[];
     if(currentTab==='subscriptions'||currentTab==='balancers')renderOutbounds();
   });
-  window.MUIMihomoSettings={openTab:setTab,isDirty:()=>dirty,refreshOutbounds:syncFromState};
+  window.MUIMihomoSettings={openTab:setTab,isDirty:()=>dirty,refreshOutbounds:syncFromState,restart:restartMihomoFromSettings};
   setupBasics();syncFromState();setTab('basics');
 })();

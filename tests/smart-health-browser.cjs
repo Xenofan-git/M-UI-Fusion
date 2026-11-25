@@ -13,14 +13,15 @@ try{
  const page=await browser.newPage({viewport:{width,height:900}});
  await page.setContent('<section class="view active"><button data-mihomo-tab="smart-health">Smart Health Monitor</button>'+markup+'</section>');
  await page.evaluate(catalog=>{
-   window.muiGetLang=()=> 'ru';window.__requests=[];
+   window.muiGetLang=()=> 'ru';window.muiT=k=>k;window.__requests=[];window.__restarts=0;window.MUIMihomoSettings={restart:async()=>{window.__restarts++;window.__data.status={mode:'normal',pending:false,healthy:2};return true}};
    window.__data={settings:{enabled:false,normalSeconds:180,degradedSeconds:60,offlineSeconds:10,services:['yandex-doh','vk']},catalog,status:{mode:'disabled',pending:false,healthy:0,events:[],controls:[]}};
    window.api=async(url,opts={})=>{
     window.__requests.push({url,method:opts.method||'GET',body:opts.body});
-    if(opts.method==='PUT'){window.__data.settings=JSON.parse(opts.body);window.__data.status={mode:'pending',pending:true,healthy:0,events:[],controls:[]};}
+    if(opts.method==='PUT'){const next=JSON.parse(opts.body);const pending=next.enabled!==window.__data.settings.enabled||window.__data.status.pending;window.__data.settings=next;window.__data.status={mode:pending?'pending':'normal',pending,healthy:0,events:[],controls:[]};}
     return structuredClone(window.__data);
    };
  },catalog);
+ await page.addScriptTag({content:fs.readFileSync('web/dialog.js','utf8')});
  await page.addScriptTag({content:js});
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-smart-service]').length===3);
@@ -39,6 +40,23 @@ try{
  assert.deepEqual(body,{enabled:true,normalSeconds:180,degradedSeconds:60,offlineSeconds:12,services:['yandex-doh','yandex-dot']});
  await page.locator('#smart-health-pending').waitFor({state:'visible'});
  assert.match(await page.locator('#smart-health-mode').textContent(),/Ожидает перезапуска/);
+ const dialog=page.locator('.mui-dialog-panel');
+ await dialog.waitFor({state:'visible'});
+ assert.equal(await dialog.getByRole('button',{name:'Перезапустить Mihomo',exact:true}).count(),1);
+ await dialog.getByRole('button',{name:'Позже',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.__restarts),0);
+ await page.locator('#smart-health-offline').fill('13');
+ await page.locator('#smart-health-offline').dispatchEvent('change');
+ await page.locator('#smart-health-save').click();
+ await dialog.waitFor({state:'visible'});
+ await dialog.getByRole('button',{name:'Перезапустить Mihomo',exact:true}).click();
+ await page.waitForFunction(()=>window.__restarts===1&&document.querySelector('#smart-health-mode').textContent==='Штатный');
+ await page.locator('#smart-health-offline').fill('14');
+ await page.locator('#smart-health-offline').dispatchEvent('change');
+ await page.locator('#smart-health-save').click();
+ await page.waitForFunction(()=>window.__data.settings.offlineSeconds===14);
+ assert.equal(await dialog.count(),0,'interval changes must not offer restart');
+ assert.equal(await page.evaluate(()=>window.__restarts),1);
  await page.evaluate(()=>{window.__data.status={mode:'offline',pending:false,healthy:0,events:[{mode:'offline',at:'2026-11-25T18:00:00Z'}],controls:[{id:'yandex-doh',ok:false,milliseconds:2000}]};});
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelector('#smart-health-mode').textContent.includes('Нет ответа'));

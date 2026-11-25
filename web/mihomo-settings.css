@@ -1527,3 +1527,26 @@ html body #mihomo-outbound-modal .fbs-editor .fbs-add-result small.fbs-protocol{
  color:var(--fbs-picker-protocol)!important;-webkit-text-fill-color:var(--fbs-picker-protocol)!important;
  font-weight:600;
 }
+
+/* Advanced monitoring warning: an independent tab button and adjacent help
+   button, never nested interactive controls. Keep the outline in all themes. */
+html body .mihomo-tabs [data-mihomo-tab="smart-health"]{
+  border:1px solid #c43f47!important;
+  border-radius:8px;
+}
+html body .mihomo-tabs [data-mihomo-tab="smart-health"]:hover,
+html body .mihomo-tabs [data-mihomo-tab="smart-health"].active{
+  border-color:#d94b54!important;
+}
+html body .mihomo-tabs .smart-health-tab-help{
+  align-self:center;
+  width:22px;height:22px;min-width:22px;
+  margin:0 5px 0 1px;
+  --help-edge:#c43f47;
+}
+html body.dark .mihomo-tabs [data-mihomo-tab="smart-health"],
+html[data-color-skin="graphite"] body .mihomo-tabs [data-mihomo-tab="smart-health"],
+html[data-color-skin="emerald"] body .mihomo-tabs [data-mihomo-tab="smart-health"],
+html[data-color-skin="aurora"] body .mihomo-tabs [data-mihomo-tab="smart-health"]{
+  border-color:#f07b82!important;
+}

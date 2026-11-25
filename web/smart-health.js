@@ -57,12 +57,27 @@
   el('save').onclick=async()=>{
     if(busy||!loaded)return;
     busy=true;el('save').disabled=true;
+    const inputs=[...root.querySelectorAll('input')];inputs.forEach(x=>x.disabled=true);
     try{
       const body={enabled:el('enabled').checked,normalSeconds:Number(el('normal').value),degradedSeconds:Number(el('degraded').value),offlineSeconds:Number(el('offline').value),services:[...root.querySelectorAll('[data-smart-service]:checked')].map(x=>x.dataset.smartService)};
       const data=await api('/api/mihomo/smart-health',{method:'PUT',body:JSON.stringify(body)});
       dirty=false;lastSettings='';fill(data);el('message').textContent=ru()?'Настройки сохранены':'Settings saved';
+      if(data.status.pending){
+        const accepted=await window.muiConfirm(
+          ru()?'Настройки монитора сохранены. Для их применения требуется перезапустить Mihomo. Во время перезапуска соединения могут кратковременно прерваться. Перезапустить сейчас?'
+              :'Monitor settings saved. Restart Mihomo to apply the scheduling change. Connections may be briefly interrupted. Restart now?',
+          {title:ru()?'Требуется перезапуск Mihomo':'Mihomo restart required',
+           confirmText:ru()?'Перезапустить Mihomo':'Restart Mihomo',
+           cancelText:ru()?'Позже':'Later',danger:true}
+        );
+        if(accepted){
+          const restarted=await window.MUIMihomoSettings.restart();
+          if(restarted)fill(await api('/api/mihomo/smart-health'));
+        }
+      }
+
     }catch(error){el('message').textContent=error.message}
-    finally{busy=false;el('save').disabled=!dirty||!loaded}
+    finally{inputs.forEach(x=>x.disabled=false);busy=false;el('save').disabled=!dirty||!loaded}
   };
   document.querySelector('[data-mihomo-tab="smart-health"]')?.addEventListener('click',load);
   setInterval(()=>{if(root.closest('.mihomo-pane')?.classList.contains('active')&&root.closest('.view')?.classList.contains('active'))load()},5000);

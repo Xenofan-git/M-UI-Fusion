@@ -10,8 +10,8 @@ const locales=read('web/i18n-locales.js');
 const css=read('web/color-skins.css');
 const keys=[
  'static/color-skins.css?v=116',
- 'static/mihomo-settings.css?v=137',
- 'static/mihomo-settings.js?v=140',
+ 'static/mihomo-settings.css?v=138',
+ 'static/mihomo-settings.js?v=141',
  'static/i18n.js?v=124',
  'static/i18n-locales.js?v=119'
 ];

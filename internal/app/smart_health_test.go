@@ -171,7 +171,7 @@ func TestSmartHealthTabPlacement(t *testing.T) {
 	}
 	html := string(data)
 	r, s := strings.Index(html, "data-mihomo-tab=\"routing\""), strings.Index(html, "data-mihomo-tab=\"smart-health\"")
-	if r < 0 || s <= r || strings.Count(html, "data-mihomo-pane=\"smart-health\"") != 1 || !strings.Contains(html, "static/smart-health.js?v=1") {
+	if r < 0 || s <= r || strings.Count(html, "data-mihomo-pane=\"smart-health\"") != 1 || !strings.Contains(html, "static/smart-health.js?v=2") {
 		t.Fatal("wrong tab placement")
 	}
 }
