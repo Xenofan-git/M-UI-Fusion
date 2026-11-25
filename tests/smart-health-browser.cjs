@@ -24,6 +24,7 @@ try{
    };
  },catalog);
  await page.addScriptTag({content:fs.readFileSync('web/dialog.js','utf8')});
+ await page.addScriptTag({content:fs.readFileSync('web/swiftui-components.js','utf8')});
  await page.addScriptTag({content:js});
  await page.locator('[data-mihomo-tab="smart-health"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('[data-smart-service]').length===3);
@@ -116,6 +117,8 @@ try{
  await page.locator('[data-smart-remove="vk"]').click();
  assert.equal(await page.locator('[data-smart-service="vk"]').count(),0);
  await page.locator('#smart-health-add').click();
+ assert.equal(await page.locator('#smart-health-editor-protocol').getAttribute('data-swift-picker'),null);
+ assert.equal(await page.locator('#smart-health-editor-protocol').evaluate(e=>e.closest('dialog').open),true);
  assert.deepEqual(await page.locator('#smart-health-editor-protocol option').allTextContents(),['HTTPS','DoH','DoT','Do53']);
  for(const sel of ['name','host','protocol'])assert((await page.locator('#smart-health-editor-'+sel).boundingBox()).height>=42);
  await page.locator('#smart-health-editor-name').fill('DNS IP');

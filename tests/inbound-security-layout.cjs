@@ -5,7 +5,7 @@ const js=fs.readFileSync('web/mihomo-settings.js','utf8');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const dict=fs.readFileSync('web/i18n.js','utf8');
 assert(html.includes('static/mihomo-settings.js?v=141'));
-assert(html.includes('static/mihomo-settings.css?v=143'));
+assert(html.includes('static/mihomo-settings.css?v=144'));
 assert(html.includes('static/i18n.js?v=124'));
 const security=html.match(/<details class="inbound-form-section inbound-security" open>[\s\S]*?<\/details>/)?.[0];
 assert(security,'inbound security form section must exist');
