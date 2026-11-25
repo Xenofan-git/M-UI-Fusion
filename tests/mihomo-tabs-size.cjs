@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
-assert(html.includes('static/mihomo-settings.css?v=141'));
+assert(html.includes('static/mihomo-settings.css?v=142'));
 const must=[
   /\.mihomo-tab\{[\s\S]*?font-size:14\.5px;font-weight:470;/,
   /\.mihomo-tab\{[\s\S]*?padding:8px 17px;/,
