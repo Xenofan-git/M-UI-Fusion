@@ -81,7 +81,7 @@
     const total=Math.max(Number(sub.nodeCount)||0,nodes.length);
     const unknown=Math.max(0,total-online-offline);
     element.replaceChildren(
-      make('span','outsub-health-title','Текущий статус подписки: '),
+      make('span','outsub-health-title','Статус последней проверки подписки: '),
       make('span','outsub-health-online','доступно '+online+' узлов'),
       document.createTextNode(', '),
       make('span','outsub-health-offline','недоступно '+offline+' узлов')
@@ -102,7 +102,7 @@
         if(!Array.isArray(data?.nodes))throw Error('Нет данных проверки');
         if(element.isConnected)renderHealth(element,sub,data.nodes);
       }catch{
-        if(element.isConnected)element.textContent='Текущий статус подписки: данные проверки временно недоступны';
+        if(element.isConnected)element.textContent='Статус последней проверки подписки: данные проверки временно недоступны';
       }finally{healthPending.delete(element);}
     }
   }
@@ -143,7 +143,7 @@
       stats.appendChild(make('span','outsub-count-badge',String(sub.nodeCount||0)+' узлов'));
       stats.appendChild(make('span','outsub-last-updated','Обновлено '+date(sub.lastUpdated)));
       info.appendChild(stats);
-      const health=make('div','outsub-health','Текущий статус подписки: получение данных…');
+      const health=make('div','outsub-health','Статус последней проверки подписки: получение данных…');
       health.dataset.sourceId=sub.id;
       info.appendChild(health);
       if(sub.lastError){

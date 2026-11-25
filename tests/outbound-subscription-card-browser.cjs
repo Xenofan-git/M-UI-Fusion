@@ -4,7 +4,7 @@ const read=f=>fs.readFileSync('web/'+f,'utf8');
 const source=read('outbound-subscriptions.js');
 const html=read('index.html'),head=html.slice(0,html.indexOf('</head>'));
 assert.ok(read('index.html').includes('static/outbound-subscriptions.css?v=125'));
-assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=121'));
+assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=122'));
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.MUI_CHROMIUM||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  let count=0;
@@ -48,6 +48,7 @@ assert.ok(read('index.html').includes('static/outbound-subscriptions.js?v=121'))
      const cards=page.locator('.outsub-card');
      assert.equal(await cards.count(),2);
      await page.waitForFunction(()=>document.querySelectorAll('.outsub-health-online').length===2);
+     assert.equal(await cards.nth(0).locator('.outsub-health-title').innerText(),'Статус последней проверки подписки:');
      assert.equal(await cards.nth(0).locator('.outsub-health-online').innerText(),'доступно 1 узлов');
      assert.equal(await cards.nth(0).locator('.outsub-health-offline').innerText(),'недоступно 1 узлов');
      assert.match(await cards.nth(0).locator('.outsub-health').innerText(),/Без результатов проверки: 128/);

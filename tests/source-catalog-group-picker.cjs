@@ -16,7 +16,7 @@ const cardStart=html.indexOf('data-mihomo-pane="subscriptions"');
 const sourcesStart=html.indexOf('data-mihomo-pane="sources"');
 assert(cardStart>=0&&sourcesStart>cardStart);
 assert(!html.slice(cardStart,sourcesStart).includes('id="outsub-root"'),'catalog must be in its own tab');
-assert(html.includes('static/outbound-subscriptions.js?v=121'));
+assert(html.includes('static/outbound-subscriptions.js?v=122'));
 assert(html.includes('static/outbound-subscriptions.css?v=125'));
 assert(html.includes('static/mihomo-balancer-servers.js?v=142'));
 assert(html.includes('static/mihomo-settings.js?v=138'));
