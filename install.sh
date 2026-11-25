@@ -542,21 +542,23 @@ backup_data_dir() {
     done
     ((${#present[@]})) || return 0
     if ! mkdir -p "$BACKUP_DIR" || ! chmod 0700 "$BACKUP_DIR"; then
-        warn "could not create ${BACKUP_DIR}; continuing without a snapshot"
-        return 0
+        restart_panel_service >/dev/null 2>&1 || true
+        die "saved settings backup failed; upgrade aborted, previous panel restarted"
     fi
     local stamp archive
     stamp="$(date +%Y%m%d-%H%M%S)"
     archive="${BACKUP_DIR}/m-ui-data-${stamp}.tar.gz"
     # Build under a temporary name so an interrupted run never leaves a
     # truncated archive that later looks like a usable snapshot.
-    if ! tar -czf "${archive}.partial" -C "$DATA_DIR" "${present[@]}" 2>/dev/null; then
+    if ! tar -czf "${archive}.partial" -C "$DATA_DIR" "${present[@]}" 2>/dev/null || ! tar -tzf "${archive}.partial" >/dev/null 2>&1; then
         rm -f -- "${archive}.partial"
-        warn "data snapshot failed; continuing with the update"
-        return 0
+        restart_panel_service >/dev/null 2>&1 || true
+        die "saved settings backup failed; upgrade aborted, previous panel restarted"
     fi
-    mv -f "${archive}.partial" "$archive"
-    chmod 0600 "$archive"
+    if ! mv -f "${archive}.partial" "$archive" || ! chmod 0600 "$archive"; then
+        restart_panel_service >/dev/null 2>&1 || true
+        die "could not finalize a verified configuration backup; update aborted, previous panel restarted"
+    fi
     BACKUP_PATH="$archive"
     info "Data snapshot saved to ${archive}"
     prune_backups "$BACKUP_KEEP"

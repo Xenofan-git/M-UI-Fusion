@@ -21,7 +21,7 @@
     return element;
   };
 
-  const show = ({title, message, input, confirmText, danger}) => new Promise(resolve => {
+  const show = ({title, message, input, confirmText, cancelText, danger}) => new Promise(resolve => {
     const job = () => {
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop mui-dialog open';
@@ -54,7 +54,8 @@
 
       const footer = document.createElement('footer');
       footer.className = 'modal-footer';
-      const cancel = button('outline-btn', muiT('common.cancel'));
+      const cancel = button('outline-btn', cancelText || muiT('common.cancel'));
+      cancel.id = 'mui-dialog-cancel';
       const ok = button(danger ? 'danger-btn' : 'primary-btn', confirmText || muiT('common.confirm'));
       footer.append(cancel, ok);
       panel.append(header, content, footer);
@@ -102,6 +103,7 @@
     title: options.title || muiT('dialog.confirmTitle'),
     message,
     confirmText: options.confirmText,
+    cancelText: options.cancelText,
     danger: !!options.danger,
   });
 

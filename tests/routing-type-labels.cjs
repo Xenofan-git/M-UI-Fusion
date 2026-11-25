@@ -22,15 +22,15 @@ for(const type of types){
   if(type==='MATCH'){assert.equal(text,'ВЕСЬ ОСТАЛЬНОЙ ТРАФИК');continue;}
   assert.match(text,new RegExp('^'+type+' — .{7,}$'),'missing Russian explanation of '+type);
 }
-assert.match(label('LIST'),/^СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP — /);
+assert.equal(label('LIST'),'GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP');
 lang='en';
 for(const type of types)assert.equal(label(type),type,'non-Russian technical type must remain unchanged');
 assert.match(label('LIST'),/^LISTS /);
-assert.ok(source.includes("option.value='MATCH';option.textContent=ruleTypeDisplayLabel('MATCH');"));
+assert.ok(source.includes("item.type==='MATCH'||item.type==='GEOSITE'"));
 assert.ok(source.includes("for(const option of select.options)option.textContent=ruleTypeDisplayLabel(option.value,true)"));
 assert.ok(source.includes("typeSelect.disabled=item.type==='MATCH'"),'MATCH guard must stay');
 assert.ok(source.includes("return ruleTypeDisplayLabel(window.MUIRuleLists?.decode(rule)?'LIST':rule.type)"));
-assert.ok(index.includes('mihomo-settings.js?v=110')&&index.includes('i18n-locales.js?v=109')&&index.includes('i18n.js?v=110'));
+assert.ok(index.includes('mihomo-settings.js?v=141')&&index.includes('i18n-locales.js?v=119')&&index.includes('i18n.js?v=124'));
 assert.ok(locales.includes('«ВЕСЬ ОСТАЛЬНОЙ ТРАФИК» всегда находится последним'));
 assert.ok(i18n.includes("'mh.ruleNoConditions':'Условий нет: весь оставшийся трафик"));
 console.log('PASS: '+types.length+' Mihomo types localized in Russian, original codes in other languages, protected MATCH and stable cache versions');

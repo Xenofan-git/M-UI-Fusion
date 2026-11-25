@@ -25,9 +25,12 @@
     interval:180,timeout:8000,tolerance:100,disableUdp:false,
     subscriptionIds:[],excludedSubscriptionMembers:[]
   });
-  const defaultBasics=()=>({mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
+  const defaultBasics=()=>({watchdogEnabled:false,mode:'rule',directIpVersion:'dual',ipv6:true,tcpConcurrent:false,unifiedDelay:false,outboundTestUrl:defaultTestURL,trafficSampleSeconds:1,trafficSaveSeconds:5,outboundUploadStatistics:false,outboundDownloadStatistics:false,logLevel:'info',logBufferSize:300,maskLogAddress:false,blockIps:[],blockDomains:[],ipv4Domains:[],warpDomains:[],sniffer:{enabled:false,http:true,tls:true,quic:true,forceDnsMapping:true,parsePureIp:true,overrideDestination:false}});
   const delayResults=new Map();
   const activeGroupResults=new Map();
+  // The global /api/state poll calls render() every 5 seconds. Keep table
+  // DOM nodes when the markup is structurally identical, preserving SVG flags.
+  const outboundTableMarkup=new WeakMap();
   let activeGroupRequest=null;
   let geoCategoryCatalog=null,geoCategoryLoading=null;
   let warpData=null,warpBusy=false;
@@ -35,11 +38,12 @@
   const root=$('#mihomo-settings-root');
   if(!root)return;
 
+  let lastSyncedOutbounds=[],lastSyncedBasics={},lastSyncedRules=[];
   let draft={outbounds:[],routingRules:[],basics:defaultBasics()},dirty=false,currentTab='basics',editingOutbound='',editingRule='',outboundMode='form',outboundBusy=false,editingOriginal=null;
   let balancerSubscriptions=[];
   // The shared editor is used by two mutually exclusive balancer tabs.
   // Only the subscription tab may expose/bind subscription sources.
-  let editingSubscriptionGroup=false;
+  let editingSubscriptionGroup=false,creatingSubscriptionGroup=false;
   let outboundFormChanged=false,outboundYAMLCached=false;
 
   function freshID(prefix){return prefix+'-'+crypto.randomUUID().replaceAll('-','').slice(0,12);}
@@ -57,6 +61,10 @@
     draft={outbounds:clone(state.outbounds||[])||[],routingRules:clone(state.routingRules||[])||[],basics:{...defaultBasics(),...clone(state.mihomoBasics||{}),mode:state.settings?.mode||'rule',logLevel:state.settings?.logLevel||'info'}};
     fillBasicsForm();
     ensureFinalMatch();
+    // Remember the editor's baseline. A subscription may refresh while dirty.
+    lastSyncedOutbounds=clone(draft.outbounds);
+    lastSyncedBasics=clone(draft.basics);
+    lastSyncedRules=clone(draft.routingRules);
     const persistedGroups=new Set(draft.outbounds.filter(x=>x.kind==='group').map(x=>x.name));
     for(const key of activeGroupResults.keys())if(!persistedGroups.has(key))activeGroupResults.delete(key);
     render();
@@ -72,7 +80,7 @@
     $$('.mihomo-pane',root).forEach(pane=>pane.classList.toggle('active',pane.dataset.mihomoPane===tab));
     if(typeof syncInkBars==='function')syncInkBars();
     render();
-    if(tab==='subscriptions')window.MUIOutboundSubscriptions?.load();
+    if(tab==='sources'||tab==='subscriptions')window.MUIOutboundSubscriptions?.load();
   }
   function render(){
     renderWarpRouting();
@@ -105,6 +113,27 @@
     if(draft.basics.ipv4Domains.length)fixed.push({name:'MUI-IPV4',kind:'builtin',type:'direct',address:'Basics / IPv4'});
     return fixed.concat(draft.outbounds.map(item=>({...item,address:outboundAddress(item)})));
   }
+  // The saved subscription metadata only contains a filtered node's name,
+  // protocol, flag and country code (not its connection/credentials). Match
+  // by full display name, after removing a known source prefix, and protocol.
+  // This is a VIEW filter: keep every outbound in the draft, group memberships,
+  // routing references, URLTest schedules and runtime Mihomo config untouched.
+  function filteredOutboundIdentity(name,protocol){
+    const label=String(name||'').normalize('NFC').trim();
+    const sep=label.indexOf(' | ');
+    const nodeName=sep>=0?label.slice(sep+3).trim():label;
+    return nodeName+'\u0000'+String(protocol||'').toLowerCase();
+  }
+  function excludedSubscriptionOutbounds(){
+    const sources=app.state?.state?.outboundSubscriptions||[];
+    const names=new Set();
+    for(const source of sources){
+      for(const node of source?.filteredNodes||[]){
+        if(node?.name)names.add(filteredOutboundIdentity(node.name,node.protocol));
+      }
+    }
+    return names;
+  }
   function delayLabel(name){const value=delayResults.get(name);return value==='Testing'?muiT('mh.testing'):value||'';}
   // Display only: hide a provider label already identified by the balancer name.
   // Never change Mihomo's actual selected member or the stored proxy name.
@@ -113,7 +142,18 @@
     if(divider<1)return value;
     const provider=value.slice(0,divider).trim().toLowerCase();
     const group=String(groupName||'').toLowerCase();
-    return provider&&(group===provider||group.endsWith('-'+provider))?value.slice(divider+3):value;
+    const sourceGroups=(typeof app!=='undefined'&&app?.state?.state?.outboundSubscriptions)||[];
+    const cachedSources=typeof balancerSubscriptions==='undefined'?[]:balancerSubscriptions||[];
+    const groupEntry=typeof draft==='undefined'?null:draft?.outbounds?.find(x=>x.kind==='group'&&x.name===groupName);
+    const linked=new Set(groupEntry?.subscriptionIds||[]);
+    const fromKnownSubscription=[...sourceGroups,...cachedSources].some(sub=>
+      String(sub?.nodeNamePrefix||sub?.name||'').trim().toLowerCase()===provider&&
+      (String(sub.group||'').toLowerCase()===group||linked.has(sub.id))
+    );
+    // Only remove a *known provider* prefix, never a protocol/region prefix
+    // such as "INT |" if it identifies the actual outbound.
+    return provider&&(group===provider||group.endsWith('-'+provider)||fromKnownSubscription)
+      ?value.slice(divider+3):value;
   }
   // UI-only: use the same local SVG country flags as the subscription
   // node list. Regional-indicator emoji show as plain LV/RU letters on
@@ -146,6 +186,8 @@
     if(!group)return 'Определяется…';
     if(!group.running)return 'Mihomo недоступен';
     if(!group.applied)return 'Группа не применена';
+    if(group.noAvailable)return 'Нет доступных узлов';
+    if(group.currentUnavailable)return 'Текущий узел недоступен';
     if(group.current)return currentNodeMeta(name,group.current).label;
     if(group.perConnection)return 'Выбор для каждого соединения';
     return 'Текущий не определён';
@@ -165,12 +207,21 @@
   // the local vector image is available even on older Windows browsers.
   function paintCurrentGroupNode(node,name){
     const group=activeGroupResults.get(name);
-    if(!group?.running||!group.applied||!group.current){
+    if(!group?.running||!group.applied||!group.current||group.noAvailable||group.currentUnavailable){
       node.textContent=groupResultLabel(name);
       node.title=groupResultTitle(name);
       return;
     }
     const meta=currentNodeMeta(name,group.current);
+    // Reuse the loaded SVG on each 9-second health refresh. Replacing <img>
+    // with the very same URL repeatedly makes the flag visibly blink.
+    const previousFlag=node.querySelector(':scope > img.mihomo-current-country-flag');
+    const previousLabel=node.querySelector(':scope > .mihomo-current-country-label');
+    if(previousFlag&&previousLabel&&previousFlag.getAttribute('aria-label')===meta.code){
+      if(previousLabel.textContent!==meta.label)previousLabel.textContent=meta.label;
+      node.title=meta.original+(groupTestNote(name)?'\n'+groupTestNote(name):'');
+      return;
+    }
     const icon=window.MUICountryFlags?.createIcon?.(meta.code);
     if(icon){
       icon.classList.add('mihomo-current-country-flag');
@@ -220,6 +271,17 @@
   // Mihomo may switch URLTest/Fallback choices without user interaction.
   setInterval(()=>{if(['balancers','subscriptions'].includes(currentTab))refreshActiveGroups();},9000);
   function outboundSupportsDelay(item){return !['reject','reject-drop'].includes(String(item.type||'').toLowerCase());}
+  // Delay checks query the running Mihomo configuration, not the unsaved
+  // draft. Keep saved nodes clickable even if unrelated fields are dirty.
+  function outboundTestUnavailableReason(item){
+    if(!outboundSupportsDelay(item)||item.kind==='builtin'&&item.name!=='DIRECT')
+      return muiT('mh.testUnavailable');
+    if(delayResults.get(item.name)==='Testing')return muiT('mh.testing');
+    if(item.kind!=='builtin'&&!(app.state?.state?.outbounds||[])
+      .some(saved=>saved.name===item.name&&outboundSupportsDelay(saved)))
+      return muiT('mh.saveFirst');
+    return '';
+  }
   // Some existing subscription groups use the provider's group name and
   // intentionally have no subscriptionIds field in state.json. Respect both
   // the source's group binding and explicit subscriptionIds when classifying.
@@ -229,9 +291,19 @@
     return new Set(linked.map(source=>source?.group).filter(Boolean));
   }
   function isSubscriptionGroup(item){
-    return item?.kind==='group'&&(
-      (item.subscriptionIds||[]).length>0||subscriptionGroupNames().has(item.name)
-    );
+    if(item?.kind!=='group')return false;
+    if(item.subscriptionManaged||(item.subscriptionIds||[]).length>0||
+      subscriptionGroupNames().has(item.name))return true;
+    // Older versions cleared subscriptionIds when deleting a source with
+    // "keep nodes". Recover orphaned subscription groups by their members:
+    // ALL members must retain one known provider's "source | node" prefix.
+    // Ordinary mixed/manual groups (including Russia with RU | nodes) stay
+    // under "Балансировщики из Исходящих".
+    const members=item.proxies||[];
+    if(!members.length)return false;
+    const sources=[...(app.state?.state?.outboundSubscriptions||[]),...balancerSubscriptions]
+      .map(source=>source?.nodeNamePrefix||source?.name).filter(Boolean);
+    return sources.some(name=>members.every(member=>String(member).startsWith(name+' | ')));
   }
   function visibleGroupPeers(item){
     return draft.outbounds.filter(entry=>entry.kind===item.kind&&(
@@ -241,23 +313,66 @@
   function renderOutbounds(){
     const manual=currentTab==='balancers',subscribed=currentTab==='subscriptions';
     const box=$(manual?'#mihomo-balancer-table':subscribed?'#mihomo-subscription-balancer-table':'#mihomo-outbound-table');
-    const rows=outboundRows().filter(item=>
+    const allRows=outboundRows().filter(item=>
       manual?item.kind==='group'&&!isSubscriptionGroup(item):
       subscribed?isSubscriptionGroup(item):
       item.kind!=='group'
-    ),showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
-    box.innerHTML=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
+    );
+    const hideFiltered=!manual&&!subscribed&&$('#mihomo-hide-filtered-outbounds')?.checked===true;
+    const hiddenKeys=hideFiltered?excludedSubscriptionOutbounds():null;
+    const rows=hiddenKeys?allRows.filter(item=>
+      item.kind!=='proxy'||!hiddenKeys.has(filteredOutboundIdentity(item.name,item.type))
+    ):allRows;
+    const hiddenCount=$('#mihomo-hidden-filtered-count');
+    if(hiddenCount){
+      const count=allRows.length-rows.length;
+      const label='Скрыто: '+count;
+      if(hiddenCount.textContent!==label)hiddenCount.textContent=label;
+      hiddenCount.hidden=!hideFiltered;
+    }
+    const showTraffic=draft.basics.outboundUploadStatistics||draft.basics.outboundDownloadStatistics;
+    const markup=`<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>${muiT('mh.colName')}</th><th>${muiT('mh.colKind')}</th><th>${muiT('mh.colStrategy')}</th><th>${muiT('mh.colMembers')}</th><th>Dialer Proxy</th>${showTraffic?`<th>${muiT('mh.colUpDown')}</th>`:''}<th>${manual||subscribed?'Текущий исходящий':muiT('mh.colTestResult')}</th><th>${muiT('mh.colTest')}</th><th>${muiT('mh.colActions')}</th></tr></thead><tbody>${rows.map((item,index)=>{
       const peers=visibleGroupPeers(item),custom=item.kind!=='builtin',position=peers.findIndex(entry=>entry.id===item.id),lastPosition=peers.length-1,kind=item.sourceSubscriptionId?'Подписка':item.vpngate?muiT('mh.vpngate'):isSubscriptionGroup(item)?'Из подписки':item.kind==='group'?muiT('mh.kindGroup'):item.kind==='proxy'?muiT('mh.kindProxy'):muiT('mh.kindBuiltin'),type=item.vpngate?'VPNGate':item.type;
-      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td>${esc(item.kind==='group'?groupTypeLabel(type):type)}</td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?'<td>'+fmt(app.state?.state?.outboundTraffic?.[item.name]?.up||0)+' / '+fmt(app.state?.state?.outboundTraffic?.[item.name]?.down||0)+'</td>':''}<td>${item.kind==='group'
-        ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}" title="${esc(groupResultTitle(item.name))}">${esc(groupResultLabel(item.name))}</span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" ${groupTestNote(item.name)?'':'hidden'}>${esc(groupTestNote(item.name))}</small>`
-        :`<span class="mihomo-delay-result" title="${esc(delayLabel(item.name))}">${esc(delayLabel(item.name)||'—')}</span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}" title="${muiT('mh.testOutbound')}" ${dirty||delayResults.get(item.name)==='Testing'||!outboundSupportsDelay(item)||(!custom&&item.name!=='DIRECT')?'disabled':''}>${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
+      return `<tr><td>${index+1}</td><td class="mihomo-name">${esc(item.name)}</td><td><span class="mihomo-pill ${item.kind==='group'?'group':''}">${esc(kind)}</span></td><td><span class="protocol-pill ${item.kind==='proxy'?'':'transport'}">${esc(item.kind==='group'?groupTypeLabel(type):type)}</span></td><td><div class="mihomo-member-summary" title="${esc(item.address||'')}">${esc(item.address||'—')}</div>${vpnGateStatusHTML(item)}</td><td>${esc(item.dialerProxy||'—')}</td>${showTraffic?`<td data-outbound-traffic="${esc(item.name)}"></td>`:''}<td>${item.kind==='group'
+        ?`<span class="mihomo-delay-result mihomo-current-group" data-active-group="${esc(item.name)}"></span><small class="mihomo-current-note" data-active-group-note="${esc(item.name)}" hidden></small>`
+        :`<span class="mihomo-delay-result" data-outbound-delay="${esc(item.name)}"></span>`}</td><td><button type="button" class="mihomo-icon" data-test-outbound="${esc(item.name)}">${SF('thunderbolt')}</button></td><td><div class="mihomo-actions">${custom&&!item.sourceSubscriptionId?`<button class="mihomo-icon" data-outbound-up="${esc(item.id)}" title="${muiT('mh.moveUp')}" ${position===0?'disabled':''}>${SF('arrow-up')}</button><button class="mihomo-icon" data-outbound-down="${esc(item.id)}" title="${muiT('mh.moveDown')}" ${position===lastPosition?'disabled':''}>${SF('arrow-down')}</button><button class="mihomo-icon" data-outbound-edit="${esc(item.id)}" title="${muiT('action.edit')}">${SF('edit')}</button><button class="mihomo-icon danger" data-outbound-delete="${esc(item.id)}" title="${muiT('common.delete')}">${SF('delete')}</button>`:'—'}</div></td></tr>`;
     }).join('')}</tbody></table></div>`;
-    bindOutboundTable();
-    $$('[data-test-outbound]',root).forEach(button=>button.onclick=()=>testOutbound(button));
+    // Skip the destructive innerHTML update on the 5-second state poll.
+    // Transient results and counters are painted in place after the cache check.
+    if(outboundTableMarkup.get(box)!==markup||!box.querySelector('.mihomo-table')){
+      box.innerHTML=markup;
+      outboundTableMarkup.set(box,markup);
+      bindOutboundTable();
+      $$('[data-test-outbound]',box).forEach(button=>button.onclick=()=>testOutbound(button));
+    }
+    paintOutboundTransientState(box,rows,showTraffic);
     if(manual||subscribed){
       paintActiveGroupResults();
       refreshActiveGroups();
     }
+  }
+  function paintOutboundTransientState(box,rows,showTraffic){
+    const byName=new Map(rows.map(item=>[item.name,item]));
+    $$('[data-outbound-delay]',box).forEach(node=>{
+      const result=delayLabel(node.dataset.outboundDelay)||'—';
+      if(node.textContent!==result)node.textContent=result;
+      if(node.title!==result)node.title=result;
+    });
+    $$('[data-test-outbound]',box).forEach(button=>{
+      const item=byName.get(button.dataset.testOutbound);
+      if(!item)return;
+      const reason=outboundTestUnavailableReason(item);
+      const testing=delayResults.get(button.dataset.testOutbound)==='Testing';
+      button.disabled=!!reason||testing;
+      button.classList.toggle('mihomo-test-running',testing);
+      const title=reason||muiT('mh.testOutbound');
+      if(button.title!==title)button.title=title;
+    });
+    if(showTraffic)$$('[data-outbound-traffic]',box).forEach(node=>{
+      const counters=app.state?.state?.outboundTraffic?.[node.dataset.outboundTraffic];
+      const traffic=fmt(counters?.up||0)+' / '+fmt(counters?.down||0);
+      if(node.textContent!==traffic)node.textContent=traffic;
+    });
   }
   function bindOutboundTable(){
     $$('[data-outbound-edit]',root).forEach(button=>button.onclick=()=>openOutboundModal(button.dataset.outboundEdit));
@@ -419,7 +534,7 @@
   // Only the visible label is translated. Stored rule.type/option.value,
   // API payloads and the generated Mihomo YAML retain their exact codes.
   const russianRuleTypes={
-    LIST:'СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP — Несколько условий',
+    LIST:'GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP',
     DOMAIN:'Точное совпадение домена',
     'DOMAIN-SUFFIX':'Домен и его поддомены',
     'DOMAIN-KEYWORD':'Слово или часть домена',
@@ -457,7 +572,7 @@
     if(type==='MATCH')return window.muiGetLang?.()==='ru'?'ВЕСЬ ОСТАЛЬНОЙ ТРАФИК':'MATCH';
     if(type==='LIST'){
       if(window.muiGetLang?.()!=='ru')return full?'LISTS OF CATEGORIES, DOMAINS AND IPs':'LISTS';
-      return full?russianRuleTypes.LIST:'СПИСКИ — Категории, домены и IP';
+      return russianRuleTypes.LIST;
     }
     const description=window.muiGetLang?.()==='ru'?russianRuleTypes[type]:null;
     return description?type+' — '+description:type;
@@ -524,6 +639,9 @@
       ' aria-label="'+esc(label)+'" aria-controls="mihomo-rule-help-popup" aria-expanded="false">!</button>';
   }
   function ruleHelpText(button){
+    if(button.dataset.mihomoHelp==='smart-health')return window.muiGetLang?.()==='ru'
+      ? 'Тонкие настройки мониторинга здоровья серверов. Рекомендуется не менять значения по умолчанию. Меняйте если только знаете зачем.'
+      : 'Advanced server health monitoring settings. Keeping the default values is recommended. Change them only if you know why.';
     if(button.dataset.mihomoHelp==='no-resolve')return muiT('mh.noResolveHelpText');
     const type=String(button.dataset.mihomoRuleType||'').toUpperCase();
     const parts=ruleHelpDescriptions[type];
@@ -585,6 +703,145 @@
   // backend omits disabled rules from Mihomo, but requires MATCH always ON.
   function ruleIsEnabled(rule){return rule.enabled!==false;}
   let draggedRuleID='';
+  let dragSourceRow=null;
+  let dragOriginalOrder=null;
+  let dragOriginalSlots=null;
+  function beginRulePreview(handle){
+    const row=handle.closest('[data-rule-row]');
+    if(!row||!draft.routingRules.some(rule=>rule.id===row.dataset.ruleRow&&rule.type!=='MATCH'))return false;
+    draggedRuleID=row.dataset.ruleRow;
+    dragSourceRow=row;
+    dragOriginalOrder=draft.routingRules.map(rule=>rule.id);
+    // Freeze the initial slot centres: moving a live DOM row shifts the
+    // neighbouring rows, so hit-testing their *new* rectangles can oscillate.
+    dragOriginalSlots=$$('[data-rule-row]',$('#mihomo-rule-table'))
+      .filter(item=>item!==row)
+      .map(item=>({
+        id:item.dataset.ruleRow,
+        midpoint:(item.getBoundingClientRect().top+item.getBoundingClientRect().bottom)/2,
+        locked:draft.routingRules.some(rule=>rule.id===item.dataset.ruleRow&&rule.type==='MATCH')
+      }));
+    row.classList.add('mihomo-rule-preview');
+    $('#mihomo-rule-table').classList.add('mihomo-rule-previewing');
+    return true;
+  }
+  // The visible row moves into its proposed slot while the pointer is still
+  // held. No draft state is changed until drop, so cancellation is lossless.
+  function previewRuleAtPointer(clientY){
+    if(!dragSourceRow||!dragOriginalSlots)return;
+    // Work in stable original priority slots. The fallback is never counted
+    // as an insertion point: everything always lands before MATCH.
+    const regular=dragOriginalSlots.filter(slot=>!slot.locked);
+    const index=regular.filter(slot=>clientY>slot.midpoint).length;
+    const box=$('#mihomo-rule-table');
+    const otherRows=$$('[data-rule-row]',box).filter(row=>row!==dragSourceRow);
+    const before=otherRows[index];
+    if(!before||before===dragSourceRow.nextElementSibling)return;
+    before.before(dragSourceRow);
+    const managedCount=basicsRuleRows().length;
+    $$('[data-rule-row]',box).forEach((row,position)=>{
+      const number=row.querySelector('.mihomo-rule-priority-number');
+      if(number)number.textContent=managedCount+position+1;
+    });
+  }
+  function finishRulePreview(apply){
+    if(!dragSourceRow)return;
+    const box=$('#mihomo-rule-table'),row=dragSourceRow;
+    const ordered=$$('[data-rule-row]',box).map(element=>element.dataset.ruleRow);
+    const original=dragOriginalOrder||[];
+    const valid=apply&&ordered.length===original.length&&
+      ordered[ordered.length-1]===original[original.length-1]&&
+      ordered.every(id=>original.includes(id));
+    const changed=valid&&ordered.some((id,index)=>id!==original[index]);
+    if(!changed){
+      // Restore DOM order on Escape, pointercancel and drops outside the table.
+      const tbody=row.closest('tbody');
+      if(tbody){
+        const nodes=new Map($$('[data-rule-row]',box).map(item=>[item.dataset.ruleRow,item]));
+        original.forEach(id=>{const item=nodes.get(id);if(item)tbody.appendChild(item);});
+      }
+    }
+    row.classList.remove('mihomo-rule-preview');
+    box.classList.remove('mihomo-rule-previewing');
+    draggedRuleID='';dragSourceRow=null;dragOriginalOrder=null;dragOriginalSlots=null;
+    if(changed){
+      const byID=new Map(draft.routingRules.map(rule=>[rule.id,rule]));
+      draft.routingRules=ordered.map(id=>byID.get(id));
+      markDirty();
+    }else{
+      const managedCount=basicsRuleRows().length;
+      $$('[data-rule-row]',box).forEach((item,index)=>{
+        const number=item.querySelector('.mihomo-rule-priority-number');
+        if(number)number.textContent=managedCount+index+1;
+      });
+    }
+  }
+  // Pointer-driven drag avoids the native HTML DnD cancellation that occurs
+  // when a dragged table row is reparented during the live preview.
+  let pendingRulePointer=null;
+  let floatingRuleGhost=null;
+  function clearFloatingRuleGhost(){
+    floatingRuleGhost?.remove();
+    floatingRuleGhost=null;
+  }
+  function placeFloatingRuleGhost(x,y){
+    if(!floatingRuleGhost)return;
+    floatingRuleGhost.style.left=(x+16)+'px';
+    floatingRuleGhost.style.top=(y+12)+'px';
+  }
+  function startFloatingRuleGhost(handle,x,y){
+    const rule=draft.routingRules.find(item=>item.id===handle.dataset.ruleDrag);
+    if(!rule)return;
+    floatingRuleGhost=document.createElement('div');
+    floatingRuleGhost.className='mihomo-rule-drag-ghost';
+    const name=document.createElement('strong'),outbound=document.createElement('span');
+    name.textContent=ruleReadableType(rule);
+    outbound.textContent='→ '+rule.target;
+    floatingRuleGhost.append(name,outbound);
+    document.body.appendChild(floatingRuleGhost);
+    placeFloatingRuleGhost(x,y);
+  }
+  function stopRulePointer(commit){
+    if(!pendingRulePointer)return;
+    const wasDragging=!!dragSourceRow;
+    pendingRulePointer=null;
+    clearFloatingRuleGhost();
+    if(wasDragging)finishRulePreview(commit);
+  }
+  function onRulePointerMove(event){
+    if(!pendingRulePointer||pendingRulePointer.id!==event.pointerId)return;
+    const pending=pendingRulePointer;
+    if(!dragSourceRow&&Math.hypot(event.clientX-pending.x,event.clientY-pending.y)<5)return;
+    if(!dragSourceRow){
+      if(!beginRulePreview(pending.handle)){stopRulePointer(false);return;}
+      startFloatingRuleGhost(pending.handle,event.clientX,event.clientY);
+    }
+    event.preventDefault();
+    placeFloatingRuleGhost(event.clientX,event.clientY);
+    previewRuleAtPointer(event.clientY);
+  }
+  function onRulePointerUp(event){
+    if(!pendingRulePointer||pendingRulePointer.id!==event.pointerId)return;
+    const box=$('#mihomo-rule-table');
+    const table=box?.querySelector('table');
+    const rect=table?.getBoundingClientRect();
+    const within=!!rect&&event.clientX>=rect.left&&event.clientX<=rect.right&&
+      event.clientY>=rect.top&&event.clientY<=rect.bottom;
+    if(within)previewRuleAtPointer(event.clientY);
+    stopRulePointer(within);
+  }
+  function onRulePointerCancel(event){
+    if(pendingRulePointer?.id===event.pointerId)stopRulePointer(false);
+  }
+  function onRuleDragEscape(event){
+    if(event.key==='Escape'&&pendingRulePointer){
+      event.preventDefault();stopRulePointer(false);
+    }
+  }
+  document.addEventListener('pointermove',onRulePointerMove,{passive:false});
+  document.addEventListener('pointerup',onRulePointerUp);
+  document.addEventListener('pointercancel',onRulePointerCancel);
+  document.addEventListener('keydown',onRuleDragEscape);
   function moveRuleTo(id,targetID,after=false){
     if(!id||!targetID||id===targetID)return;
     const from=draft.routingRules.findIndex(rule=>rule.id===id);
@@ -617,32 +874,34 @@
       '<tr class="mihomo-managed-rule"><td>'+(index+1)+'</td>'+
       '<td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleTypeDisplayLabel(rule.type))+
       '</span>'+ruleHelpButton('type',rule.type)+'</span></td><td>'+esc(rule.payload)+'</td><td>'+esc(rule.target)+'</td><td>—</td>'+
-      '<td><div class="mihomo-actions"><label class="mihomo-rule-switch" title="'+esc(readonlyTitle)+'"><input type="checkbox" checked disabled aria-label="'+esc(readonlyTitle)+'"><span class="mihomo-rule-switch-track"></span></label>'+
-      '<span class="mihomo-pill group">Basics</span></div></td></tr>').join('');
+      '<td><div class="mihomo-actions mihomo-rule-controls"><span class="mihomo-pill group">Basics</span>'+
+      '<label class="mihomo-rule-switch" title="'+esc(readonlyTitle)+'"><input type="checkbox" checked disabled aria-label="'+esc(readonlyTitle)+'"><span class="mihomo-rule-switch-track"></span></label></div></td></tr>').join('');
     const rows=draft.routingRules.map((rule,index)=>{
       const locked=rule.type==='MATCH';
       const enabled=ruleIsEnabled(rule);
       const next=draft.routingRules[index+1];
       const toggleLabel=locked?lockedTitle:enabledTitle;
       return '<tr data-rule-row="'+esc(rule.id)+'" class="'+(!enabled?'mihomo-rule-off ':'')+(locked?'mihomo-rule-default':'')+'">'+
-        '<td class="mihomo-rule-order">'+(managed.length+index+1)+'</td>'+
+        '<td class="mihomo-rule-order"><div class="mihomo-rule-priority-cell">'+
+        (locked?'<span class="mihomo-rule-locked" title="'+esc(lockedTitle)+'" aria-label="'+esc(lockedTitle)+'">🔒</span>':
+        '<span class="mihomo-rule-drag" role="button" tabindex="0" data-rule-drag="'+esc(rule.id)+'" title="'+esc(muiT('mh.dragPriority'))+'" aria-label="'+esc(muiT('mh.dragPriority'))+'">⠿</span>')+
+        '<span class="mihomo-rule-priority-number">'+(managed.length+index+1)+'</span></div></td>'+
         '<td><span class="mihomo-rule-type-with-help"><span class="mihomo-pill">'+esc(ruleReadableType(rule))+'</span>'+
         ruleHelpButton('type',window.MUIRuleLists?.decode(rule)?'LIST':rule.type)+'</span></td>'+
         '<td><div class="mihomo-rule-payload" title="'+esc(rule.payload||'')+'">'+esc(ruleReadablePayload(rule))+'</div></td>'+
         '<td class="mihomo-name">'+esc(rule.target)+'</td>'+
         '<td>'+(rule.noResolve?'<span class="mihomo-rule-type-with-help"><span class="mihomo-pill group">No-Resolve</span>'+
         ruleHelpButton('no-resolve')+'</span>':'—')+'</td>'+
-        '<td><div class="mihomo-actions">'+
-        '<label class="mihomo-rule-switch" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
-        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span></label>'+
-        (locked?'<span class="mihomo-rule-locked" title="'+esc(lockedTitle)+'">🔒</span>':
-        '<span class="mihomo-rule-drag" draggable="true" data-rule-drag="'+esc(rule.id)+'" title="'+esc(muiT('mh.dragPriority'))+'" aria-label="'+esc(muiT('mh.dragPriority'))+'">⠿</span>')+
+        '<td><div class="mihomo-actions mihomo-rule-controls">'+
         '<button class="mihomo-icon" data-rule-up="'+esc(rule.id)+'" title="'+esc(muiT('mh.moveUp'))+'"'+
         (index===0||locked?' disabled':'')+'>'+SF('arrow-up')+'</button>'+
         '<button class="mihomo-icon" data-rule-down="'+esc(rule.id)+'" title="'+esc(muiT('mh.moveDown'))+'"'+
         (locked||!next||next.type==='MATCH'?' disabled':'')+'>'+SF('arrow-down')+'</button>'+
         '<button class="mihomo-icon" data-rule-edit="'+esc(rule.id)+'" title="'+esc(muiT('action.edit'))+'">'+SF('edit')+'</button>'+
         (locked?'':'<button class="mihomo-icon danger" data-rule-delete="'+esc(rule.id)+'" title="'+esc(muiT('common.delete'))+'">'+SF('delete')+'</button>')+
+        '<label class="mihomo-rule-switch'+(locked?' mihomo-rule-switch-locked':'')+'" title="'+esc(toggleLabel)+'"><input type="checkbox" data-rule-toggle="'+esc(rule.id)+'"'+
+        (enabled?' checked':'')+(locked?' disabled':'')+' aria-label="'+esc(toggleLabel)+'"><span class="mihomo-rule-switch-track"></span>'+
+        (locked?'<svg class="mihomo-rule-switch-padlock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>':'')+'</label>'+
         '</div></td></tr>';
     }).join('');
     box.innerHTML='<div class="mihomo-table-wrap"><table class="mihomo-table"><thead><tr><th>#</th><th>'+muiT('mh.colRuleType')+
@@ -653,48 +912,21 @@
     $$('[data-rule-up]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleUp,-1));
     $$('[data-rule-down]',root).forEach(button=>button.onclick=()=>moveRule(button.dataset.ruleDown,1));
     $$('[data-rule-toggle]',root).forEach(input=>input.onchange=()=>toggleRule(input.dataset.ruleToggle,input.checked));
-    // Desktop: native HTML drag/drop. The only drag origin is the handle.
-    $$('[data-rule-drag]',root).forEach(handle=>{
-      handle.ondragstart=event=>{
-        draggedRuleID=handle.dataset.ruleDrag;
-        event.dataTransfer.effectAllowed='move';
-        event.dataTransfer.setData('text/plain',draggedRuleID);
-      };
-      handle.ondragend=()=>{draggedRuleID='';$$('.mihomo-rule-drop-target',box).forEach(row=>row.classList.remove('mihomo-rule-drop-target'));};
-    });
-    $$('[data-rule-row]',box).forEach(row=>{
-      row.ondragover=event=>{
-        if(!draggedRuleID)return;
-        event.preventDefault();event.dataTransfer.dropEffect='move';
-        $$('.mihomo-rule-drop-target',box).forEach(item=>item.classList.remove('mihomo-rule-drop-target'));
-        row.classList.add('mihomo-rule-drop-target');
-      };
-      row.ondrop=event=>{
-        event.preventDefault();
-        const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
-        const from=draggedRuleID;draggedRuleID='';
-        moveRuleTo(from,row.dataset.ruleRow,after);
-      };
-    });
-    // Touch/pen: dragging the handle moves the rule when released over a row.
-    // Keep the up/down buttons for keyboard users and as a mobile fallback.
-    $$('[data-rule-drag]',root).forEach(handle=>{
-      let pointer=null;
+    // One predictable pointer interaction for mouse, pen and touch.
+    // Keep listeners on document: moving the real row detaches its original
+    // handle, which would otherwise drop pointer capture prematurely.
+    $$('[data-rule-drag]',box).forEach(handle=>{
       handle.onpointerdown=event=>{
-        if(event.pointerType==='mouse')return;
-        pointer={id:event.pointerId,from:handle.dataset.ruleDrag};
-        handle.setPointerCapture(event.pointerId);
+        if(event.button!==0||pendingRulePointer)return;
+        pendingRulePointer={id:event.pointerId,x:event.clientX,y:event.clientY,handle};
+        event.preventDefault();
       };
-      handle.onpointerup=event=>{
-        if(!pointer||pointer.id!==event.pointerId)return;
-        const from=pointer.from;pointer=null;
-        const row=document.elementFromPoint(event.clientX,event.clientY)?.closest('[data-rule-row]');
-        if(row){
-          const rect=row.getBoundingClientRect();
-          moveRuleTo(from,row.dataset.ruleRow,event.clientY>rect.top+rect.height/2);
-        }
+      // Keyboard users can continue using the adjacent up/down buttons.
+      handle.onkeydown=event=>{
+        if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')return;
+        event.preventDefault();
+        moveRule(handle.dataset.ruleDrag,event.key==='ArrowUp'?-1:1);
       };
-      handle.onpointercancel=()=>{pointer=null;};
     });
   }
   function moveRule(id,delta){
@@ -716,7 +948,7 @@
   }
   function ensureModals(){
     if($('#mihomo-outbound-modal'))return;
-    const outboundModal=document.createElement('div');outboundModal.className='modal-backdrop';outboundModal.id='mihomo-outbound-modal';outboundModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-outbound-title"><header class="modal-titlebar"><span id="mihomo-outbound-title">Add Outbound</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-outbound-form" novalidate><div class="modal-content"><div class="mihomo-editor-tabs" role="tablist" aria-label="Outbound input"><button type="button" role="tab" id="outbound-form-tab" aria-controls="outbound-form-panel" aria-selected="true" data-outbound-mode="form">Form</button><button type="button" role="tab" id="outbound-yaml-tab" aria-controls="outbound-yaml-panel" aria-selected="false" data-outbound-mode="yaml">YAML</button><span class="ink-bar"></span></div><div id="outbound-form-panel" role="tabpanel" aria-labelledby="outbound-form-tab"><div class="mihomo-form-note" data-i18n-html="mh.formNote">Proxy Node 会写入 <code>proxies</code>；Proxy Group 会写入 <code>proxy-groups</code>。两者都可作为 Routing Rule 的目标。</div><div class="mihomo-form-grid">
+    const outboundModal=document.createElement('div');outboundModal.className='modal-backdrop';outboundModal.id='mihomo-outbound-modal';outboundModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-outbound-title"><header class="modal-titlebar"><span id="mihomo-outbound-title">Add Outbound</span><button type="button" class="modal-close" id="mihomo-outbound-close" data-mihomo-close aria-label="Закрыть">×</button></header><form id="mihomo-outbound-form" novalidate><div class="modal-content"><div class="mihomo-editor-tabs" role="tablist" aria-label="Outbound input"><button type="button" role="tab" id="outbound-form-tab" aria-controls="outbound-form-panel" aria-selected="true" data-outbound-mode="form">Form</button><button type="button" role="tab" id="outbound-yaml-tab" aria-controls="outbound-yaml-panel" aria-selected="false" data-outbound-mode="yaml">YAML</button><span class="ink-bar"></span></div><div id="outbound-form-panel" role="tabpanel" aria-labelledby="outbound-form-tab"><div class="mihomo-form-note" data-i18n-html="mh.formNote">Proxy Node 会写入 <code>proxies</code>；Proxy Group 会写入 <code>proxy-groups</code>。两者都可作为 Routing Rule 的目标。</div><div class="mihomo-form-grid">
       <input name="id" type="hidden"><input name="kind" type="hidden" value="proxy"><label class="mihomo-field"><span>Name</span><input name="name" maxlength="128" required placeholder="Hong Kong / Proxy"></label>
       <label class="mihomo-field"><span>Type</span><select name="type"></select></label><label class="mihomo-field" data-kind="proxy" data-types="ss,snell,socks5,http,vmess,vless,trojan,hysteria2,tuic,wireguard,openvpn"><span>Server</span><input name="server" placeholder="example.com"></label><label class="mihomo-field" data-kind="proxy" data-types="ss,snell,socks5,http,vmess,vless,trojan,hysteria2,tuic,wireguard,openvpn"><span>Port</span><input name="port" type="number" min="1" max="65535" placeholder="443"></label>
       <label class="mihomo-field" data-kind="proxy" data-types="socks5,http,openvpn"><span>Username</span><input name="username" autocomplete="off"></label><label class="mihomo-field" data-kind="proxy" data-types="ss,socks5,http,trojan,hysteria2,tuic,openvpn"><span>Password</span><input name="password" autocomplete="new-password"></label><label class="mihomo-field" data-kind="proxy" data-types="snell"><span data-i18n="mihomo.snellPsk">PSK</span><input name="snellPsk" autocomplete="new-password"></label>
@@ -743,7 +975,7 @@
     const ruleModal=document.createElement('div');ruleModal.className='modal-backdrop';ruleModal.id='mihomo-rule-modal';ruleModal.innerHTML=`<section class="modal-panel mihomo-modal" role="dialog" aria-modal="true" aria-labelledby="mihomo-rule-title"><header class="modal-titlebar"><span id="mihomo-rule-title">Add Routing Rule</span><button type="button" class="modal-close" data-mihomo-close>${SF('close')}</button></header><form id="mihomo-rule-form"><div class="modal-content"><div class="mihomo-form-note" data-i18n="mh.ruleNote">Mihomo 从上到下匹配规则；首个命中的规则决定 Outbound。MATCH 固定作为最后兜底。</div><div class="mihomo-form-grid mihomo-unified-rule-editor"><input name="id" type="hidden">
       <label class="mihomo-field full" id="mihomo-rule-type-field">
         <span class="mihomo-rule-editor-type-label"><span data-i18n="mh.colRuleType">Тип правила</span>${ruleHelpButton('type','LIST')}</span>
-        <select name="type"><option value="LIST">СПИСКИ КАТЕГОРИЙ, ДОМЕНОВ И IP</option>${ruleTypes.filter(type=>type!=='MATCH').map(type=>`<option value="${type}">${type}</option>`).join('')}</select>
+        <select name="type"><option value="LIST">GEO SITE КАТЕГОРИИ + ДОМЕНЫ И IP</option>${ruleTypes.filter(type=>type!=='MATCH'&&type!=='GEOSITE').map(type=>`<option value="${type}">${type}</option>`).join('')}</select>
       </label>
       <section class="mihomo-rule-conditions full" id="mihomo-rule-conditions" aria-labelledby="mihomo-rule-conditions-title">
         <div class="mihomo-rule-section-heading" id="mihomo-rule-conditions-title" data-i18n="mh.ruleConditionsTitle">Условия</div>
@@ -777,8 +1009,8 @@
     $('#mihomo-geo-picker-search').oninput=renderGeoPicker;
     $('#mihomo-geo-picker-source').onchange=renderGeoPicker;
     $('#mihomo-geo-picker-open').onclick=openGeoPicker;
-    $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>{window.MUIBalancerServers?.teardown();closeModal(button.closest('.modal-backdrop'));});
-    for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal){window.MUIBalancerServers?.teardown();closeModal(modal);}};
+    $$('[data-mihomo-close]').forEach(button=>button.onclick=()=>{if(outboundBusy&&button.closest('#mihomo-outbound-modal'))return;window.MUIBalancerServers?.teardown();closeModal(button.closest('.modal-backdrop'));});
+    for(const modal of [outboundModal,ruleModal])modal.onclick=event=>{if(event.target===modal&&!(outboundBusy&&modal===outboundModal)){window.MUIBalancerServers?.teardown();closeModal(modal);}};
     $('#mihomo-outbound-form').onsubmit=saveOutboundDraft;
     $('#mihomo-outbound-form').elements.kind.onchange=syncOutboundForm;
     $('#mihomo-outbound-form').elements.type.onchange=syncOutboundForm;
@@ -805,7 +1037,13 @@
     form.reset();form.elements.kind.value=item.kind||'proxy';populateOutboundTypes(form,item.type);syncOutboundTargets(item);
     for(const field of form.querySelectorAll('[name]')){
       if(['kind','type','proxies','defaultSelected','subscriptionIds'].includes(field.name))continue;
-      setFormValue(form,field.name,item[field.name]??(field.type==='checkbox'?false:''));
+      // Historical URL Test groups may have missing health knobs. Show the
+      // same editable defaults as a newly added group without replacing a
+      // user's explicitly saved zero or custom value.
+      const groupHealthDefaults=item.kind==='group'&&item.type!=='select'
+        ?(field.name==='timeout'?8000:field.name==='tolerance'&&item.type==='url-test'?100:undefined)
+        :undefined;
+      setFormValue(form,field.name,item[field.name]??groupHealthDefaults??(field.type==='checkbox'?false:''));
     }
     form.elements.tls.value=String(!!item.tls);
     form.elements.network.value=item.network||'tcp';
@@ -828,23 +1066,47 @@
     // display or attach a subscription, even when a source exists globally.
     editingSubscriptionGroup=(requestedItem?.kind||requestedKind)==='group'
       &&currentTab==='subscriptions';
+    creatingSubscriptionGroup=editingSubscriptionGroup&&!id;
     balancerSubscriptions=[];
     if(editingSubscriptionGroup){
-      try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
-      catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
+      // /api/mihomo/subscriptions returns exactly the records already present
+      // in /api/state, which this view polls every five seconds. Do not make
+      // the pencil click wait on another round trip before opening the modal.
+      const cached=app.state?.state?.outboundSubscriptions;
+      const linkedIDs=new Set(requestedItem?.subscriptionIds||[]);
+      // An empty or incomplete state snapshot is NOT a usable source list.
+      // Otherwise the editor has group.subscriptionIds but no matching
+      // subscription object; its source <select> is blank and live preview
+      // silently returns without crossing any nodes.
+      const hasLinkedSource=Array.isArray(cached)&&cached.some(src=>
+        src.group===requestedItem?.name||linkedIDs.has(src.id));
+      const complete=hasLinkedSource&&[...linkedIDs].every(id=>
+        cached.some(src=>src.id===id));
+      if(complete)balancerSubscriptions=clone(cached);
+      else{
+        try{balancerSubscriptions=await api('/api/mihomo/subscriptions');}
+        catch(error){toast('Не удалось загрузить подписки: '+error.message,true);return;}
+      }
     }
     if(draft.outbounds.find(item=>item.id===id)?.vpngate){await openVPNGateModal(id);return;}
     window.MUIBalancerServers?.teardown();
     ensureModals();editingOutbound=id;
     editingOriginal=clone(requestedItem||(requestedKind==='group'&&!editingSubscriptionGroup
       ?{...newManualBalancerDefaults(),port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,strategy:'consistent-hashing'}
-      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:300,strategy:'consistent-hashing'}));
+      :{kind:requestedKind,type:requestedKind==='group'?'url-test':'ss',port:443,cipher:'aes-256-gcm',network:'tcp',udp:true,testUrl:draft.basics.outboundTestUrl||defaultTestURL,interval:60,
+        // Defaults for newly created subscription balancers; never alter saved groups.
+        ...(requestedKind==='group'?{timeout:8000,tolerance:100}:{}),
+        strategy:'consistent-hashing'}));
     fillOutboundForm(editingOriginal);showImportError('');$('#outbound-share-link').value='';setYAML('');
     outboundFormChanged=false;outboundYAMLCached=false;
     setOutboundMode('form');
     $('#mihomo-outbound-title').textContent=editingOriginal.kind==='group'
       ?(id?'Настройки балансировщика':'Добавить балансировщик')
       :muiT(id?'mh.editOutbound':'mihomo.addOutbound');
+    const editorTabs=$('#mihomo-outbound-modal .mihomo-editor-tabs');
+    editorTabs.style.display=creatingSubscriptionGroup?'none':'';
+    $('#mihomo-outbound-modal').dataset.creatingSubscription=String(creatingSubscriptionGroup);
+    if(creatingSubscriptionGroup)$('#outbound-apply').textContent='Создать балансировщик';else $('#outbound-apply').textContent=muiT('mh.applyToDraft');
     openModal('mihomo-outbound-modal');
     requestAnimationFrame(()=>{if(typeof syncInkBars==='function')syncInkBars();});
     if(editingOriginal.native&&!window.MUIBalancerServers?.active()){await switchOutboundMode('yaml',editingOriginal);}else $('#mihomo-outbound-form').elements.name.focus();
@@ -866,12 +1128,13 @@
     if(!handler)return;
     const form=$('#mihomo-outbound-form');
     if(!form||form.elements.kind.value!=='group'){handler.teardown();return;}
-    const selectedIDs=Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value);
+    const selectedIDs=Array.from(form.elements.subscriptionIds.selectedOptions,option=>option.value).filter(Boolean);
     const group={...clone(editingOriginal||{}),
       name:form.elements.name.value.trim()||editingOriginal?.name||'',
+      ...(creatingSubscriptionGroup?{proxies:Array.from(form.elements.proxies.selectedOptions,o=>o.value)}:{}),
       subscriptionIds:editingSubscriptionGroup?selectedIDs:[]};
     const active=handler.attach({
-      form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,
+      form,group,subs:balancerSubscriptions,outbounds:draft.outbounds,creating:creatingSubscriptionGroup,
       // Existing groups can be probed; new or renamed unsaved groups cannot.
       persistedName:editingOriginal?.id?editingOriginal.name:'',
       updateDefaults:()=>syncGroupDefaultOptions(),
@@ -891,12 +1154,16 @@
     const select=$('#mihomo-outbound-form').elements.subscriptionIds;
     if(!select)return;
     select.replaceChildren();
+    select.multiple=!creatingSubscriptionGroup;
+    select.size=creatingSubscriptionGroup?1:4;
     if(!editingSubscriptionGroup)return;
+    if(creatingSubscriptionGroup)select.add(new Option('Выберите подписку…',''));
     for(const source of balancerSubscriptions){
       const option=new Option(source.name+' ('+String(source.nodeCount||0)+')',source.id);
-      option.selected=(item.subscriptionIds||[]).includes(source.id)||source.group===item.name;
+      option.selected=!creatingSubscriptionGroup&&((item.subscriptionIds||[]).includes(source.id)||source.group===item.name);
       select.add(option);
     }
+    if(creatingSubscriptionGroup)select.value='';
   }
   function syncBalancerSubscriptionMembers(){
     const form=$('#mihomo-outbound-form');
@@ -908,7 +1175,7 @@
       const node=draft.outbounds.find(candidate=>candidate.name===option.value);
       if(!node?.sourceSubscriptionId)continue;
       if(ids.has(node.sourceSubscriptionId))option.selected=!(editingOriginal?.excludedSubscriptionMembers||[]).includes(option.value);
-      else if(previouslyAttached.has(node.sourceSubscriptionId))option.selected=false;
+      else if(creatingSubscriptionGroup||previouslyAttached.has(node.sourceSubscriptionId))option.selected=false;
     }
     syncGroupDefaultOptions();
   }
@@ -970,7 +1237,7 @@
           else delete native['default-selected'];
         }else{
           native.url=item.testUrl||defaultTestURL;
-          native.interval=item.interval||300;
+          native.interval=item.interval||60;
           if(item.timeout>0)native.timeout=item.timeout;else delete native.timeout;
           if(item.type==='url-test'&&item.tolerance>0)native.tolerance=item.tolerance;
           else delete native.tolerance;
@@ -1036,16 +1303,44 @@
     }
     for(const rule of rules)if(rule.target===oldName)rule.target=newName;
   }
+  async function createSubscriptionBalancer(){
+    if(dirty){showImportError('Сначала сохраните изменения Mihomo Settings');return;}
+    const form=$('#mihomo-outbound-form');let payload;
+    try{payload=window.MUIBalancerServers?.creationPayload?.();}catch(error){showImportError(error.message);return;}
+    if(!payload?.sourceId){showImportError('Выберите подписку');return;}
+    if(!form.elements.name.value.trim()){showImportError('Укажите название балансировщика');return;}
+    setImportBusy(true);showImportError('');
+    try{
+      await api('/api/mihomo/subscriptions/groups',{method:'POST',body:JSON.stringify({...payload,
+        group:form.elements.name.value.trim(),groupType:form.elements.type.value,
+        settings:{testUrl:form.elements.testUrl.value,interval:Number(form.elements.interval.value)||0,
+          timeout:Number(form.elements.timeout.value)||0,tolerance:Number(form.elements.tolerance.value)||0,
+          strategy:form.elements.strategy.value,disableUdp:form.elements.disableUdp.checked,
+          defaultSelected:form.elements.defaultSelected.value}
+      })});
+      window.MUIBalancerServers?.teardown();closeModal($('#mihomo-outbound-modal'));
+      toast('Балансировщик создан');
+      try{await refresh();syncFromState();}catch(error){toast('Балансировщик сохранён. Обновите страницу.',true);}
+    }catch(error){showImportError(error.message);}finally{setImportBusy(false);}
+  }
+
   async function saveOutboundDraft(event){
     event.preventDefault();if(outboundBusy)return;
     if(outboundMode==='form'&&!event.currentTarget.reportValidity())return;
+    if(creatingSubscriptionGroup){await createSubscriptionBalancer();return;}
     setImportBusy(true);showImportError('');
+    const applyingGroup=$('#mihomo-outbound-form').elements.kind.value==='group';
+    const dialog=applyingGroup?openMihomoStatusDialog('apply'):null;
     try{
       let yaml=$('#outbound-yaml').value;
       if(outboundMode==='form'){
         const exported=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify({outbound:readOutboundForm()})});yaml=exported.yaml;
       }
       const response=await api('/api/mihomo/outbound/parse',{method:'POST',body:JSON.stringify(importRequest({yaml}))});
+      // The balancer's Apply action must also persist source filters.
+      // Previously it closed the dialog and discarded them unless a separate
+      // subscription Save button was pressed first.
+      const sourceFiltersSaved=applyingGroup?await window.MUIBalancerServers?.saveSourceSettings?.():false;
       const groupSubscriptionIDs=editingSubscriptionGroup
         ?Array.from($('#mihomo-outbound-form').elements.subscriptionIds.selectedOptions,option=>option.value):[];
       if(response.outbounds.length===1 && response.outbounds[0].kind==='group'){
@@ -1053,6 +1348,51 @@
         const exclusions=window.MUIBalancerServers?.getExcluded();
         response.outbounds[0].excludedSubscriptionMembers=editingSubscriptionGroup
           ?exclusions??editingOriginal?.excludedSubscriptionMembers??[]:[];
+        // Native YAML editing does not carry panel-only metadata. Retain
+        // group-scoped filters and shared subscription IDs across Apply.
+        if(editingSubscriptionGroup){
+          const lastSaved=sourceFiltersSaved
+            ?(app.state?.state?.outbounds||[]).find(x=>x.kind==='group'&&x.name===response.outbounds[0].name)
+            :null;
+          const original=lastSaved||editingOriginal||{};
+          response.outbounds[0].subscriptionManaged=!!original.subscriptionManaged;
+          response.outbounds[0].subscriptionRetainedMembers=[...(original.subscriptionRetainedMembers||[])];
+          response.outbounds[0].subscriptionFilterKeep=original.subscriptionFilterKeep||'';
+          response.outbounds[0].subscriptionFilterExclude=original.subscriptionFilterExclude||'';
+          response.outbounds[0].subscriptionExcludedNodeKeys=[...(original.subscriptionExcludedNodeKeys||[])];
+        }
+      }
+      if(sourceFiltersSaved&&response.outbounds.length===1&&response.outbounds[0].kind==='group'){
+        // Source PUT can replace the managed nodes, so discard stale names
+        // before staging the group for the outer Mihomo Save action.
+        await refresh();
+        const live=app.state?.state||{};
+        if(!dirty)syncFromState();
+        const activeNodes=live.outbounds||[];
+        const byName=new Map(activeNodes.map(node=>[node.name,node]));
+        const group=response.outbounds[0];
+        const sources=new Set([...groupSubscriptionIDs,
+          ...(live.outboundSubscriptions||[]).filter(sub=>sub.group===group.name).map(sub=>sub.id)]);
+        const excluded=new Set(group.excludedSubscriptionMembers||[]);
+        const manual=(group.proxies||[]).filter(name=>{
+          const node=byName.get(name);
+          return node&&!node.sourceSubscriptionId;
+        });
+        const liveGroup=activeNodes.find(node=>node.kind==='group'&&node.name===group.name);
+        const liveMembers=new Set(liveGroup?.proxies||[]);
+        const fresh=activeNodes.filter(node=>node.sourceSubscriptionId&&sources.has(node.sourceSubscriptionId)
+          &&(liveGroup?liveMembers.has(node.name):true)&&!excluded.has(node.name)).map(node=>node.name);
+        if(liveGroup){
+          group.subscriptionFilterKeep=liveGroup.subscriptionFilterKeep||'';
+          group.subscriptionFilterExclude=liveGroup.subscriptionFilterExclude||'';
+          group.subscriptionExcludedNodeKeys=[...(liveGroup.subscriptionExcludedNodeKeys||[])];
+        }
+        if(liveGroup?.subscriptionRetainedMembers?.length){
+          group.subscriptionManaged=true;
+          group.subscriptionRetainedMembers=[...liveGroup.subscriptionRetainedMembers];
+          group.proxies=[...(liveGroup.proxies||[])];
+        }else group.proxies=Array.from(new Set([...manual,...fresh]));
+        if(group.native)group.native.proxies=[...group.proxies];
       }
       const next=clone(draft),index=next.outbounds.findIndex(item=>item.id===editingOutbound);
       if(index>=0){
@@ -1061,7 +1401,8 @@
         if(previous.name!==item.name)renameReferences(next.outbounds,next.routingRules,previous.name,item.name);
       }else next.outbounds.push(...response.outbounds);
       draft=next;window.MUIBalancerServers?.teardown();closeModal($('#mihomo-outbound-modal'));markDirty();
-    }catch(error){showImportError(error.message);}finally{setImportBusy(false);}
+      dialog?.set('success',muiT('mh.operationApplyReady'));
+    }catch(error){showImportError(error.message);dialog?.set('error',error.message);}finally{setImportBusy(false);}
   }
 
   function rulePayloadHint(type){
@@ -1148,12 +1489,15 @@
     const decoded=window.MUIRuleLists?.decode(item);
     form.reset();
     form.elements.id.value=item.id||'';
-    // A fresh MATCH is not selectable; the existing fallback remains editable.
+    // Standalone GEOSITE stays editable on existing rules, but new rules
+    // use the universal LIST editor. MATCH remains protected.
     const typeSelect=form.elements.type;
-    typeSelect.querySelector('option[value="MATCH"]')?.remove();
-    if(item.type==='MATCH'){
+    for(const legacy of ['MATCH','GEOSITE'])
+      typeSelect.querySelector('option[value="'+legacy+'"]')?.remove();
+    if(item.type==='MATCH'||item.type==='GEOSITE'){
       const option=document.createElement('option');
-      option.value='MATCH';option.textContent=ruleTypeDisplayLabel('MATCH');
+      option.value=item.type;
+      option.textContent=ruleTypeDisplayLabel(item.type);
       typeSelect.appendChild(option);
     }
     refreshRuleTypeLabels();
@@ -1263,6 +1607,14 @@
   function renderBasicsIndicators(){
     $('#basics-mode-warning').hidden=draft.basics.mode==='rule';
     $('#basics-dns-log').checked=draft.basics.logLevel==='debug';
+    const watchdogStatus=$('#basics-watchdog-status');
+    if(watchdogStatus){
+      const watchdog=app.state?.mihomoWatchdog;
+      const state=watchdog?.state||'disabled';
+      const key='mihomo.basic.watchdogStatus.'+state;
+      const next=muiT(key)+(watchdog?.attempts?' · '+muiT('mihomo.basic.watchdogAttempts')+': '+watchdog.attempts+'/3':'');
+      if(watchdogStatus.textContent!==next)watchdogStatus.textContent=next;
+    }
   }
   function renderBasicsTags(name){
     const box=$('[data-basics-tags="'+name+'"] [data-tag-items]');
@@ -1301,6 +1653,8 @@
   }
   async function testOutbound(button){
     const name=button.dataset.testOutbound;
+    const item=outboundRows().find(row=>row.name===name);
+    if(!item||outboundTestUnavailableReason(item))return;
     button.disabled=true;delayResults.set(name,'Testing');
     renderOutbounds();
     try{
@@ -1581,29 +1935,191 @@
     }catch(error){showWarpError(error.message);}finally{warpBusy=false;renderWarpModal();}
   }
 
-  async function saveSettings(){
-    for(const field of $$('[data-basics-list]'))commitBasicsTags(field);
-    const button=$('#mihomo-save');button.disabled=true;
+
+  // Reuse the existing centered M-UI dialog design for Save and Restart.
+  // A busy dialog is intentionally not dismissible while the request runs.
+  let mihomoActionBusy=false;
+  function openMihomoStatusDialog(kind){
+    const previousFocus=document.activeElement;
+    const backdrop=document.createElement('div');
+    backdrop.id='mihomo-operation-status';
+    backdrop.className='modal-backdrop mui-dialog mui-balancer-use-backdrop mui-mihomo-status-backdrop open';
+    const panel=document.createElement('section');
+    panel.className='modal-panel narrow mui-dialog-panel mui-balancer-use-panel mui-mihomo-status-panel';
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-modal','true');
+    panel.setAttribute('aria-labelledby','mihomo-operation-title');
+    panel.setAttribute('aria-describedby','mihomo-operation-message');
+    const header=document.createElement('header');
+    header.className='mui-balancer-use-header mui-mihomo-status-header';
+    const indicator=document.createElement('span');
+    indicator.className='mui-balancer-use-icon mui-mihomo-status-indicator';
+    indicator.setAttribute('aria-hidden','true');
+    const title=document.createElement('h2');
+    title.id='mihomo-operation-title';
+    header.append(indicator,title);
+    const body=document.createElement('div');
+    body.className='modal-content mui-balancer-use-content mui-mihomo-status-content';
+    const detail=document.createElement('p');
+    detail.id='mihomo-operation-message';
+    detail.setAttribute('role','status');
+    detail.setAttribute('aria-live','polite');
+    body.appendChild(detail);
+    const footer=document.createElement('footer');
+    footer.className='modal-footer mui-balancer-use-actions mui-mihomo-status-actions';
+    const dismiss=document.createElement('button');
+    dismiss.type='button';
+    dismiss.className='primary-btn mui-status-error-close';
+    dismiss.textContent=muiT('common.close');
+    dismiss.disabled=true;
+    footer.append(dismiss);
+    panel.append(header,body,footer);
+    backdrop.appendChild(panel);
+    let busy=true,successDismissTimer=0;
+    const close=()=>{
+      if(busy)return;
+      if(successDismissTimer){clearTimeout(successDismissTimer);successDismissTimer=0;}
+      document.removeEventListener('keydown',onKey,true);
+      backdrop.remove();
+      if(previousFocus&&document.contains(previousFocus))previousFocus.focus?.({preventScroll:true});
+    };
+    const onKey=event=>{
+      if(event.key==='Escape'){
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      }else if(event.key==='Tab'){
+        if(busy||backdrop.dataset.phase==='success'){event.preventDefault();return;}
+        event.preventDefault();
+        dismiss.focus();
+      }
+    };
+    dismiss.onclick=close;
+    backdrop.addEventListener('mousedown',event=>{if(event.target===backdrop)close();});
+    document.addEventListener('keydown',onKey,true);
+    document.body.appendChild(backdrop);
+    panel.tabIndex=-1;
+    panel.focus({preventScroll:true});
+    const set=(phase,message)=>{
+      if(successDismissTimer){clearTimeout(successDismissTimer);successDismissTimer=0;}
+      busy=phase==='pending';
+      backdrop.dataset.phase=phase;
+      indicator.textContent=phase==='pending'?'':(phase==='success'?'✓':'!');
+      title.textContent=muiT(phase==='error'?'mh.operationFailureTitle':
+        phase==='success'?(kind==='save'?'mh.operationSaveTitle':kind==='apply'?'mh.operationApplyTitle':'mh.operationRestartTitle'):
+        (kind==='save'?'mh.operationSaving':kind==='apply'?'mh.operationApplying':'mh.operationRestarting'));
+      detail.textContent=String(message||'');
+      // Pending/success notifications have no close button; success
+      // disappears after 2.5 s. Errors keep an accessible Close action.
+      footer.hidden=phase!=='error';
+      dismiss.disabled=phase!=='error';
+      if(phase==='error')dismiss.focus({preventScroll:true});
+      else panel.focus({preventScroll:true});
+      // Successful saves/apply/restarts dismiss themselves; errors stay visible
+      // until explicitly closed. The timer is canceled on manual dismissal.
+      if(phase==='success')successDismissTimer=setTimeout(close,2500);
+    };
+    set('pending',muiT(kind==='save'?'mh.operationSaving':kind==='apply'?'mh.operationApplying':'mh.operationRestarting'));
+    return {set,close};
+  }
+
+  async function restartMihomoFromSettings(){
+    if(mihomoActionBusy)return false;
+    if(dirty){toast(muiT('mh.saveFirst'),true);return false;}
+    mihomoActionBusy=true;
+    const button=$('#mihomo-restart');
+    button.disabled=true;
+    const dialog=openMihomoStatusDialog('restart');
     try{
-      const response=await api('/api/mihomo/settings',{method:'PUT',body:JSON.stringify(draft)});
+      await api('/api/core/restart',{method:'POST'});
+      dialog.set('success',muiT('mh.operationRestartSuccess'));
+      await refresh();
+      return true;
+    }catch(error){dialog.set('error',error.message);return false;}
+    finally{mihomoActionBusy=false;syncButtons();}
+  }
+
+  async function saveSettings(){
+    if(mihomoActionBusy)return;
+    for(const field of $$('[data-basics-list]'))commitBasicsTags(field);
+    mihomoActionBusy=true;
+    const button=$('#mihomo-save');button.disabled=true;
+    const dialog=openMihomoStatusDialog('save');
+    try{
+      // Never submit the full list of subscription nodes for a manual group
+      // edit (e.g. deleting FOREIGN). The server applies only changed IDs
+      // against its live subscription snapshot under one mutex.
+      const same= (a,b)=>JSON.stringify(a)===JSON.stringify(b);
+      // The subscription service owns proxy nodes. Their current/previous
+      // snapshots can diverge while an editor draft is open (refresh, filter,
+      // status updates). Never send these read-only entries to editor PUT.
+      const editable=items=>items.filter(item=>!item.sourceSubscriptionId);
+      const lastEditable=editable(lastSyncedOutbounds);
+      const currentEditable=editable(draft.outbounds);
+      const changedOutbounds=!same(currentEditable,lastEditable);
+      const changedBasics=!same(draft.basics,lastSyncedBasics);
+      const changedRules=!same(draft.routingRules,lastSyncedRules);
+      const routingOnly=!changedOutbounds&&!changedBasics;
+      let response;
+      if(routingOnly){
+        response=await api('/api/mihomo/rules',{method:'PUT',body:JSON.stringify({routingRules:draft.routingRules})});
+      }else{
+        const previous=new Map(lastEditable.map(item=>[item.id,item]));
+        const current=new Set(currentEditable.map(item=>item.id));
+        const deleteIds=lastEditable.filter(item=>!current.has(item.id)).map(item=>item.id);
+        const upserts=currentEditable.filter(item=>!previous.has(item.id)||!same(item,previous.get(item.id)));
+        const manualOrder=items=>items.map(item=>item.id);
+        const order=manualOrder(currentEditable);
+        const changes={upserts,deleteIds};
+        if(!same(order,manualOrder(lastEditable)))changes.order=order;
+        if(changedRules)changes.routingRules=draft.routingRules;
+        if(changedBasics)changes.basics=draft.basics;
+        response=await api('/api/mihomo/editor',{method:'PUT',body:JSON.stringify(changes)});
+      }
       dirty=false;root.classList.remove('mihomo-dirty');
-      if(app.state?.state){app.state.state.outbounds=clone(draft.outbounds);app.state.state.routingRules=clone(draft.routingRules);app.state.state.mihomoBasics=clone(draft.basics);app.state.state.settings.mode=draft.basics.mode;app.state.state.settings.logLevel=draft.basics.logLevel;}
-      toast(response.message||muiT('mh.settingsSaved'));await refresh();
-    }catch(error){toast(error.message,true);}finally{syncButtons();}
+      if(app.state?.state){
+        if(changedBasics){
+          app.state.state.mihomoBasics=clone(draft.basics);
+          app.state.state.settings.mode=draft.basics.mode;
+          app.state.state.settings.logLevel=draft.basics.logLevel;
+        }
+        if(changedRules)app.state.state.routingRules=clone(draft.routingRules);
+        // Deliberately do NOT replace live Outbounds with a stale draft.
+        // refresh() reloads the canonical subscribed nodes after the save.
+      }
+      dialog.set('success',muiT('mh.settingsSaved'));
+      await refresh();
+    }catch(error){dialog.set('error',error.message);}
+    finally{mihomoActionBusy=false;syncButtons();}
   }
 
   ensureModals();
   setupRuleHelp();
   $$('.mihomo-tab',root).forEach(button=>button.onclick=()=>setTab(button.dataset.mihomoTab));
+  const hideFilteredToggle=$('#mihomo-hide-filtered-outbounds');
+  if(hideFilteredToggle){
+    try{hideFilteredToggle.checked=localStorage.getItem('mui-hide-filtered-outbounds')==='1';}catch{}
+    hideFilteredToggle.onchange=()=>{
+      try{localStorage.setItem('mui-hide-filtered-outbounds',hideFilteredToggle.checked?'1':'0');}catch{}
+      if(currentTab==='outbounds')renderOutbounds();
+    };
+  }
   $('#mihomo-add-outbound').onclick=()=>openOutboundModal();
   $('#mihomo-add-balancer').onclick=()=>openOutboundModal('', 'group');
-  $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openCreate();};
+  $('#mihomo-add-sub-balancer').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}openOutboundModal('', 'group');};
+  $('#mihomo-add-source').onclick=()=>{if(dirty){toast('Сначала сохраните изменения Mihomo Settings',true);return;}window.MUIOutboundSubscriptions?.openSource();};
   $('#mihomo-add-rule').onclick=()=>openRuleModal();
   $('#mihomo-warp').onclick=openWarpModal;
   $('#mihomo-vpngate').onclick=()=>openVPNGateModal();
   $('#basics-warp').onclick=openWarpModal;
+  // Saved metadata lives on the server. Never silently discard the unsaved
+  // Mihomo editor or subscription filter inputs on browser reload.
+  window.addEventListener('beforeunload',event=>{
+    if(!dirty&&!window.MUIBalancerServers?.hasUnsavedFilterEdits?.())return;
+    event.preventDefault();event.returnValue='';
+  });
   $('#mihomo-save').onclick=saveSettings;
-  $('#mihomo-restart').onclick=()=>{if(dirty){toast(muiT('mh.saveFirst'),true);return;}coreAction('restart');};
+  $('#mihomo-restart').onclick=restartMihomoFromSettings;
 
   const baseRenderState=renderState;
   renderState=function(){baseRenderState();syncFromState();if(app.currentView==='mihomo'&&currentTab==='outbounds'&&draft.outbounds.some(item=>item.vpngate))refreshVPNGateData();};
@@ -1631,6 +2147,6 @@
     balancerSubscriptions=Array.isArray(event.detail?.subscriptions)?event.detail.subscriptions:[];
     if(currentTab==='subscriptions'||currentTab==='balancers')renderOutbounds();
   });
-  window.MUIMihomoSettings={openTab:setTab,isDirty:()=>dirty,refreshOutbounds:syncFromState};
+  window.MUIMihomoSettings={openTab:setTab,isDirty:()=>dirty,refreshOutbounds:syncFromState,restart:restartMihomoFromSettings};
   setupBasics();syncFromState();setTab('basics');
 })();

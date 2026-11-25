@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -97,6 +98,9 @@ func TestCreateSubscribedBalancerAtomic(t *testing.T) {
 	if group.Kind != "group" || group.Name != "EU-Pool" || group.Type != "fallback" || len(group.Proxies) != 1 {
 		t.Fatalf("wrong group: %+v", group)
 	}
+	if group.Interval != 60 || group.Timeout != 8000 || group.Tolerance != 0 {
+		t.Fatalf("fallback defaults are wrong: interval=%d timeout=%d tolerance=%d", group.Interval, group.Timeout, group.Tolerance)
+	}
 	if !reflect.DeepEqual(m.state.OutboundSubscriptions[0].ExcludedNodeKeys, sub.ExcludedNodeKeys) {
 		t.Fatal("filter metadata lost")
 	}
@@ -117,6 +121,112 @@ func TestCreateSubscribedBalancerAtomic(t *testing.T) {
 		t.Fatal("failed duplicate creation touched state")
 	}
 }
+func TestCreateSubscribedURLTestDefaultsAndEditableSettings(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-new", Name: "Provider", URL: "https://example.org/sub",
+		Group: "New-URLTest", Enabled: true, IntervalMinutes: 60}
+	if err := m.commitOutboundSubscriptionWithGroup(sub, []MihomoOutbound{
+		subscriptionSS("Germany", "de.example")}, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	group := m.state.Outbounds[0]
+	if group.Interval != 60 || group.Timeout != 8000 || group.Tolerance != 100 {
+		t.Fatalf("wrong new URL-test defaults: %+v", group)
+	}
+	loaded := &CoreManager{dataDir: m.dataDir}
+	if err := loaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	fromDisk := loaded.state.Outbounds[0]
+	if fromDisk.Timeout != 8000 || fromDisk.Tolerance != 100 {
+		t.Fatalf("timeout/tolerance lost after reload: %+v", fromDisk)
+	}
+	// Existing user-customized values must survive subscription updates.
+	m.state.Outbounds[0].Timeout = 5000
+	m.state.Outbounds[0].Tolerance = 220
+	if err := m.commitOutboundSubscription(sub, []MihomoOutbound{
+		subscriptionSS("Germany", "de.example")}, false); err != nil {
+		t.Fatal(err)
+	}
+	updated := m.state.Outbounds[0]
+	if updated.Timeout != 5000 || updated.Tolerance != 220 {
+		t.Fatalf("existing editable values overwritten on refresh: %+v", updated)
+	}
+}
+
+func TestEditedSubscriptionFiltersPersistAfterRestartAndRebuildGroup(t *testing.T) {
+	m := &CoreManager{dataDir: t.TempDir(), state: defaultState()}
+	sub := OutboundSubscription{ID: "sub-refresh", Name: "Provider", URL: "https://example.org/sub",
+		Group: "Foreign-Pool", Enabled: true, IntervalMinutes: 1440}
+	nodes := []MihomoOutbound{
+		subscriptionSS("🇷🇺 Россия LTE", "ru.example"),
+		subscriptionSS("🇵🇱 Польша LTE", "pl.example"),
+	}
+	if err := m.commitOutboundSubscriptionWithGroup(sub, nodes, true, true, "url-test"); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.state.Outbounds) != 3 || len(m.state.Outbounds[0].Proxies) != 2 {
+		t.Fatal("initial subscription group must include both nodes")
+	}
+	sub.FilterKeep = "🇵🇱"
+	sub.FilterExclude = "🇷🇺"
+	if err := m.commitOutboundSubscription(sub, nodes, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.state.Outbounds) != 2 || len(m.state.Outbounds[0].Proxies) != 1 {
+		t.Fatalf("filter did not narrow the live group: %#v", m.state.Outbounds)
+	}
+	reloaded := &CoreManager{dataDir: m.dataDir}
+	if err := reloaded.load(); err != nil {
+		t.Fatal(err)
+	}
+	if len(reloaded.state.OutboundSubscriptions) != 1 {
+		t.Fatal("subscription metadata lost")
+	}
+	got := reloaded.state.OutboundSubscriptions[0]
+	if got.FilterKeep != "🇵🇱" || got.FilterExclude != "🇷🇺" || got.IntervalMinutes != 1440 {
+		t.Fatalf("filters disappeared after state reload: %+v", got)
+	}
+	if len(reloaded.state.Outbounds) != 2 || len(reloaded.state.Outbounds[0].Proxies) != 1 {
+		t.Fatal("group membership changed after state reload")
+	}
+	if len(got.FilteredNodes) != 1 || !strings.Contains(got.FilteredNodes[0].Name, "Россия") {
+		t.Fatalf("filtered names must survive restart without proxy credentials: %+v", got.FilteredNodes)
+	}
+	if got.FilteredNodes[0].Protocol != "ss" {
+		t.Fatalf("protocol lost: %+v", got.FilteredNodes[0])
+	}
+	if got.FilteredNodes[0].Name == "ru.example" {
+		t.Fatal("server address exposed in display metadata")
+	}
+	group, sources, members, ok := balancerSubscriptionSnapshot(reloaded.state, "Foreign-Pool")
+	if !ok {
+		t.Fatal("linked group missing")
+	}
+	status := buildBalancerStatus(group, sources, members, nil, false)
+	if len(status.Nodes) != 2 {
+		t.Fatalf("crossed-out excluded node absent from status: %+v", status.Nodes)
+	}
+	filteredCount := 0
+	for _, item := range status.Nodes {
+		if item.Filtered {
+			filteredCount++
+			if item.Member || item.Delay != 0 || !strings.Contains(item.Name, "Россия") {
+				t.Fatalf("filtered preview erroneously active: %+v", item)
+			}
+		}
+	}
+	if filteredCount != 1 {
+		t.Fatalf("expected 1 crossed-out node; got %d", filteredCount)
+	}
+	if reloaded.state.Outbounds[0].Timeout != 8000 || reloaded.state.Outbounds[0].Tolerance != 100 {
+		t.Fatal("balancer settings lost when filters were saved")
+	}
+	if _, err := os.Stat(filepath.Join(m.dataDir, "config.yaml")); err != nil {
+		t.Fatal("compiled Mihomo configuration not saved", err)
+	}
+}
+
 func TestCreateSubscribedBalancerEmptyFilterDoesNotMutate(t *testing.T) {
 	state := defaultState()
 	state.Outbounds = []MihomoOutbound{subscriptionSS("Manual", "manual.example")}

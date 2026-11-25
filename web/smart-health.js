@@ -1,0 +1,167 @@
+(() => {
+  const root=document.getElementById('smart-health-root');
+  if(!root)return;
+  const el=id=>document.getElementById('smart-health-'+id);
+  const modes={disabled:'Отключён',pending:'Ожидает перезапуска Mihomo',starting:'Инициализация монитора',normal:'Штатный',degraded:'Ускоренный',offline:'Аварийный — нет ответа контрольных сервисов',unknown:'Результат проверки неизвестен',core_unavailable:'Ядро Mihomo недоступно'};
+  const en={disabled:'Disabled',pending:'Mihomo restart required',starting:'Initializing monitor',normal:'Normal',degraded:'Degraded',offline:'Emergency — control services unreachable',unknown:'Check result unknown',core_unavailable:'Mihomo unavailable'};
+  const ru=()=>window.muiGetLang?.()==='ru'||!window.muiGetLang;
+  const mode=s=>(ru()?modes:en)[s]||s||'—';
+  const format=t=>t&&new Date(t).getFullYear()>1970?new Date(t).toLocaleString():'—';
+  let dirty=false,busy=false,polling=false,revision=0,loaded=false,lastSettings="",catalog=[],selected=new Set(),editingID=null;
+  const editor=el('editor');
+  const count=()=>{el('count').textContent=(ru()?'Выбрано: ':'Selected: ')+selected.size+' / '+catalog.length;};
+  function markDirty(){revision++;dirty=true;el('save').disabled=busy||!loaded;count();}
+  const isIPv4=host=>/^\d{1,3}(\.\d{1,3}){3}$/.test(host)&&host.split('.').every(x=>String(Number(x))===x&&Number(x)<=255);
+  const isDomain=host=>host.includes('.')&&host.split('.').every(x=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(x))&&/[a-z]/.test(host.split('.').slice(-1)[0]);
+  function updateEditorHint(){
+    const protocol=el('editor-protocol').value,host=el('editor-host').value.trim();
+    el('editor-protocol').dataset.protocol=protocol;
+    const tls=protocol!=='Do53'&&(isIPv4(host)||!!el('editor-tls').value.trim());
+    el('editor-tls-row').hidden=!tls;
+    el('editor-tls').required=protocol!=='Do53'&&isIPv4(host);
+    el('editor-hint').textContent=({HTTPS:'HTTPS · 443 · HEAD /',DoH:'DoH · 443 · /dns-query',DoT:'DoT · 853 · TLS',Do53:'Do53 · 53 · UDP / TCP'})[protocol]||'';
+  }
+  function openEditor(id=null){
+    if(busy||!loaded||editor.open)return;
+    revision++;
+    if(!id&&catalog.length>=32){el('message').textContent='Максимум 32 контрольных сервиса';return;}
+    editingID=id;
+    const item=catalog.find(x=>x.id===id);
+    el('editor-title').textContent=item?'Редактировать контрольный сервис':'Добавить контрольный сервис';
+    el('editor-submit').textContent=item?'Применить':'Добавить';
+    el('editor-name').value=item?.name||'';
+    el('editor-host').value=item?.host||'';
+    el('editor-protocol').value=item?.protocol||'HTTPS';
+    el('editor-tls').value=item?.tlsName||'';
+    el('editor-error').textContent='';
+    updateEditorHint();
+    editor.showModal();el('editor-name').focus();
+  }
+  function renderCatalog(){
+    const list=el('services');list.replaceChildren();
+    for(const item of catalog){
+      const row=document.createElement('div');row.className='smart-health-service-row';
+      const input=document.createElement('input');input.type='checkbox';input.dataset.smartService=item.id;input.checked=selected.has(item.id);input.setAttribute('aria-label','Опрос: '+item.name+' · '+item.protocol);
+      input.onchange=()=>{if(input.checked)selected.add(item.id);else selected.delete(item.id);markDirty();};
+      const name=document.createElement('button');name.type='button';name.className='smart-health-service-name';name.dataset.smartEdit=item.id;name.textContent=item.name;
+      name.title=item.host;name.setAttribute('aria-label','Редактировать '+item.name+' · '+item.protocol);name.onclick=()=>openEditor(item.id);
+      const protocol=document.createElement('span');protocol.className='smart-health-protocol';protocol.dataset.protocol=item.protocol;protocol.textContent=item.protocol;
+      const status=document.createElement('span');status.dataset.smartResult=item.id;status.className='smart-health-service-status mihomo-muted';status.textContent='—';
+      const remove=document.createElement('button');remove.type='button';remove.className='smart-health-service-remove';remove.dataset.smartRemove=item.id;remove.textContent='×';remove.title='Удалить';remove.setAttribute('aria-label','Удалить '+item.name+' · '+item.protocol);
+      remove.onclick=()=>{if(busy)return;catalog=catalog.filter(x=>x.id!==item.id);selected.delete(item.id);renderCatalog();markDirty();};
+      row.append(input,name,protocol,status,remove);list.append(row);
+    }
+    count();
+  }
+  el('add').onclick=()=>openEditor();
+  el('editor-cancel').onclick=()=>editor.close();
+  el('editor-protocol').onchange=updateEditorHint;
+  el('editor-host').oninput=updateEditorHint;
+  el('editor-form').onsubmit=event=>{
+    event.preventDefault();
+    const name=el('editor-name').value.trim(),host=el('editor-host').value.trim().toLowerCase(),protocol=el('editor-protocol').value;
+    const tlsName=protocol==='Do53'?'':el('editor-tls').value.trim().toLowerCase();
+    if(!name||(!isDomain(host)&&!isIPv4(host))){el('editor-error').textContent='Укажите название и публичный домен или IPv4 без схемы, пути или порта.';return;}
+    if((tlsName&&!isDomain(tlsName))||(protocol!=='Do53'&&isIPv4(host)&&!tlsName)){el('editor-error').textContent='Укажите доменное имя для проверки TLS-сертификата.';return;}
+    if(catalog.some(x=>x.id!==editingID&&x.host===host&&x.protocol===protocol&&(x.tlsName||x.host)===(tlsName||host))){el('editor-error').textContent='Этот сервис уже есть в списке.';return;}
+    const entry={name,host,protocol};if(tlsName)entry.tlsName=tlsName;
+    let id=editingID;
+    if(!id){
+      do{id='custom-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);}while(catalog.some(x=>x.id===id));
+      catalog.push({id,...entry});selected.add(id);
+    }else{catalog=catalog.map(x=>x.id===id?{id,...entry}:x);}
+    editor.close();renderCatalog();markDirty();
+  };
+  function renderStatus(status){
+    el('mode').dataset.mode=status.mode;
+    el('mode').textContent=mode(status.mode)+(status.running?(ru()?' · опрос…':' · checking…'):'');
+    el('info').textContent=(ru()?'Доступно узлов: ':'Healthy nodes: ')+(status.healthy??0)+(ru()?' · групп: ':' · groups: ')+(status.groups??0)+' · '+(ru()?'последняя проверка: ':'last: ')+format(status.last)+' · '+(ru()?'следующая: ':'next: ')+format(status.next);
+    el('pending').hidden=!status.pending;
+    const results=new Map((status.controls||[]).map(x=>[x.id,x]));
+    root.querySelectorAll('[data-smart-result]').forEach(node=>{
+      const r=results.get(node.dataset.smartResult);
+      const text=!r?'—':r.ok?'✓ '+r.milliseconds+' ms':(ru()?'Нет ответа':'No response');
+      node.textContent=text;
+      node.dataset.mode=!r?'disabled':r.ok?'normal':'offline';
+    });
+    const list=el('events');
+    const nodes=(status.events||[]).slice().reverse().map(e=>{
+      const item=document.createElement('div');item.className='smart-health-event';
+      const time=document.createElement('time');time.textContent=format(e.at);
+      const state=document.createElement('strong');state.className='smart-health-event-state';state.dataset.mode=e.mode;state.textContent=mode(e.mode);
+      item.append(time,state);return item;
+    });
+    if(!nodes.length){const p=document.createElement('p');p.className='mihomo-muted';p.textContent=ru()?'Нет событий':'No events';nodes.push(p)}
+    list.replaceChildren(...nodes);
+  }
+  function fill(data){
+    const signature=JSON.stringify([data.settings,data.catalog]);
+    if(!loaded||(!dirty&&signature!==lastSettings)){
+      const s=data.settings;lastSettings=signature;
+      el('enabled').checked=!!s.enabled;el('normal').value=s.normalSeconds;el('degraded').value=s.degradedSeconds;el('offline').value=s.offlineSeconds;
+      catalog=(data.catalog||[]).map(x=>({...x}));
+      selected=new Set(s.services);
+      renderCatalog();
+      el('add').disabled=false;
+      loaded=true;
+    }
+    renderStatus(data.status);
+  }
+  async function load(){
+    if(busy||polling||editor.open)return;
+    polling=true;
+    const requested=revision;
+    try{
+      const data=await api('/api/mihomo/smart-health');
+      if(!busy&&!editor.open&&requested===revision){fill(data);el('save').disabled=!dirty||!loaded;}
+    }catch(error){if(!busy&&requested===revision)el('message').textContent=error.message}
+    finally{polling=false;}
+  }
+  root.addEventListener('change',event=>{
+    if(event.target.matches('input')&&!editor.contains(event.target)&&!event.target.matches('[data-smart-service]'))markDirty();
+  });
+  el('save').onclick=async()=>{
+    if(busy||!loaded||editor.open)return;
+    if(!selected.size){el('message').textContent='Выберите хотя бы один контрольный сервис.';return;}
+    revision++;busy=true;el('save').disabled=true;
+    const inputs=[...root.querySelectorAll('input,button')].filter(x=>x!==el('save')&&!editor.contains(x));inputs.forEach(x=>x.disabled=true);
+    try{
+      const body={enabled:el('enabled').checked,normalSeconds:Number(el('normal').value),degradedSeconds:Number(el('degraded').value),offlineSeconds:Number(el('offline').value),services:catalog.filter(x=>selected.has(x.id)).map(x=>x.id),catalog:catalog.map(x=>({...x}))};
+      const data=await api('/api/mihomo/smart-health',{method:'PUT',body:JSON.stringify(body)});
+      dirty=false;lastSettings='';fill(data);el('message').textContent=ru()?'Настройки сохранены':'Settings saved';
+      if(data.status.pending){
+        const accepted=await window.muiConfirm(
+          ru()?'Настройки монитора сохранены. Для их применения требуется перезапустить Mihomo. Во время перезапуска соединения могут кратковременно прерваться. Перезапустить сейчас?'
+              :'Monitor settings saved. Restart Mihomo to apply the scheduling change. Connections may be briefly interrupted. Restart now?',
+          {title:ru()?'Требуется перезапуск Mihomo':'Mihomo restart required',
+           confirmText:ru()?'Перезапустить Mihomo':'Restart Mihomo',
+           cancelText:ru()?'Позже':'Later',danger:true}
+        );
+        if(accepted){
+          const restarted=await window.MUIMihomoSettings.restart();
+          if(restarted)fill(await api('/api/mihomo/smart-health'));
+        }
+      }
+
+    }catch(error){el('message').textContent=error.message}
+    finally{inputs.forEach(x=>x.disabled=false);busy=false;el('save').disabled=!dirty||!loaded}
+  };
+  const pane=root.closest('.mihomo-pane'),view=root.closest('.view');
+  const isVisible=()=>!!(pane?.classList.contains('active')&&view?.classList.contains('active'));
+  let wasVisible=false;
+  function onVisibility(){
+    const visible=isVisible();
+    if(visible&&!wasVisible){
+      root.querySelectorAll('details.smart-health-intervals,details.smart-health-controls-section').forEach(section=>section.open=false);
+      load();
+    }
+    wasVisible=visible;
+  }
+  // Reset only on entry, not on status polling or a click on an already open tab.
+  const visibilityObserver=new MutationObserver(onVisibility);
+  if(pane)visibilityObserver.observe(pane,{attributes:true,attributeFilter:['class']});
+  if(view)visibilityObserver.observe(view,{attributes:true,attributeFilter:['class']});
+  onVisibility();
+  document.querySelector('[data-mihomo-tab="smart-health"]')?.addEventListener('click',load);
+  setInterval(()=>{if(isVisible())load()},5000);
+})();

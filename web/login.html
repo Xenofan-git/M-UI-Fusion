@@ -14,15 +14,15 @@
   <title>M-UI Fusion | Вход</title>
   <script>
     // Set the browser tab title before the UI scripts/styles load.
-    // A previously chosen browser locale may differ from the server setting.
+    // Server-rendered locale is used immediately, before cached browser data.
     (() => {
       const titles = {
         ru: 'Вход', en: 'Log In', 'zh-CN': '登录', 'zh-TW': '登入',
         fa: 'ورود', ja: 'ログイン', vi: 'Đăng nhập',
         es: 'Iniciar sesión', tr: 'Giriş', uk: 'Вхід', 'pt-BR': 'Entrar'
       };
-      let language = document.documentElement.dataset.defaultLanguage || 'ru';
-      try { language = localStorage.getItem('mui-language') || language; } catch {}
+      // The server's saved language takes precedence on first paint.
+      const language = document.documentElement.dataset.defaultLanguage || 'ru';
       document.title = 'M-UI Fusion | ' + (titles[language] || titles.ru);
     })();
   </script>
@@ -384,16 +384,7 @@
   <script defer src="static/liquid-button.js" data-ui-only="liquid"></script>
 <link rel="stylesheet" href="static/fonts.css" data-ui-only="shadcn"><link rel="stylesheet" href="static/fonts.css" data-ui-only="md3"><link rel="stylesheet" href="static/theme-shadcn.css" data-ui-only="shadcn"><link rel="stylesheet" href="static/theme-md3.css" data-ui-only="md3">
   <link rel="stylesheet" href="static/color-skins.css">
-  <style id="login-button-hover-legibility">
-    /* A light hover surface requires dark text in all visual themes. */
-    html body #login-button:hover:not(:disabled) {
-      background: #f4f4f5 !important;
-      background-color: #f4f4f5 !important;
-      color: #111111 !important;
-      -webkit-text-fill-color: #111111 !important;
-      border-color: #d4d4d8 !important;
-    }
-  </style>
+  <link rel="stylesheet" href="static/action-button-feedback.css?v=6">
 </head>
 <body>
   <div class="ambient-backdrop" aria-hidden="true">
@@ -607,6 +598,7 @@
       const lang = messages[language] ? language : 'ru';
       const text = messages[lang];
       root.lang = lang;
+      root.dataset.defaultLanguage = lang;
       root.dir = lang === 'fa' ? 'rtl' : 'ltr';
       document.title = text.pageTitle;
       languageSelect.value = lang;
@@ -706,8 +698,8 @@
     applyTheme(localStorage.getItem('mui-theme') || 'light');
     if(window.MUIColorSkins.current())applyLoginColorSkin(window.MUIColorSkins.current());
     // 面板设置里的 Language 通过 data-default-language 注进来，作为没访问过本面板的
-    // 浏览器的初始语言；本机手动选过的话以 localStorage 为准。
-    applyLanguage(localStorage.getItem('mui-language') || document.documentElement.dataset.defaultLanguage || 'ru');
+    // 浏览器的初始语言；旧浏览器缓存不能覆盖已保存的服务器语言。
+    applyLanguage(document.documentElement.dataset.defaultLanguage || 'ru');
   </script>
 </body>
 </html>

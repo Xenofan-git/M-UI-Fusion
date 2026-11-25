@@ -671,6 +671,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'mh.rejectConnection': '拒绝连接',
       'mh.silentDrop': '静默丢弃',
       'mh.testOutbound': '测试出站',
+      'mh.testUnavailable': '此出站不支持延迟测试',
       'mh.moveUp': '上移',
       'mh.moveDown': '下移',
       'mh.testing': '测试中',
@@ -762,6 +763,15 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'ximport.restartHint': '重启 Mihomo 后导入的配置才会生效',
       'ximport.restart': '重启 Mihomo',
       'ximport.again': '再导入一个',
+      'mh.operationApplying': "正在应用负载均衡器设置…",
+      'mh.operationApplyTitle': "负载均衡器设置已准备好",
+      'mh.operationApplyReady': "参数已加入草稿。请点击“保存”将配置写入服务器。",
+      'mh.operationSaving': '正在保存 Mihomo 配置…',
+      'mh.operationSaveTitle': '配置已保存',
+      'mh.operationRestarting': '正在重启 Mihomo…',
+      'mh.operationRestartTitle': 'Mihomo 已重新启动',
+      'mh.operationFailureTitle': '操作失败',
+      'mh.operationRestartSuccess': 'Mihomo 已成功重启。',
       'mh.settingsSaved': 'Mihomo 分流设置已保存；重启 Mihomo 后应用',
       'mh.saveFirst': '请先保存当前改动',
       'mh.warpLoading': '加载中…',
@@ -1602,6 +1612,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'mh.rejectConnection': 'Reject connection',
       'mh.silentDrop': 'Silent drop',
       'mh.testOutbound': 'Test Outbound',
+      'mh.testUnavailable': 'Delay test is not supported for this outbound',
       'mh.moveUp': 'Move up',
       'mh.moveDown': 'Move down',
       'mh.testing': 'Testing',
@@ -1693,6 +1704,15 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
       'ximport.restartHint': 'Restart Mihomo to apply the imported configuration',
       'ximport.restart': 'Restart Mihomo',
       'ximport.again': 'Import another',
+      'mh.operationApplying': "Applying balancer settings…",
+      'mh.operationApplyTitle': "Balancer settings prepared",
+      'mh.operationApplyReady': "Balancer parameters have been added to the draft. Click “Save” to write the configuration to the server.",
+      'mh.operationSaving': 'Saving Mihomo configuration…',
+      'mh.operationSaveTitle': 'Configuration saved',
+      'mh.operationRestarting': 'Restarting Mihomo…',
+      'mh.operationRestartTitle': 'Mihomo restarted',
+      'mh.operationFailureTitle': 'Operation failed',
+      'mh.operationRestartSuccess': 'Mihomo restarted successfully.',
       'mh.settingsSaved': 'Mihomo routing settings saved — restart Mihomo to apply',
       'mh.saveFirst': 'Save the current changes first',
       'mh.warpLoading': 'Loading...',
@@ -2011,7 +2031,7 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     "settings.secGeneral": "Общие настройки",
     "settings.remarkModel": "Формат названия и разделитель",
     "settings.sampleRemark": "Пример названия:",
-    "settings.listenIp": "Прослушивающий IP",
+    "settings.listenIp": "Прослушиваемый IP",
     "settings.descListenIp": "IP-адрес, на котором работает веб-панель. Оставьте пустым для прослушивания на всех интерфейсах.",
     "settings.listenDomain": "Прослушиваемый домен",
     "settings.descListenDomain": "Доменное имя веб-панели. Оставьте пустым, чтобы разрешить обращения по любому имени и IP-адресу.",
@@ -2102,6 +2122,19 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     "mihomo.basic.ipv6": "IPv6",
     "mihomo.basic.tcpConcurrent": "TCP Concurrent",
     "mihomo.basic.unifiedDelay": "Unified Delay",
+    "mihomo.basic.watchdogHint": "Automatically recover the local core after a crash or confirmed API freeze. Manual stop is respected. API check: 10 s; 3 failures; up to 3 recovery attempts per 10 min.",
+    "mihomo.basic.watchdogStatus.disabled": "Disabled",
+    "mihomo.basic.watchdogStatus.stopped": "Manually stopped",
+    "mihomo.basic.watchdogStatus.starting": "Waiting for the first check",
+    "mihomo.basic.watchdogStatus.healthy": "Core is responding",
+    "mihomo.basic.watchdogStatus.api_error": "API response error — no restart",
+    "mihomo.basic.watchdogStatus.unresponsive": "API is not responding",
+    "mihomo.basic.watchdogStatus.exited": "Core exited",
+    "mihomo.basic.watchdogStatus.cooldown": "Recovery cooldown or attempt limit",
+    "mihomo.basic.watchdogStatus.config_changed": "Recovery blocked: active configuration not verified",
+    "mihomo.basic.watchdogStatus.recovering": "Recovering the core",
+    "mihomo.basic.watchdogStatus.recovery_failed": "Recovery failed",
+    "mihomo.basic.watchdogAttempts": "Recovery attempts (10 min)",
     "mihomo.basic.sniffer-enabled": "Включить Sniffer",
     "mihomo.basic.sniffer-http": "HTTP",
     "mihomo.basic.sniffer-tls": "TLS",
@@ -2147,6 +2180,19 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
     "mihomo.basic.ipv6": "IPv6",
     "mihomo.basic.tcpConcurrent": "Параллельные TCP-соединения",
     "mihomo.basic.unifiedDelay": "Единый расчёт задержки",
+    "mihomo.basic.watchdogHint": "Автоматически восстанавливает ядро после аварийной остановки или подтверждённого зависания API. Ручная остановка сохраняется. Проверка API каждые 10 сек., 3 неудачи, не более 3 попыток восстановления за 10 мин.",
+    "mihomo.basic.watchdogStatus.disabled": "Отключён",
+    "mihomo.basic.watchdogStatus.stopped": "Ядро остановлено вручную",
+    "mihomo.basic.watchdogStatus.starting": "Ожидание первой проверки",
+    "mihomo.basic.watchdogStatus.healthy": "Ядро отвечает",
+    "mihomo.basic.watchdogStatus.api_error": "Ошибка ответа API — без перезапуска",
+    "mihomo.basic.watchdogStatus.unresponsive": "API не отвечает",
+    "mihomo.basic.watchdogStatus.exited": "Ядро завершило работу",
+    "mihomo.basic.watchdogStatus.cooldown": "Пауза между попытками или достигнут лимит",
+    "mihomo.basic.watchdogStatus.config_changed": "Восстановление заблокировано: конфигурация не подтверждена",
+    "mihomo.basic.watchdogStatus.recovering": "Восстановление ядра",
+    "mihomo.basic.watchdogStatus.recovery_failed": "Не удалось восстановить ядро",
+    "mihomo.basic.watchdogAttempts": "Попыток восстановления за 10 мин.",
     "mihomo.basic.sniffer-enabled": "Включить Sniffer",
     "mihomo.basic.sniffer-http": "HTTP",
     "mihomo.basic.sniffer-tls": "TLS",
@@ -2553,10 +2599,39 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
   var lang = 'ru';
   var SUPPORTED_LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'ru', 'fa', 'vi', 'es', 'tr', 'uk', 'pt-BR'];
 
+  // Inbound security choices: keep the stored value "none" unchanged.
+  // Only the visible label and explanation are localized.
+  Object.assign(DICT.en,{
+    'inbounds.securityTitle':'Security',
+    'inbounds.securityNoneChoice':'No extra security',
+    'inbounds.securityNoneHelp':'Do not apply an additional security layer (TLS, Reality, etc.).'
+  });
+  Object.assign(DICT.ru,{
+    'inbounds.securityTitle':'Безопасность',
+    'inbounds.securityNoneChoice':'Без защиты',
+    'inbounds.securityNoneHelp':'Не применять дополнительный протокол безопасности (TLS, Reality и т. п.).'
+  });
+  Object.assign(DICT['zh-CN'],{
+    'inbounds.securityTitle':'安全性',
+    'inbounds.securityNoneChoice':'无额外保护',
+    'inbounds.securityNoneHelp':'不使用额外安全协议（TLS、Reality 等）。'
+  });
+
+  // Pure display preference: does not change Mihomo's actual proxy list.
+  Object.assign(DICT.ru,{'mh.hideFilteredOutbounds':'Исключить отфильтрованные серверы'});
+  Object.assign(DICT.en,{'mh.hideFilteredOutbounds':'Hide filtered-out servers'});
+  Object.assign(DICT['zh-CN'],{'mh.hideFilteredOutbounds':'隐藏已过滤的服务器'});
+
+  Object.assign(DICT.ru,{'mihomo.tabProviderSources':'Подписки'});
+  Object.assign(DICT.en,{'mihomo.tabProviderSources':'Subscriptions'});
+  Object.assign(DICT['zh-CN'],{'mihomo.tabProviderSources':'订阅源'});
+
   function muiGetLang() {
     var stored = null;
     try { stored = localStorage.getItem('mui-language'); } catch (e) {}
-    var value = stored || document.documentElement.getAttribute('data-default-language') || 'ru';
+    // Server-persisted language outranks stale local browser cache.
+    var injected = document.documentElement.getAttribute('data-default-language');
+    var value = injected || stored || 'ru';
     return SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'ru';
   }
 
@@ -2658,6 +2733,8 @@ m-ui 界面多语言核心（简体中文 / 繁體中文 / English / 日本語 /
 
   function muiSetLang(value) {
     var next = SUPPORTED_LANGUAGES.indexOf(value) >= 0 ? value : 'ru';
+    // Keep immediate manual changes working before the server round trip.
+    document.documentElement.setAttribute('data-default-language', next);
     try { localStorage.setItem('mui-language', next); } catch (e) {}
     lang = next;
     muiApply(document);

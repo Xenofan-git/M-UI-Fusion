@@ -26,24 +26,28 @@ type balancerRuntimeProxy struct {
 	} `json:"history"`
 }
 type balancerStatusNode struct {
+	Key         string `json:"key,omitempty"`
 	Name        string `json:"name"`
 	Protocol    string `json:"protocol"`
 	SourceID    string `json:"sourceId"`
 	Flag        string `json:"flag,omitempty"`
 	CountryCode string `json:"countryCode,omitempty"`
 	Member      bool   `json:"member"`
+	Filtered    bool   `json:"filtered,omitempty"`
 	Alive       *bool  `json:"alive,omitempty"`
 	Delay       int    `json:"delay,omitempty"`
 	CheckedAt   string `json:"checkedAt,omitempty"`
 }
 type balancerStatusResponse struct {
-	Group      string               `json:"group"`
-	Candidate  string               `json:"candidate,omitempty"`
-	Available  bool                 `json:"available"`
-	Nodes      []balancerStatusNode `json:"nodes"`
-	Sources    []string             `json:"sources"`
-	Message    string               `json:"message,omitempty"`
-	Subscribed bool                 `json:"subscribed"`
+	Group              string               `json:"group"`
+	NoAvailable        bool                 `json:"noAvailable,omitempty"`
+	CurrentUnavailable bool                 `json:"currentUnavailable,omitempty"`
+	Candidate          string               `json:"candidate,omitempty"`
+	Available          bool                 `json:"available"`
+	Nodes              []balancerStatusNode `json:"nodes"`
+	Sources            []string             `json:"sources"`
+	Message            string               `json:"message,omitempty"`
+	Subscribed         bool                 `json:"subscribed"`
 }
 
 func balancerSubscriptionSnapshot(state State, name string) (MihomoOutbound, []OutboundSubscription, []MihomoOutbound, bool) {
@@ -79,6 +83,59 @@ func balancerSubscriptionSnapshot(state State, name string) (MihomoOutbound, []O
 	return group, subs, nodes, true
 }
 
+// Retained subscription groups have no live source. Only their original
+// persisted members are candidates: never bind them to a different source
+// or borrow all nodes from a provider that happens to have the same name.
+func retainedBalancerNodes(state State, group MihomoOutbound) ([]MihomoOutbound, bool) {
+	if group.Kind != "group" || len(group.SubscriptionIDs) != 0 {
+		return nil, false
+	}
+	for _, sub := range state.OutboundSubscriptions {
+		if sub.Group == group.Name {
+			return nil, false
+		}
+	}
+	candidates := group.SubscriptionRetainedMembers
+	if len(candidates) == 0 {
+		candidates = group.Proxies
+	}
+	if len(candidates) == 0 {
+		return nil, false
+	}
+	known := group.SubscriptionManaged
+	if !known {
+		for _, source := range state.OutboundSubscriptions {
+			same := subscriptionNodePrefix(source) != ""
+			for _, name := range candidates {
+				if !strings.HasPrefix(name, subscriptionNodePrefix(source)+" | ") {
+					same = false
+					break
+				}
+			}
+			if same {
+				known = true
+				break
+			}
+		}
+	}
+	if !known {
+		return nil, false
+	}
+	byName := make(map[string]MihomoOutbound, len(state.Outbounds))
+	for _, node := range state.Outbounds {
+		byName[node.Name] = node
+	}
+	nodes := make([]MihomoOutbound, 0, len(candidates))
+	for _, name := range candidates {
+		node, ok := byName[name]
+		if !ok || node.Kind != "proxy" || node.SourceSubscriptionID != "" {
+			return nil, false
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, true
+}
+
 // Manual groups expose only persisted members; subscription groups expose
 // only provider-owned nodes. No unrelated Outbounds leak into status or probes.
 func balancerEditorSnapshot(state State, name string) (MihomoOutbound, []OutboundSubscription, []MihomoOutbound, bool, bool) {
@@ -106,6 +163,9 @@ func balancerEditorSnapshot(state State, name string) (MihomoOutbound, []Outboun
 	}
 	if len(group.SubscriptionIDs) > 0 {
 		return group, nil, nil, true, false
+	}
+	if nodes, ok := retainedBalancerNodes(state, group); ok {
+		return group, nil, nodes, true, true
 	}
 	byName := make(map[string]MihomoOutbound, len(state.Outbounds))
 	for _, out := range state.Outbounds {
@@ -146,6 +206,24 @@ func fetchBalancerRuntime(ctx context.Context, endpoint, secret string) (map[str
 	err = json.NewDecoder(io.LimitReader(response.Body, 5<<20)).Decode(&data)
 	return data.Proxies, err
 }
+
+// Missing or untested runtime values must not be mistaken for failures.
+func runtimeProxyOffline(runtime map[string]balancerRuntimeProxy, name string) bool {
+	p, ok := runtime[name]
+	return ok && p.Alive != nil && !*p.Alive && len(p.History) > 0
+}
+func allBalancerMembersOffline(group MihomoOutbound, runtime map[string]balancerRuntimeProxy) bool {
+	if len(group.Proxies) == 0 {
+		return false
+	}
+	for _, name := range group.Proxies {
+		if !runtimeProxyOffline(runtime, name) {
+			return false
+		}
+	}
+	return true
+}
+
 func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, nodes []MihomoOutbound, runtime map[string]balancerRuntimeProxy, available bool) balancerStatusResponse {
 	members := make(map[string]bool, len(group.Proxies))
 	for _, name := range group.Proxies {
@@ -153,14 +231,18 @@ func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, n
 	}
 	result := balancerStatusResponse{Group: group.Name, Available: available, Nodes: make([]balancerStatusNode, 0, len(nodes)), Sources: make([]string, 0, len(sources))}
 	if runtimeGroup, ok := runtime[group.Name]; ok {
-		result.Candidate = runtimeGroup.Now
+		result.NoAvailable = available && allBalancerMembersOffline(group, runtime)
+		if !result.NoAvailable {
+			result.Candidate = runtimeGroup.Now
+			result.CurrentUnavailable = runtimeProxyOffline(runtime, runtimeGroup.Now)
+		}
 	}
 	for _, src := range sources {
 		result.Sources = append(result.Sources, src.Name)
 	}
 	for _, node := range nodes {
 		cc := subscriptionCountryCode(node.Name)
-		item := balancerStatusNode{Name: node.Name, Protocol: node.Type, SourceID: node.SourceSubscriptionID,
+		item := balancerStatusNode{Key: node.SourceNodeKey, Name: node.Name, Protocol: node.Type, SourceID: node.SourceSubscriptionID,
 			Flag: subscriptionCountryFlag(cc), CountryCode: cc, Member: members[node.Name]}
 		if live, ok := runtime[node.Name]; ok {
 			item.Alive = live.Alive
@@ -171,6 +253,25 @@ func buildBalancerStatus(group MihomoOutbound, sources []OutboundSubscription, n
 			}
 		}
 		result.Nodes = append(result.Nodes, item)
+	}
+	// Excluded nodes are intentionally absent from the executable Mihomo
+	// configuration, but their non-secret display labels remain visible.
+	seen := make(map[string]bool, len(result.Nodes))
+	for _, node := range result.Nodes {
+		seen[node.Name] = true
+	}
+	for _, source := range sources {
+		for index, filtered := range source.FilteredNodes {
+			name := subscriptionOutboundName(source, filtered.Name, index+1)
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			result.Nodes = append(result.Nodes, balancerStatusNode{
+				Key: filtered.Key, Name: name, Protocol: filtered.Protocol, SourceID: source.ID,
+				CountryCode: filtered.CountryCode, Flag: filtered.Flag, Filtered: true,
+			})
+		}
 	}
 	return result
 }

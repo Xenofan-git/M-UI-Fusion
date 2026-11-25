@@ -96,7 +96,7 @@ var logTimestamp = regexp.MustCompile(`^(\d\d:\d\d:\d\d  )(.*)$`)
 // translateLogs translates the panel's own lines of the log buffer; Mihomo's
 // output passes through unchanged.
 func translateLogs(lines []string, language string) []string {
-	if language == defaultLanguage {
+	if language == sourceMessageLanguage {
 		return lines
 	}
 	translated := make([]string, len(lines))

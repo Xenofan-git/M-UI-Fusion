@@ -56,10 +56,12 @@ const (
 	defaultExpireDiff    = 7
 	defaultTrafficDiff   = 1
 	defaultTimeLocation  = "Local"
-	defaultLanguage      = "zh-CN"
-	defaultUITheme       = "shadcn"
-	minSessionMaxAge     = 60
-	maxPageSize          = 500
+	defaultLanguage      = "ru"
+	// Original backend message catalog remains in Chinese independent of UI default.
+	sourceMessageLanguage = "zh-CN"
+	defaultUITheme        = "shadcn"
+	minSessionMaxAge      = 60
+	maxPageSize           = 500
 )
 
 type Settings struct {
@@ -609,6 +611,7 @@ type TrafficTotals struct {
 }
 
 type State struct {
+	SmartHealth           *SmartHealthSettings    `json:"smartHealth,omitempty"`
 	Settings              Settings                `json:"settings"`
 	Inbounds              []Inbound               `json:"inbounds"`
 	Outbounds             []MihomoOutbound        `json:"outbounds,omitempty"`
@@ -623,6 +626,11 @@ type State struct {
 }
 
 type CoreManager struct {
+	diagnostic         *diagnosticRecorder
+	smartHealth        smartRuntime
+	coreLifecycle      sync.Mutex // serialize lifecycle operations and watchdog actions
+	coreDone           chan struct{}
+	watchdog           coreWatchdogRuntime
 	mu                 sync.Mutex
 	warpMu             sync.Mutex
 	warpClient         *warpClient
@@ -723,6 +731,7 @@ func Run(buildVersion string) {
 	if err := manager.writeConfig(); err != nil {
 		log.Printf("write config: %v", err)
 	}
+	manager.startDiagnostic()
 	go manager.monitorTraffic()
 	// 已保存的 VPNGate 出站在面板启动时就恢复拨号，不用等用户再点一次保存。
 	go manager.syncVPNGateTasks()
@@ -739,6 +748,8 @@ func Run(buildVersion string) {
 	}
 	// Subscriptions begin after Mihomo startup; never race its initial config.
 	go manager.monitorOutboundSubscriptions()
+	go manager.monitorCoreWatchdog()
+	go manager.monitorSmartHealth()
 	peerContext, stopPeers := context.WithCancel(context.Background())
 	defer stopPeers()
 	if peers, err := newPeerNetwork(dataDir); err != nil {
@@ -1037,11 +1048,15 @@ func (a *App) panelRoutes(serveSubscriptions bool) http.Handler {
 	mux.HandleFunc("/api/multi-control", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/multi-control/", a.auth(a.handleMultiControl))
 	mux.HandleFunc("/api/mihomo/settings", a.auth(a.handleMihomoSettings))
+	mux.HandleFunc("/api/mihomo/smart-health", a.auth(a.handleSmartHealth))
+	mux.HandleFunc("/api/mihomo/rules", a.auth(a.handleMihomoRoutingRules))
+	mux.HandleFunc("/api/mihomo/editor", a.auth(a.handleMihomoEditorChanges))
 	mux.HandleFunc("/api/mihomo/subscriptions", a.auth(a.handleOutboundSubscriptions))
 	mux.HandleFunc("/api/mihomo/subscriptions/", a.auth(a.handleOutboundSubscriptionAction))
 	mux.HandleFunc("/api/mihomo/outbound/parse", a.auth(a.handleMihomoOutboundYAML))
 	mux.HandleFunc("/api/mihomo/outbound/delay", a.auth(a.handleMihomoOutboundDelay))
 	mux.HandleFunc("/api/mihomo/balancers/status", a.auth(a.handleMihomoBalancerStatus))
+	mux.HandleFunc("/api/mihomo/diagnostics/filter-preview", a.auth(a.handleMihomoFilterPreviewDiagnostic))
 	mux.HandleFunc("/api/mihomo/balancers/current", a.auth(a.handleMihomoCurrentOutbounds))
 	mux.HandleFunc("/api/mihomo/balancers/probe", a.auth(a.handleMihomoBalancerProbe))
 	mux.HandleFunc("/api/mihomo/warp", a.auth(a.handleWarp))
@@ -1397,6 +1412,7 @@ func (a *App) handleState(w http.ResponseWriter, r *http.Request) {
 	state.Settings = state.Settings.maskSecrets()
 	state.WARP = nil
 	running := a.manager.runningLocked()
+	watchdog := a.manager.watchdogStatusLocked(time.Now())
 	started := a.manager.started
 	logs := append([]string(nil), a.manager.logs...)
 	a.manager.mu.Unlock()
@@ -1409,7 +1425,7 @@ func (a *App) handleState(w http.ResponseWriter, r *http.Request) {
 	panelTLSConfigured, panelTLSValid := panelTLSStatus(state.Settings)
 	data := map[string]any{
 		"version": appVersion, "state": state, "running": running, "startedAt": started,
-		"logs": translateLogs(logs, a.lang()), "platform": runtime.GOOS, "coreVersion": a.manager.coreVersion(), "system": stats,
+		"logs": translateLogs(logs, a.lang()), "platform": runtime.GOOS, "coreVersion": a.manager.coreVersion(), "system": stats, "mihomoWatchdog": watchdog,
 		"panelTLS": map[string]bool{"configured": panelTLSConfigured, "valid": panelTLSValid, "chainIncomplete": panelTLSValid && currentPanelChainStatus().Incomplete},
 	}
 	if running {
@@ -2749,6 +2765,12 @@ func renderStateConfig(state State) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if smart := effectiveSmartHealth(state); smart.Enabled {
+		if err := validateSmartHealth(smart); err != nil {
+			return nil, err
+		}
+		proxyGroups = applySmartHealthSchedule(proxies, proxyGroups)
+	}
 	config := map[string]any{
 		"allow-lan":                state.Settings.AllowLAN,
 		"bind-address":             "*",
@@ -2818,7 +2840,11 @@ func renderStateConfig(state State) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return appendManagedMetadata(data, state.Inbounds), nil
+	data = appendManagedMetadata(data, state.Inbounds)
+	if effectiveSmartHealth(state).Enabled {
+		data = append(data, []byte("\n"+smartHealthMarker+"\n")...)
+	}
+	return data, nil
 }
 
 func appendManagedMetadata(config []byte, inbounds []Inbound) []byte {
@@ -4617,6 +4643,13 @@ func (m *CoreManager) actualConfig() ([]byte, error) {
 }
 
 func (m *CoreManager) startCore() error {
+	m.coreLifecycle.Lock()
+	defer m.coreLifecycle.Unlock()
+	m.setCoreWanted(true)
+	return m.startCoreManaged()
+}
+
+func (m *CoreManager) startCoreManaged() error {
 	config, err := m.renderConfig()
 	if err != nil {
 		return err
@@ -4637,11 +4670,25 @@ func (m *CoreManager) startCore() error {
 	if _, err := os.Stat(corePath); err != nil {
 		return fmt.Errorf("找不到 Mihomo 核心: %s", corePath)
 	}
-	testCmd := exec.Command(corePath, "-d", m.dataDir, "-t", "-f", configPath)
+	if err := m.testCoreConfig(corePath, configPath); err != nil {
+		return err
+	}
+	return m.launchCoreLocked(corePath, configPath, config, m.state.Settings.APIAddress, m.state.Settings.APISecret)
+}
+
+func (m *CoreManager) testCoreConfig(corePath, configPath string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	testCmd := exec.CommandContext(ctx, corePath, "-d", m.dataDir, "-t", "-f", configPath)
 	testCmd.Dir = m.dataDir
 	if output, err := testCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("Mihomo 配置测试失败: %s", strings.TrimSpace(string(output)))
 	}
+	return nil
+}
+
+// Caller holds mu and coreLifecycle. config is the exact validated file.
+func (m *CoreManager) launchCoreLocked(corePath, configPath string, config []byte, controller, secret string) error {
 	cmd := exec.Command(corePath, "-d", m.dataDir, "-f", configPath)
 	cmd.Dir = m.dataDir
 	stdout, err := cmd.StdoutPipe()
@@ -4656,7 +4703,16 @@ func (m *CoreManager) startCore() error {
 		return err
 	}
 	m.cmd, m.started = cmd, time.Now()
+	done := make(chan struct{})
+	m.coreDone = done
+	m.watchdog.appliedDigest = sha256.Sum256(config)
+	m.smartHealth.applied = smartPlanFromConfig(config)
+	m.smartHealth.status.Next = time.Time{}
+	m.watchdog.corePath, m.watchdog.controller, m.watchdog.secret = corePath, controller, secret
+	m.watchdog.failures = 0
+	m.watchdog.status = "starting"
 	m.addLogLocked("Mihomo 已启动")
+	m.diagnosticLocked("core_start", map[string]int{"pid": cmd.Process.Pid})
 	go m.captureLogs(stdout)
 	go m.captureLogs(stderr)
 	go func() {
@@ -4664,9 +4720,12 @@ func (m *CoreManager) startCore() error {
 		m.mu.Lock()
 		if m.cmd == cmd {
 			m.addLogLocked("Mihomo 已退出: " + errorText(err))
+			m.diagnosticLocked("core_exit", map[string]any{"pid": cmd.Process.Pid, "error": err != nil})
 			m.cmd = nil
+			m.coreDone = nil
 		}
 		m.mu.Unlock()
+		close(done)
 	}()
 	return nil
 }
@@ -4694,31 +4753,64 @@ func (m *CoreManager) validateConfig() error {
 }
 
 func (m *CoreManager) stopCore() error {
+	m.coreLifecycle.Lock()
+	defer m.coreLifecycle.Unlock()
+	m.setCoreWanted(false)
+	return m.stopCoreManaged()
+}
+
+// Caller holds coreLifecycle. Wait for cmd.Wait rather than racing ProcessState.
+func (m *CoreManager) stopCoreManaged() error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	if !m.runningLocked() {
+	cmd, done := m.cmd, m.coreDone
+	m.mu.Unlock()
+	if cmd == nil {
 		return nil
 	}
-	cmd := m.cmd
-	m.cmd = nil
 	if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-		m.cmd = cmd
 		return err
 	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("Mihomo stop timed out")
+	}
+	m.mu.Lock()
 	m.addLogLocked("Mihomo 已停止")
 	_ = m.saveLocked()
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *CoreManager) restartCore() error {
-	if err := m.stopCore(); err != nil {
-		return err
-	}
-	time.Sleep(150 * time.Millisecond)
-	return m.startCore()
+	m.coreLifecycle.Lock()
+	defer m.coreLifecycle.Unlock()
+	m.setCoreWanted(true)
+	return m.restartCoreManaged()
 }
 
-func (m *CoreManager) runningLocked() bool { return m.cmd != nil && m.cmd.ProcessState == nil }
+func (m *CoreManager) restartCoreIfRunning() error {
+	m.coreLifecycle.Lock()
+	defer m.coreLifecycle.Unlock()
+	m.mu.Lock()
+	running := m.runningLocked() && m.watchdog.wanted
+	m.mu.Unlock()
+	if !running {
+		return nil
+	}
+	return m.restartCoreManaged()
+}
+
+func (m *CoreManager) restartCoreManaged() error {
+	if err := m.stopCoreManaged(); err != nil {
+		return err
+	}
+	return m.startCoreManaged()
+}
+
+// cmd is cleared by the Wait goroutine under mu; do not read ProcessState,
+// which os/exec writes without our lock.
+func (m *CoreManager) runningLocked() bool { return m.cmd != nil }
 
 func (m *CoreManager) coreVersion() string {
 	m.mu.Lock()

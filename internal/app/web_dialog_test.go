@@ -39,7 +39,7 @@ func TestWebUsesPanelDialogs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(index), `<script src="static/dialog.js"></script>`) {
+	if !strings.Contains(string(index), `<script src="static/dialog.js?v=3"></script>`) {
 		t.Fatal("index.html does not load dialog.js")
 	}
 }

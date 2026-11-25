@@ -1,0 +1,374 @@
+/* M-UI Fusion — calm, non-flashing action feedback.
+   Keep "Войти", "Сохранить" and primary modal Save/Apply actions legible
+   in Liquid Glass, shadcn and Material 3, with and without color skins.
+   This stylesheet is intentionally loaded LAST, after color-skins.css. */
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+) {
+  --mui-press-accent: var(--skin-accent, #10846b);
+  --mui-press-ink: var(--skin-accentFg, #f5fff9);
+  --mui-press-top: color-mix(in srgb, var(--mui-press-accent) 73%, #073f32);
+  --mui-press-bottom: color-mix(in srgb, var(--mui-press-accent) 88%, #073f32);
+  --lb-fill: var(--mui-press-accent) !important;
+  --lb-text: var(--mui-press-ink) !important;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 170ms cubic-bezier(.22,.8,.24,1),
+              box-shadow 210ms ease,
+              border-color 210ms ease,
+              opacity 170ms ease !important;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+):not(:disabled) {
+  background: linear-gradient(125deg, var(--mui-press-top), var(--mui-press-bottom)) !important;
+  border: 1px solid color-mix(in srgb, var(--mui-press-accent) 66%, #397d69) !important;
+  color: var(--mui-press-ink) !important;
+  -webkit-text-fill-color: var(--mui-press-ink) !important;
+  text-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 3px 11px rgb(4 66 50 / .17), inset 0 1px 0 rgb(255 255 255 / .12) !important;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+)::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(112deg, transparent 12%, rgb(255 255 255 / .17) 48%, transparent 82%);
+  transform: translateX(-108%);
+  opacity: 0;
+  transition: transform 420ms cubic-bezier(.2,.72,.28,1), opacity 200ms ease;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+):hover:not(:disabled) {
+  --lb-fill: var(--mui-press-accent) !important;
+  background: linear-gradient(125deg, var(--mui-press-top), var(--mui-press-bottom)) !important;
+  color: var(--mui-press-ink) !important;
+  -webkit-text-fill-color: var(--mui-press-ink) !important;
+  border-color: color-mix(in srgb, var(--mui-press-accent) 80%, #8bdab9) !important;
+  box-shadow: 0 0 0 2px rgb(20 173 132 / .16), 0 6px 16px rgb(4 66 50 / .24) !important;
+  filter: none !important;
+  transform: translateY(-1px) !important;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+):hover:not(:disabled)::after {
+  transform: translateX(108%);
+  opacity: .55;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+):active:not(:disabled) {
+  background: linear-gradient(125deg, var(--mui-press-top), var(--mui-press-bottom)) !important;
+  color: var(--mui-press-ink) !important;
+  -webkit-text-fill-color: var(--mui-press-ink) !important;
+  border-color: var(--mui-press-accent) !important;
+  box-shadow: inset 0 2px 7px rgb(0 45 35 / .22), 0 0 0 2px rgb(20 173 132 / .14) !important;
+  transform: translateY(1px) scale(.985) !important;
+  filter: none !important;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+):focus-visible {
+  outline: 2px solid var(--skin-focus, #5cddbb) !important;
+  outline-offset: 3px !important;
+}
+:is(
+  html body #login-button,
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+  html body #save-settings,
+  html body #save-credentials,
+  html body #save-client,
+  html body #save-inbound,
+  html body #outsub-submit,
+  html body .modal-footer button.primary-btn
+):disabled {
+  --lb-fill: var(--skin-soft, #315c50) !important;
+  background: linear-gradient(125deg,
+    color-mix(in srgb, var(--skin-accent, #378f76) 28%, var(--skin-card, #244e43)),
+    color-mix(in srgb, var(--skin-accent, #378f76) 39%, var(--skin-card, #244e43))) !important;
+  color: var(--skin-muted, #d0e9de) !important;
+  -webkit-text-fill-color: var(--skin-muted, #d0e9de) !important;
+  border: 1px solid color-mix(in srgb, var(--skin-accent, #378f76) 25%, #3f7565) !important;
+  filter: none !important;
+  box-shadow: none !important;
+  opacity: .82 !important;
+  transform: none !important;
+}
+/* The legacy Mihomo Save hover selector is more specific while disabled.
+   Match it explicitly so the blocked/busy button never flashes white. */
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save:disabled:is(:hover,:focus-visible) {
+  --lb-fill: var(--skin-soft, #315c50) !important;
+  background: linear-gradient(125deg,
+    color-mix(in srgb, var(--skin-accent, #378f76) 28%, var(--skin-card, #244e43)),
+    color-mix(in srgb, var(--skin-accent, #378f76) 39%, var(--skin-card, #244e43))) !important;
+  color: var(--skin-muted, #d0e9de) !important;
+  -webkit-text-fill-color: var(--skin-muted, #d0e9de) !important;
+  border-color: color-mix(in srgb, var(--skin-accent, #378f76) 25%, #3f7565) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: .82 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(html body #login-button,
+      html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+      html body #save-settings,html body #save-credentials,
+      html body #save-client,html body #save-inbound,
+      html body #outsub-submit,html body .modal-footer button.primary-btn),
+  :is(html body #login-button,
+      html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+      html body #save-settings,html body #save-credentials,
+      html body #save-client,html body #save-inbound,
+      html body #outsub-submit,html body .modal-footer button.primary-btn)::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  :is(html body #login-button,
+      html body #mihomo-settings-root .mihomo-actionbar #mihomo-save,
+      html body #save-settings,html body #save-credentials,
+      html body #save-client,html body #save-inbound,
+      html body #outsub-submit,html body .modal-footer button.primary-btn):is(:hover,:active) {
+    transform: none !important;
+  }
+}
+
+/* Explicit contrast for the three reported invisible controls.
+   No color-mix, transparent paint or :is dependency for old browsers. */
+html body #login-form #login-button#login-button,
+html body #outsub-modal #outsub-form #outsub-submit {
+  --lb-fill: #08745a !important;
+  --lb-text: #ffffff !important;
+  background: #08745a !important;
+  background-image: none !important;
+  border: 1px solid #075a46 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  box-shadow: 0 2px 8px rgba(0,75,55,.22) !important;
+}
+html body #login-form #login-button#login-button:hover:not(:disabled),
+html body #outsub-modal #outsub-form #outsub-submit:hover:not(:disabled) {
+  background: #07634d !important;
+  border-color: #064f3e !important;
+}
+html body #login-form #login-button#login-button:disabled,
+html body #outsub-modal #outsub-form #outsub-submit:disabled {
+  background: #526b64 !important;
+  border-color: #41564f !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+html body #login-form #login-button#login-button::after,
+html body #outsub-modal #outsub-form #outsub-submit::after {
+  content: none !important;
+  opacity: 0 !important;
+}
+html body .mui-dialog #mui-dialog-cancel#mui-dialog-cancel {
+  --lb-fill: #f3f0f8 !important;
+  --lb-text: #54228d !important;
+  background: #f3f0f8 !important;
+  background-image: none !important;
+  border: 1px solid #7522b7 !important;
+  color: #54228d !important;
+  -webkit-text-fill-color: #54228d !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+html body .mui-dialog #mui-dialog-cancel#mui-dialog-cancel:hover {
+  background: #e5d9f4 !important;
+  color: #482071 !important;
+  -webkit-text-fill-color: #482071 !important;
+}
+
+/* Literal fallbacks for old Windows Chrome, above all skin overrides. */
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save#mihomo-save,
+html body #mihomo-outbound-modal #outbound-apply#outbound-apply {
+ --lb-fill: #08745a !important;
+ --lb-text: #ffffff !important;
+ background: #08745a !important;
+ background-image: none !important;
+ border: 1px solid #075a46 !important;
+ color: #ffffff !important;
+ -webkit-text-fill-color: #ffffff !important;
+ opacity: 1 !important;
+ filter: none !important;
+ text-shadow: none !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save#mihomo-save:disabled,
+html body #mihomo-outbound-modal #outbound-apply#outbound-apply:disabled {
+ background: #526b64 !important;
+ color: #ffffff !important;
+ -webkit-text-fill-color: #ffffff !important;
+ opacity: 1 !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-save#mihomo-save::after,
+html body #mihomo-outbound-modal #outbound-apply#outbound-apply::after {
+ content: none !important;
+ opacity: 0 !important;
+}
+html body #mihomo-outbound-modal #mihomo-outbound-close#mihomo-outbound-close {
+ --lb-text: #54228d !important;
+ color: #54228d !important;
+ -webkit-text-fill-color: #54228d !important;
+ background: #f3f0f8 !important;
+ background-image: none !important;
+ border: 1px solid #7522b7 !important;
+ opacity: 1 !important;
+ font-size: 22px !important;
+ line-height: 1 !important;
+ width: 32px;
+ height: 32px;
+ display: flex !important;
+ align-items: center;
+ justify-content: center;
+ flex-shrink: 0;
+}
+
+/* Restart Mihomo: keep both fill and label visible in legacy browsers,
+   independently of theme-specific danger hover variables. */
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart {
+  --lb-fill: #bc302a !important;
+  --lb-text: #ffffff !important;
+  background: #bc302a !important;
+  background-image: none !important;
+  border: 1px solid #a52823 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  transition: background-color .12s, border-color .12s !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:hover:not(:disabled) {
+  --lb-fill: #a52823 !important;
+  background: #a52823 !important;
+  border-color: #8e221e !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:active:not(:disabled) {
+  --lb-fill: #8e221e !important;
+  background: #8e221e !important;
+  border-color: #751b18 !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:disabled {
+  --lb-fill: #805c59 !important;
+  background: #805c59 !important;
+  border-color: #6f4c49 !important;
+  cursor: not-allowed !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart:focus {
+  outline: 2px solid #c23a32 !important;
+  outline-offset: 3px !important;
+}
+html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart::after {
+  content: none !important;
+  opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html body #mihomo-settings-root .mihomo-actionbar #mihomo-restart#mihomo-restart {
+    transition: none !important;
+  }
+}
+
+/* Routing rule Apply: explicit contrast, including legacy hover rendering. */
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"] {
+  --lb-fill: #08745a !important;
+  --lb-text: #ffffff !important;
+  background: #08745a !important;
+  background-image: none !important;
+  border: 1px solid #075a46 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  transition: background-color .12s, border-color .12s !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:hover:not(:disabled) {
+  --lb-fill: #07634d !important;
+  background: #07634d !important;
+  border-color: #064f3e !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:active:not(:disabled) {
+  --lb-fill: #064f3e !important;
+  background: #064f3e !important;
+  border-color: #043e30 !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:disabled {
+  --lb-fill: #526b64 !important;
+  background: #526b64 !important;
+  border-color: #41564f !important;
+  cursor: not-allowed !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]:focus {
+  outline: 2px solid #137b60 !important;
+  outline-offset: 3px !important;
+}
+html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"]::after {
+  content: none !important;
+  opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html body #mihomo-rule-modal #mihomo-rule-form .modal-footer button.primary-btn[type="submit"] {
+    transition: none !important;
+  }
+}

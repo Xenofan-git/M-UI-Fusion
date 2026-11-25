@@ -37,6 +37,7 @@ func defaultMihomoSnifferSettings() *MihomoSnifferSettings {
 }
 
 type MihomoBasics struct {
+	WatchdogEnabled            bool                   `json:"watchdogEnabled"`
 	Mode                       string                 `json:"mode"`
 	Sniffer                    *MihomoSnifferSettings `json:"sniffer,omitempty"`
 	DirectIPVersion            string                 `json:"directIpVersion"`

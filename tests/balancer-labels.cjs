@@ -34,6 +34,20 @@ assert.equal(russia.code,'RU');
 assert.equal(russia.label,'0.1X - LTE №65 - Москва');
 assert.equal(meta('FOREIGN','FI 🟢 ⚡ ⭐ 0.1X - LTE №8 - Финляндия').label,'🟢 ⚡ ⭐ 0.1X - LTE №8 - Финляндия');
 assert.equal(meta('Foreign-quatro-vpn','quatro-vpn | se 🟢 ⚡ LTE №1').label,'🟢 ⚡ LTE №1');
+const subscribedSandbox={window:{MUICountryFlags:flags},app:{state:{state:{
+  outboundSubscriptions:[{id:'s1',name:'quatro-vpn',group:'Renamed-Foreign'}]
+}}},balancerSubscriptions:[],draft:{outbounds:[{kind:'group',name:'Renamed-Foreign',subscriptionIds:['s1']}]}};
+vm.createContext(subscribedSandbox);
+vm.runInContext(source.slice(start,end),subscribedSandbox);
+assert.equal(subscribedSandbox.displayedCurrentNode('Renamed-Foreign',
+  'quatro-vpn | 🇪🇪 🟩 ⚡ ⭐ 0.1X - LTE №78 - Эстония'),
+  '🇪🇪 🟩 ⚡ ⭐ 0.1X - LTE №78 - Эстония');
+assert.equal(subscribedSandbox.displayedCurrentNode('Renamed-Foreign',
+  'INT | lv 🟩 ⚡ LTE - Латвия'),'INT | lv 🟩 ⚡ LTE - Латвия',
+  'a genuine region prefix must not be deleted');
+assert.equal(subscribedSandbox.currentNodeMeta('Renamed-Foreign',
+  'quatro-vpn | 🇷🇺 🟢 LTE - Москва').label,'🟢 LTE - Москва');
+
 assert.equal(meta('FOREIGN','INT | NL 🟢 LTE Авто').code,'NL');
 assert.equal(meta('FOREIGN','INT | NL 🟢 LTE Авто').label,'🟢 LTE Авто');
 assert.equal(meta('FOREIGN','🇩🇪 DE 🟢 Германия').label,'🟢 Германия');
@@ -63,6 +77,14 @@ class FakeElement {
   constructor(tag){this.tag=tag;this.children=[];this.className='';this.textContent='';this.title='';this.attributes={};
     this.classList={add:x=>{this.className+=' '+x}};}
   setAttribute(k,v){this.attributes[k]=v;}
+  getAttribute(k){return this.attributes[k]||null;}
+  querySelector(selector){
+    if(selector===':scope > img.mihomo-current-country-flag')
+      return this.children.find(c=>c.tag==='img'&&c.className.includes('mihomo-current-country-flag'))||null;
+    if(selector===':scope > .mihomo-current-country-label')
+      return this.children.find(c=>c.className.includes('mihomo-current-country-label'))||null;
+    return null;
+  }
   replaceChildren(...items){this.children=items;this.textContent='';}
 }
 const document={createElement:tag=>new FakeElement(tag)};
@@ -81,6 +103,9 @@ assert.equal(el.children[0].src,'flags/lv.svg');
 assert.equal(el.children[0].attributes['aria-label'],'LV');
 assert.equal(el.children[1].textContent,'🟩 LTE - Латвия');
 assert.equal(el.title,'INT | lv 🟩 LTE - Латвия');
+const originalImage=el.children[0];
+runtime2.paint(el,'FOREIGN');
+assert.equal(el.children[0],originalImage,'refresh must reuse SVG to prevent blinking');
 runtime2.paint(el,'Russia');
 assert.equal(el.children[0].src,'flags/ru.svg');
 assert.equal(el.children[1].textContent,'Москва');
@@ -94,8 +119,8 @@ assert.equal(node('Russia','RU Moscow #5'),'RU Moscow #5');
 const css=fs.readFileSync('web/mihomo-settings.css','utf8');
 const html=fs.readFileSync('web/index.html','utf8');
 assert.ok(css.includes('.mihomo-current-country-flag'));
-assert.ok(html.includes('mihomo-settings.js?v=110'));
-assert.ok(html.includes('mihomo-settings.css?v=110'));
+assert.ok(html.includes('mihomo-settings.js?v=141'));
+assert.ok(html.includes('mihomo-settings.css?v=145'));
 for(const code of ['lv','ru','fi','de']){
   const svg=fs.readFileSync('web/flags/'+code+'.svg','utf8');
   assert.ok(svg.startsWith('<svg ')&&svg.includes('viewBox='),'local SVG asset '+code);

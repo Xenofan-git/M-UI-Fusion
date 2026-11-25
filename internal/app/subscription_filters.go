@@ -15,6 +15,11 @@ type subscriptionPreviewNode struct {
 	CountryCode string `json:"countryCode,omitempty"`
 	Flag        string `json:"flag,omitempty"`
 	Included    bool   `json:"included"`
+	// Optional Mihomo status from the last recorded outbound health check.
+	// A missing delay is unknown, not offline; no automatic probe is started.
+	Alive     *bool  `json:"alive,omitempty"`
+	Delay     int    `json:"delay,omitempty"`
+	CheckedAt string `json:"checkedAt,omitempty"`
 }
 type subscriptionPreviewResponse struct {
 	Nodes    []subscriptionPreviewNode `json:"nodes"`

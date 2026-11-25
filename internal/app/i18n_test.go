@@ -259,8 +259,12 @@ func TestAPIMessagesFollowThePanelLanguage(t *testing.T) {
 		}
 		return response.Message
 	}
+	if message := call(); message == "" || hasCJK(message) {
+		t.Fatalf("the default language must be Russian, got %q", message)
+	}
+	i18nSetLanguage(app, sourceMessageLanguage)
 	if message := call(); !hasCJK(message) {
-		t.Fatalf("the default language is zh-CN, got %q", message)
+		t.Fatalf("explicit Chinese selection must preserve Chinese source message, got %q", message)
 	}
 	i18nSetLanguage(app, "en")
 	if message := call(); message == "" || hasCJK(message) {
@@ -654,11 +658,11 @@ func TestTranslatableOptionsCarryTranslationKeys(t *testing.T) {
 // Russian multi-control error must be translated at the API boundary without
 // changing peer protocol errors or weakening pairing-token validation.
 func TestRussianMultiControlPairingTokenError(t *testing.T) {
- const original = "Multi-control 配对 token 无效"
- if got:=translateMessage(original,"ru"); got!="Недействительный токен сопряжения Multi-control" {
-  t.Fatalf("Russian pairing-token error is unclear: %q",got)
- }
- if got:=translateMessage(original,"en"); got!="Invalid multi-control pairing token" {
-  t.Fatalf("English API pairing-token error changed: %q",got)
- }
+	const original = "Multi-control 配对 token 无效"
+	if got := translateMessage(original, "ru"); got != "Недействительный токен сопряжения Multi-control" {
+		t.Fatalf("Russian pairing-token error is unclear: %q", got)
+	}
+	if got := translateMessage(original, "en"); got != "Invalid multi-control pairing token" {
+		t.Fatalf("English API pairing-token error changed: %q", got)
+	}
 }

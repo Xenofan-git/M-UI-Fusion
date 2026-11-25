@@ -45,7 +45,7 @@ func samplePanelLogLines() []string {
 
 func TestPanelLogsAreTranslated(t *testing.T) {
 	lines := append(samplePanelLogLines(), "12:30:01  [TCP] 10.0.0.2:5000 --> example.com:443 match DomainSuffix using DIRECT")
-	if got := translateLogs(lines, defaultLanguage); got[1] != lines[1] {
+	if got := translateLogs(lines, sourceMessageLanguage); got[1] != lines[1] {
 		t.Fatalf("zh-CN must keep the original: %q", got[1])
 	}
 	for language := range messagesLocalized {

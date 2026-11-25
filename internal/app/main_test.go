@@ -155,7 +155,7 @@ func TestMihomoSettingsPageWiring(t *testing.T) {
 		t.Fatal("the old Mihomo Config page must not remain in the sidebar or view list")
 	}
 	for file, needles := range map[string][]string{
-		"web/mihomo-settings.js":  {"function openOutboundModal", "function openRuleModal", "Routing Rule", "function openWarpModal", "/api/mihomo/settings"},
+		"web/mihomo-settings.js":  {"function openOutboundModal", "function openRuleModal", "Routing Rule", "function openWarpModal", "/api/mihomo/editor", "/api/mihomo/rules"},
 		"web/mihomo-settings.css": {".mihomo-tabs", ".mihomo-table", ".mihomo-modal"},
 	} {
 		data, err := os.ReadFile(file)
@@ -4300,8 +4300,8 @@ func TestLoginPageCarriesTheConfiguredLanguage(t *testing.T) {
 		}
 		return recorder.Body.String()
 	}
-	if page := serve(); !strings.Contains(page, `data-default-language="zh-CN"`) {
-		t.Fatal("the default language must stay zh-CN")
+	if page := serve(); !strings.Contains(page, `data-default-language="ru"`) {
+		t.Fatal("the default language must be Russian")
 	}
 	manager.state.Settings.Language = "en"
 	page := serve()
@@ -4324,8 +4324,8 @@ func TestLoginPageCarriesTheConfiguredLanguage(t *testing.T) {
 	}
 	// 存了个不认识的值（手改 state.json）时不能把这段注释成空的。
 	manager.state.Settings.Language = "fr"
-	if page := serve(); !strings.Contains(page, `data-default-language="zh-CN"`) {
-		t.Fatal("an unsupported stored language must fall back to zh-CN")
+	if page := serve(); !strings.Contains(page, `data-default-language="ru"`) {
+		t.Fatal("an unsupported stored language must fall back to Russian")
 	}
 }
 
@@ -4503,55 +4503,63 @@ func TestCredentialsEndpointChangeUsernameOrPasswordIndependently(t *testing.T) 
 	app := &App{manager: manager}
 	post := func(oldUser, oldPass, newUser, newPass string) *httptest.ResponseRecorder {
 		body, err := json.Marshal(map[string]string{
-			"oldUsername":oldUser,"oldPassword":oldPass,
-			"newUsername":newUser,"newPassword":newPass,
+			"oldUsername": oldUser, "oldPassword": oldPass,
+			"newUsername": newUser, "newPassword": newPass,
 		})
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		r := httptest.NewRecorder()
-		app.handleCredentials(r, httptest.NewRequest(http.MethodPost,"/api/auth/credentials",strings.NewReader(string(body))))
+		app.handleCredentials(r, httptest.NewRequest(http.MethodPost, "/api/auth/credentials", strings.NewReader(string(body))))
 		return r
 	}
-	if got:=post("admin","admin","","");got.Code!=http.StatusBadRequest {
-		t.Fatalf("empty change: HTTP %d",got.Code)
+	if got := post("admin", "admin", "", ""); got.Code != http.StatusBadRequest {
+		t.Fatalf("empty change: HTTP %d", got.Code)
 	}
-	if got:=post("admin","incorrect","changed","");got.Code!=http.StatusBadRequest {
-		t.Fatalf("wrong password: HTTP %d",got.Code)
+	if got := post("admin", "incorrect", "changed", ""); got.Code != http.StatusBadRequest {
+		t.Fatalf("wrong password: HTTP %d", got.Code)
 	}
-	if got:=post("admin","admin","new-user","");got.Code!=http.StatusOK {
-		t.Fatalf("username-only change: HTTP %d body %s",got.Code,got.Body.String())
+	if got := post("admin", "admin", "new-user", ""); got.Code != http.StatusOK {
+		t.Fatalf("username-only change: HTTP %d body %s", got.Code, got.Body.String())
 	}
-	if manager.state.Settings.Username!="new-user"||!verifyPassword(manager.state.Settings.Password,"admin") {
+	if manager.state.Settings.Username != "new-user" || !verifyPassword(manager.state.Settings.Password, "admin") {
 		t.Fatal("username-only change must retain the old password")
 	}
-	if got:=post("new-user","admin","","new-password");got.Code!=http.StatusOK {
-		t.Fatalf("password-only change: HTTP %d body %s",got.Code,got.Body.String())
+	if got := post("new-user", "admin", "", "new-password"); got.Code != http.StatusOK {
+		t.Fatalf("password-only change: HTTP %d body %s", got.Code, got.Body.String())
 	}
-	if manager.state.Settings.Username!="new-user"||!verifyPassword(manager.state.Settings.Password,"new-password") {
+	if manager.state.Settings.Username != "new-user" || !verifyPassword(manager.state.Settings.Password, "new-password") {
 		t.Fatal("password-only change must retain the username and hash the new password")
 	}
-	if verifyPassword(manager.state.Settings.Password,"admin") {
+	if verifyPassword(manager.state.Settings.Password, "admin") {
 		t.Fatal("old password must no longer be accepted")
 	}
 	// Check the persisted state, not just in-memory success.
-	stored,err:=os.ReadFile(filepath.Join(manager.dataDir,stateFileName))
-	if err!=nil { t.Fatal(err) }
+	stored, err := os.ReadFile(filepath.Join(manager.dataDir, stateFileName))
+	if err != nil {
+		t.Fatal(err)
+	}
 	var loaded State
-	if err:=json.Unmarshal(stored,&loaded);err!=nil { t.Fatal(err) }
-	if loaded.Settings.Username!="new-user"||!verifyPassword(loaded.Settings.Password,"new-password") {
+	if err := json.Unmarshal(stored, &loaded); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Settings.Username != "new-user" || !verifyPassword(loaded.Settings.Password, "new-password") {
 		t.Fatal("saved settings must contain the new account credentials")
 	}
 }
 func TestCredentialUpdateRollsBackWhenPersistingFails(t *testing.T) {
-	root:=t.TempDir()
+	root := t.TempDir()
 	// A regular file cannot serve as a state directory: persistence must fail.
-	badPath:=filepath.Join(root,"not-a-directory")
-	if err:=os.WriteFile(badPath,[]byte("not a folder"),0600);err!=nil {t.Fatal(err)}
-	manager:=&CoreManager{dataDir:badPath,state:defaultState()}
-	previousUsername,previousPassword:=manager.state.Settings.Username,manager.state.Settings.Password
-	if err:=manager.updateCredentials("admin","admin","changed","new-secret");err==nil {
+	badPath := filepath.Join(root, "not-a-directory")
+	if err := os.WriteFile(badPath, []byte("not a folder"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manager := &CoreManager{dataDir: badPath, state: defaultState()}
+	previousUsername, previousPassword := manager.state.Settings.Username, manager.state.Settings.Password
+	if err := manager.updateCredentials("admin", "admin", "changed", "new-secret"); err == nil {
 		t.Fatal("expected persistence failure")
 	}
-	if manager.state.Settings.Username!=previousUsername||manager.state.Settings.Password!=previousPassword {
+	if manager.state.Settings.Username != previousUsername || manager.state.Settings.Password != previousPassword {
 		t.Fatal("credential update must roll back in-memory changes when disk save fails")
 	}
 }

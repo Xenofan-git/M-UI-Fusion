@@ -293,7 +293,7 @@
   let raf = 0, prevT = 0;
   function wake() { if (!raf) { prevT = 0; raf = requestAnimationFrame(loop); } }
 
-  const buttonsOf = bar => Array.from(bar.querySelectorAll(':scope > button')).filter(b => !b.hidden && b.offsetWidth > 0);
+  const buttonsOf = bar => Array.from(bar.querySelectorAll(':scope > button, :scope > .smart-health-tab-group > .mihomo-tab')).filter(b => !b.hidden && b.offsetWidth > 0);
   const isActive = b => b.classList.contains('active') || b.getAttribute('aria-selected') === 'true';
   function activeIndex(ctrl) {
     const i = ctrl.buttons.findIndex(isActive);
@@ -303,7 +303,10 @@
   function measure(ctrl) {
     const bar = ctrl.bar;
     ctrl.buttons = buttonsOf(bar);
-    ctrl.boxes = ctrl.buttons.map(b => ({ x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight }));
+    ctrl.boxes = ctrl.buttons.map(b => {
+      const segment=b.closest('.smart-health-tab-group') || b;
+      return { x:segment.offsetLeft, y:segment.offsetTop, w:segment.offsetWidth, h:segment.offsetHeight };
+    });
     ctrl.w = bar.offsetWidth;
     ctrl.h = bar.offsetHeight;
     ctrl.s = Math.max(0.5, ctrl.h / 64); // dp scale relative to the 64dp iOS tab bar

@@ -13,7 +13,9 @@ func TestActiveOutboundColumnKeepsCurrentWhileDelayTestMayFail(t *testing.T) {
 	source := string(js)
 	for _, required := range []string{
 		"/api/mihomo/balancers/current",
-		"groupResultLabel(item.name)",
+		"outboundTableMarkup.get(box)!==markup",
+		"paintOutboundTransientState(box,rows,showTraffic)",
+		"paintActiveGroupResults()",
 		"data-active-group=",
 		"currentNodeMeta(name,group.current)",
 		"displayedCurrentNode(groupName,current)",
@@ -32,7 +34,14 @@ func TestActiveOutboundColumnKeepsCurrentWhileDelayTestMayFail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(routes), "mihomo-settings.js") {
-		t.Fatal("outbounds view is not using live JS")
+	if !strings.Contains(string(routes), "mihomo-settings.js?v=141") {
+		t.Fatal("outbounds view is not using the latest flag-stable UI")
+	}
+	css, err := webFS.ReadFile("web/mihomo-settings.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), "width:18px;height:12px") {
+		t.Fatal("current outbound flag size did not change to 18x12")
 	}
 }

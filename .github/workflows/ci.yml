@@ -23,21 +23,55 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
       - name: Check web JavaScript syntax
-        run: node --check web/mihomo-settings.js && node --check web/mihomo-rule-lists.js
+        run: node --check web/mihomo-settings.js && node --check web/mihomo-rule-lists.js && node --check web/mihomo-balancer-servers.js && node --check web/i18n.js && node --check web/i18n-locales.js
       - name: Test balancer display labels
         run: node tests/balancer-labels.cjs
       - name: Test editable manual balancer defaults and source separation
         run: node tests/manual-balancer-defaults.cjs
+      - name: Ensure upgrades preserve subscriptions balancers and filters
+        run: node tests/installer-preserves-settings.cjs
+      - name: Verify subscribed balancer opens without waiting for a second HTTP fetch
+        run: node tests/balancer-open-no-wait.cjs
+      - name: Validate live USA filter input and in-place preview
+        run: node tests/balancer-live-filter-input.cjs
+      - name: Guard balancer flag SVG, copying, stable poll updates and Apply popup
+        run: node tests/balancer-svg-flags-and-apply.cjs
       - name: Test friendly balancer dependency warning
         run: node tests/balancer-use-warning.cjs
       - name: Test Russian translation quality and CPU plurals
         run: node tests/russian-localization-quality.cjs
       - name: Test button hover colors and contrast across layout themes
         run: node tests/button-hover-colors.cjs
+      - name: Guard calm Login and Save press feedback and reduced-motion support
+        run: node tests/action-button-feedback.cjs
+      - name: Check Mihomo tab and subscription filter button typography
+        run: node tests/mihomo-tabs-size.cjs
+      - name: Verify visible disabled routing switches and functional tabs
+        run: node tests/mihomo-off-switch.cjs
+      - name: Verify Russian is the first-render language, ignoring stale browser locales
+        run: node tests/russian-first-paint.cjs
+      - name: Verify immutable MATCH padlock and inbound security mode explanation
+        run: node tests/inbound-security-layout.cjs
+      - name: Verify Add Flag picker renders SVG and saves actual flag conditions
+        run: node tests/outsub-flag-insertion.cjs
+      - name: Verify filtered-out subscription nodes can be hidden visually without changing routes
+        run: node tests/outbounds-hide-filtered.cjs
+      - name: Verify subscription catalog and shared-source balancer picker
+        run: node tests/source-catalog-group-picker.cjs
+      - name: Verify standalone subscription inventory and orphaned subscription groups
+        run: node tests/source-standalone-and-orphan.cjs
       - name: Test Mihomo editor Apply button and modal hover contrast
         run: node tests/mihomo-modal-primary.cjs
+      - name: Test centered Mihomo Save and Restart operation dialogs
+        run: node tests/mihomo-operations-dialog.cjs
       - name: Test routing rule info icons and No-Resolve explanations
         run: node tests/routing-rule-tooltips.cjs
+      - name: Guard saved outbound delay button and readable Save hover
+        run: node tests/mihomo-delay-action.cjs
+      - name: Guard current outbound SVG against global refresh redraws
+        run: node tests/current-outbound-no-repaint.cjs
+      - name: Verify isolated routing and manual outbound edits with refreshed subscriptions
+        run: node tests/mihomo-rules-only-save.cjs
       - name: Test Russian descriptions of all routing rule types
         run: node tests/routing-type-labels.cjs
       - name: Verify exact Mihomo toolbar buttons and legacy-browser hover fallback

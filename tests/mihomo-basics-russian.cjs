@@ -28,7 +28,7 @@ let language='ru';
 const context={
  window:{dispatchEvent(){}},Event:class{},
  localStorage:{getItem:key=>key==='mui-language'?language:null,setItem:(key,value)=>{if(key==='mui-language')language=value}},
- document:{readyState:'loading',documentElement:{getAttribute:()=> 'ru'},addEventListener(){},querySelectorAll:()=>[]}
+ document:{readyState:'loading',documentElement:{getAttribute:()=> language,setAttribute:(key,val)=>{if(key==='data-default-language')language=val}},addEventListener(){},querySelectorAll:()=>[]}
 };
 vm.createContext(context);
 vm.runInContext(locales,context);
@@ -77,16 +77,16 @@ assert.equal(context.window.muiT('mc.invalidPairingToken'),'Invalid Multi-contro
 context.window.muiSetLang('ru');
 assert.equal(context.window.muiT('mihomo.basic.mode'),'Режим маршрутизации');
 
-// The CSS override follows all theme stylesheet links and controls both CSS color and
-// Chrome's webkit-specific text fill, preventing an invisible login label on hover.
-const finalTheme=login.indexOf('href="static/theme-md3.css"');
-const fix=login.indexOf('<style id="login-button-hover-legibility">');
-assert.ok(finalTheme>=0&&fix>finalTheme&&fix<login.indexOf('</head>'));
-const css=login.slice(fix,login.indexOf('</style>',fix));
-assert.match(css,/#login-button:hover:not\(:disabled\)/);
-assert.match(css,/color:\s*#111111\s*!important/);
-assert.match(css,/-webkit-text-fill-color:\s*#111111\s*!important/);
-assert.match(css,/background(?:-color)?:\s*#f4f4f5\s*!important/);
+// Login has a final, theme-independent soft-press stylesheet rather
+// than the previous forced white plate with almost-black text.
+const finalTheme=login.indexOf('href="static/color-skins.css"');
+const feedback=login.indexOf('href="static/action-button-feedback.css?v=6"');
+assert.ok(finalTheme>=0&&feedback>finalTheme&&feedback<login.indexOf('</head>'));
+assert.ok(!login.includes('login-button-hover-legibility'));
+const css=fs.readFileSync('web/action-button-feedback.css','utf8');
+assert.ok(css.includes('html body #login-button'));
+assert.ok(css.includes('-webkit-text-fill-color: var(--mui-press-ink) !important'));
+assert.ok(css.includes('linear-gradient(125deg, var(--mui-press-top), var(--mui-press-bottom))'));
 
 assert.ok(multi.includes("muiT('mc.invalidPairingToken')"));
 assert.ok(multi.includes('readablePeerError(peer.error'));
