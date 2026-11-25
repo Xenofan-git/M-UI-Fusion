@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"os/exec"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -110,6 +112,13 @@ func TestSmartHealthAdaptiveCycle(t *testing.T) {
 		firstSuccess                     bool
 	}{
 		{"normal skips controls", "normal", "normal", true, true, true, true, 1, 1, 0, false},
+		{"startup groups not ready", "starting", "starting", true, false, true, false, 0, 1, 0, false},
+		{"startup API not ready", "starting", "starting", true, true, false, false, 0, 1, 0, false},
+		{"startup healthy immediately", "starting", "normal", true, true, true, true, 1, 1, 0, false},
+		{"startup real outage", "starting", "offline", true, true, true, false, 0, 1, 1, false},
+		{"startup real degraded", "starting", "degraded", true, true, true, true, 0, 1, 1, false},
+		{"startup expired", "unknown", "unknown", true, false, true, false, 0, 1, 1, false},
+
 		{"all failed but service responds", "normal", "degraded", true, true, true, true, 0, 1, 1, false},
 		{"all failed and controls unavailable", "degraded", "offline", true, true, true, false, 0, 1, 1, false},
 		{"offline never scans", "offline", "offline", true, true, true, false, 0, 0, 1, true},
@@ -141,7 +150,7 @@ func TestSmartHealthAdaptiveCycle(t *testing.T) {
 			}
 		})
 	}
-	for mode, want := range map[string]time.Duration{"normal": 180 * time.Second, "degraded": 60 * time.Second, "offline": 10 * time.Second, "core_unavailable": 10 * time.Second, "unknown": 60 * time.Second} {
+	for mode, want := range map[string]time.Duration{"starting": 3 * time.Second, "normal": 180 * time.Second, "degraded": 60 * time.Second, "offline": 10 * time.Second, "core_unavailable": 10 * time.Second, "unknown": 60 * time.Second} {
 		if smartInterval(cfg, mode) != want {
 			t.Fatal(mode)
 		}
@@ -368,5 +377,66 @@ func TestSmartHealthDo53Transport(t *testing.T) {
 				t.Fatalf("unexpected transport calls %v", calls)
 			}
 		})
+	}
+}
+
+func TestSmartHealthInitializationRetry(t *testing.T) {
+	var ready atomic.Bool
+	var scans atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/version":
+			fmt.Fprint(w, `{"version":"fixture"}`)
+		case "/group/lab/delay":
+			scans.Add(1)
+			if !ready.Load() {
+				http.Error(w, "group initializing", http.StatusNotFound)
+				return
+			}
+			fmt.Fprint(w, `{"A":12}`)
+		default:
+			t.Error("unexpected request")
+			w.WriteHeader(500)
+		}
+	}))
+	defer srv.Close()
+	cfg := defaultSmartHealth()
+	cfg.Enabled = true
+	state := defaultState()
+	state.SmartHealth = &cfg
+	plan := &smartPlan{Groups: []smartGroup{{"lab", "http://192.0.2.1/health", 1000, map[string]bool{"A": true}}}}
+	m := &CoreManager{state: state, started: time.Now(), cmd: &exec.Cmd{}}
+	m.smartHealth.applied = plan
+	m.watchdog.controller = srv.Listener.Addr().String()
+	m.smartHealthTick()
+	status := m.smartHealth.status
+	if status.Mode != "starting" || len(status.Events) != 1 || len(status.Controls) != 0 || scans.Load() != 1 {
+		t.Fatalf("initial status: %+v", status)
+	}
+	if remaining := time.Until(status.Next); remaining < 2*time.Second || remaining > smartStartupRetry {
+		t.Fatalf("wrong retry %s", remaining)
+	}
+	deadline := m.smartHealth.startupDeadline
+	if !deadline.Equal(m.started.Add(smartStartupGrace)) {
+		t.Fatal("wrong deadline")
+	}
+	m.smartHealthTick()
+	if scans.Load() != 1 {
+		t.Fatal("early retry")
+	}
+	m.smartHealth.status.Next = time.Now()
+	m.smartHealthTick()
+	if m.smartHealth.status.Mode != "starting" || len(m.smartHealth.status.Events) != 1 || !m.smartHealth.startupDeadline.Equal(deadline) {
+		t.Fatal("grace reset or duplicate event")
+	}
+	ready.Store(true)
+	m.smartHealth.status.Next = time.Now()
+	m.smartHealthTick()
+	status = m.smartHealth.status
+	if status.Mode != "normal" || status.Healthy != 1 || len(status.Events) != 2 || status.Events[1].Mode != "normal" || len(status.Controls) != 0 {
+		t.Fatalf("recovery: %+v", status)
+	}
+	if remaining := time.Until(status.Next); remaining < 179*time.Second || remaining > 180*time.Second {
+		t.Fatalf("normal interval %s", remaining)
 	}
 }

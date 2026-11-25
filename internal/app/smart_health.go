@@ -20,6 +20,10 @@ import (
 )
 
 const smartHealthMarker = "# m-ui: smart-health-schedule-v1"
+const (
+	smartStartupGrace = 30 * time.Second
+	smartStartupRetry = 3 * time.Second
+)
 
 type SmartHealthSettings struct {
 	Enabled         bool           `json:"enabled"`
@@ -286,6 +290,7 @@ type smartRuntime struct {
 	settings        SmartHealthSettings
 	lastPlan        *smartPlan
 	lastCoreRunning bool
+	startupDeadline time.Time
 	status          smartStatus
 }
 
@@ -459,6 +464,9 @@ func smartNextMode(healthy int, known, controlOK bool) string {
 	return "offline"
 }
 func smartInterval(cfg SmartHealthSettings, mode string) time.Duration {
+	if mode == "starting" {
+		return smartStartupRetry
+	}
 	seconds := cfg.DegradedSeconds
 	if mode == "normal" {
 		seconds = cfg.NormalSeconds
@@ -534,6 +542,10 @@ func (m *CoreManager) smartHealthTick() {
 		r.settings = cfg
 		r.lastPlan = plan
 		r.lastCoreRunning = cmd != nil
+		r.startupDeadline = time.Time{}
+		if cmd != nil {
+			r.startupDeadline = m.started.Add(smartStartupGrace)
+		}
 		r.status.Next = time.Time{}
 		r.status.Controls = nil
 		r.status.Healthy = 0
@@ -544,6 +556,11 @@ func (m *CoreManager) smartHealthTick() {
 		return
 	}
 	mode := r.status.Mode
+	cycleMode := mode
+	startupDeadline := r.startupDeadline
+	if cycleMode == "starting" && !time.Now().Before(startupDeadline) {
+		cycleMode = "unknown"
+	}
 	address, secret := m.watchdog.controller, m.watchdog.secret
 	r.status.Running = true
 	m.mu.Unlock()
@@ -554,7 +571,7 @@ func (m *CoreManager) smartHealthTick() {
 	if plan != nil {
 		groups = len(plan.Groups)
 	}
-	result := smartRunCycle(ctx, cfg, mode, cmd != nil,
+	result := smartRunCycle(ctx, cfg, cycleMode, cmd != nil,
 		func(ctx context.Context) smartScanResult { return smartScanGroups(ctx, plan, address, secret) },
 		func(ctx context.Context, ids []string, first bool) []smartServiceResult {
 			return smartCheckControls(ctx, cfg.catalog(), ids, first)
@@ -568,6 +585,11 @@ func (m *CoreManager) smartHealthTick() {
 		r.status.Next = time.Time{}
 		return
 	}
+	// An incomplete initialization scan is not an Internet outage. Bound the
+	// grace period even if a slow group request completes after the deadline.
+	if result.Mode == "starting" && !time.Now().Before(startupDeadline) {
+		result.Mode = "unknown"
+	}
 	r.status.Healthy = result.Healthy
 	r.status.Groups = groups
 	r.status.Controls = result.Controls
@@ -580,6 +602,13 @@ func (m *CoreManager) smartHealthTick() {
 		base = time.Now()
 	}
 	r.status.Next = base.Add(smartInterval(cfg, result.Mode))
+	if result.Mode == "starting" {
+		// Retry from completion, but never extend the startup grace window.
+		r.status.Next = time.Now().Add(smartStartupRetry)
+		if r.status.Next.After(startupDeadline) {
+			r.status.Next = startupDeadline
+		}
+	}
 	if r.status.Next.Before(time.Now()) {
 		r.status.Next = time.Now().Add(time.Second)
 	}
@@ -617,6 +646,12 @@ func smartRunCycle(ctx context.Context, cfg SmartHealthSettings, mode string, ru
 		return result
 	}
 	known := measured.Known && apiHealthy(ctx)
+	if mode == "starting" && !known {
+		// The controller can answer /version before its proxy groups exist.
+		// Avoid falsely reporting WAN failure and avoid unrelated control traffic.
+		result.Mode = "starting"
+		return result
+	}
 	if result.Controls == nil {
 		result.Controls = controls(ctx, cfg.Services, false)
 	}
