@@ -65,6 +65,47 @@
     };
     return button;
   }
+  // Read only the latest recorded Mihomo results. An untested or
+  // filtered-out node is not an offline node, even if alive defaults true.
+  const healthPending=new WeakSet();
+  function catalogVisible(){
+    return document.visibilityState!=='hidden'&&root.getClientRects().length>0;
+  }
+  function renderHealth(element,sub,nodes){
+    let online=0,offline=0;
+    for(const node of nodes){
+      if(!node.checkedAt||!Number.isFinite(Date.parse(node.checkedAt)))continue;
+      if(node.alive===true)online++;
+      else if(node.alive===false)offline++;
+    }
+    const total=Math.max(Number(sub.nodeCount)||0,nodes.length);
+    const unknown=Math.max(0,total-online-offline);
+    element.replaceChildren(
+      make('span','outsub-health-title','Текущий статус подписки: '),
+      make('span','outsub-health-online','доступно '+online+' узлов'),
+      document.createTextNode(', '),
+      make('span','outsub-health-offline','недоступно '+offline+' узлов')
+    );
+    if(unknown)element.appendChild(make('span','outsub-health-unknown','Без результатов проверки: '+unknown));
+    if(!online&&!offline)element.appendChild(make('span','outsub-health-unknown','Нет данных последней проверки'));
+  }
+  async function refreshHealth(){
+    if(!catalogVisible())return;
+    // Read sequentially, without parallel controller calls for every source.
+    for(const sub of subs){
+      if(!catalogVisible())break;
+      const element=Array.from(root.querySelectorAll('.outsub-health')).find(e=>e.dataset.sourceId===sub.id);
+      if(!element||healthPending.has(element))continue;
+      healthPending.add(element);
+      try{
+        const data=await request('/api/mihomo/subscriptions/'+encodeURIComponent(sub.id)+'/nodes');
+        if(!Array.isArray(data?.nodes))throw Error('Нет данных проверки');
+        if(element.isConnected)renderHealth(element,sub,data.nodes);
+      }catch{
+        if(element.isConnected)element.textContent='Текущий статус подписки: данные проверки временно недоступны';
+      }finally{healthPending.delete(element);}
+    }
+  }
   function renderList(){
     const container=q('#outsub-list');
     container.replaceChildren();
@@ -102,6 +143,9 @@
       stats.appendChild(make('span','outsub-count-badge',String(sub.nodeCount||0)+' узлов'));
       stats.appendChild(make('span','outsub-last-updated','Обновлено '+date(sub.lastUpdated)));
       info.appendChild(stats);
+      const health=make('div','outsub-health','Текущий статус подписки: получение данных…');
+      health.dataset.sourceId=sub.id;
+      info.appendChild(health);
       if(sub.lastError){
         const problem=make('div','outsub-error','Ошибка: '+sub.lastError);
         problem.setAttribute('role','alert');
@@ -124,6 +168,7 @@
       subs=Array.isArray(data)?[...data].sort((a,b)=>
         Number(!!a.group)-Number(!!b.group)):[];
       renderList();status('Подписок: '+subs.length);
+      void refreshHealth();
       window.dispatchEvent(new CustomEvent('mui-balancer-subscriptions-loaded',{
         detail:{subscriptions:subs.map(source=>({id:source.id,group:source.group,name:source.name,nodeNamePrefix:source.nodeNamePrefix}))}
       }));
@@ -644,6 +689,7 @@
     (creatingGroup?form.elements.groupName:form.elements.name).focus();
   }
   q('#outsub-reload').onclick=load;
+  window.setInterval(()=>{void refreshHealth();},30000);
   window.MUIOutboundSubscriptions={
     load,
     openCreate:async()=>{await load();openForm(null,'balancer');},

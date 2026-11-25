@@ -266,51 +266,70 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 }
 
 
-/* Dark subscription information cards: consistent with M-UI Fusion's
-   near-black panels. Keep the action buttons beneath the card untouched. */
+/* Subscription cards follow the light/dark appearance instead of
+   using a near-black card in every theme. */
+#outsub-root{
+ --outsub-card-bg:#f5f8f7;--outsub-card-border:#bacdc5;--outsub-card-hover:#8eafa1;
+ --outsub-card-title:#243e36;--outsub-card-text:#354c43;--outsub-card-muted:#53675d;
+ --outsub-count-bg:#e8efec;--outsub-count-border:#bacdc5;
+ --outsub-pill-bg:#e5f1eb;--outsub-pill-border:#9dc3b1;
+ --outsub-online:#17684f;--outsub-offline:#a13636;
+}
+html.dark #outsub-root,body.dark #outsub-root,
+html[data-theme="dark"] #outsub-root,html[data-theme="ultra-dark"] #outsub-root,
+html[data-color-skin="graphite"] #outsub-root,
+html[data-color-skin="emerald"] #outsub-root,
+html[data-color-skin="aurora"] #outsub-root{
+ --outsub-card-bg:#0B0F14;--outsub-card-border:#343144;--outsub-card-hover:#535367;
+ --outsub-card-title:#fff;--outsub-card-text:#D6DBE3;--outsub-card-muted:#A1ADBC;
+ --outsub-count-bg:#161B23;--outsub-count-border:#303841;
+ --outsub-pill-bg:#15221F;--outsub-pill-border:#285348;
+ --outsub-online:#84cfb0;--outsub-offline:#ffb8b3;
+}
+html[data-color-skin="ivory"] #outsub-root{
+ --outsub-card-bg:#fffaf0;--outsub-card-border:#d6c6b0;--outsub-card-hover:#b8a083;
+ --outsub-card-title:#30291f;--outsub-card-text:#463a2d;--outsub-card-muted:#6c5945;
+ --outsub-count-bg:#ede4d7;--outsub-count-border:#d6c6b0;
+ --outsub-pill-bg:#e5f1eb;--outsub-pill-border:#9dc3b1;
+ --outsub-online:#17684f;--outsub-offline:#a13636;
+}
 #outsub-root .outsub-info-frame{
-  background:#0B0F14 !important;
-  background-image:none !important;
-  color:#D6DBE3;
-  border:1px solid #343144 !important;
-  border-radius:14px;
-  box-shadow:0 2px 9px rgba(0,0,0,.11);
-  transition:border-color .16s ease,box-shadow .16s ease;
+ background:var(--outsub-card-bg) !important;background-image:none !important;
+ color:var(--outsub-card-text);border:1px solid var(--outsub-card-border) !important;
+ border-radius:14px;box-shadow:0 2px 9px rgba(0,0,0,.06);
+ transition:border-color .16s ease,box-shadow .16s ease;
 }
 #outsub-root .outsub-info-frame:hover{
-  background:#0B0F14 !important;
-  border-color:#535367 !important;
-  box-shadow:0 3px 13px rgba(0,0,0,.16);
+ background:var(--outsub-card-bg) !important;border-color:var(--outsub-card-hover) !important;
+ box-shadow:0 3px 13px rgba(0,0,0,.10);
 }
 #outsub-root .outsub-card h3{
-  color:#FFFFFF !important;
-  -webkit-text-fill-color:#FFFFFF !important;
+ color:var(--outsub-card-title) !important;-webkit-text-fill-color:var(--outsub-card-title) !important;
 }
 #outsub-root .outsub-info-frame .outsub-card-meta{
-  color:#D6DBE3 !important;
-  -webkit-text-fill-color:#D6DBE3 !important;
-  overflow-wrap:anywhere;
+ color:var(--outsub-card-text) !important;-webkit-text-fill-color:var(--outsub-card-text) !important;
+ overflow-wrap:anywhere;
 }
 #outsub-root .outsub-card-head{gap:8px 12px}
 #outsub-root .outsub-pill{
   display:inline-flex;align-items:center;gap:6px;
   padding:4px 8px;
-  background:#15221F !important;
-  border:1px solid #285348;
+  background:var(--outsub-pill-bg) !important;
+  border:1px solid var(--outsub-pill-border);
   border-radius:8px;
-  color:#D6DBE3 !important;
-  -webkit-text-fill-color:#D6DBE3 !important;
+  color:var(--outsub-card-text) !important;
+  -webkit-text-fill-color:var(--outsub-card-text) !important;
   font-size:11px;
 }
 #outsub-root .outsub-pill.off{
-  background:#181A21 !important;
-  border-color:#343144;
-  color:#A1ADBC !important;
-  -webkit-text-fill-color:#A1ADBC !important;
+  background:var(--outsub-count-bg) !important;
+  border-color:var(--outsub-card-border);
+  color:var(--outsub-card-muted) !important;
+  -webkit-text-fill-color:var(--outsub-card-muted) !important;
 }
 #outsub-root .outsub-refresh-icon{
   width:14px;height:14px;flex:none;
-  fill:none;stroke:#009B77;stroke-width:2;
+  fill:none;stroke:var(--outsub-online);stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;
 }
 #outsub-root .outsub-stat{
@@ -320,17 +339,17 @@ html:not([data-ui-theme="shadcn"]):not([data-ui-theme="md3"]) body .outsub-dialo
 #outsub-root .outsub-count-badge{
   display:inline-flex;align-items:center;
   padding:4px 8px;
-  border:1px solid #303841;
+  border:1px solid var(--outsub-count-border);
   border-radius:7px;
-  background:#161B23;
-  color:#D6DBE3 !important;
-  -webkit-text-fill-color:#D6DBE3 !important;
+  background:var(--outsub-count-bg);
+  color:var(--outsub-card-text) !important;
+  -webkit-text-fill-color:var(--outsub-card-text) !important;
   font-size:12px;font-weight:600;
   white-space:nowrap;
 }
 #outsub-root .outsub-last-updated{
-  color:#A1ADBC !important;
-  -webkit-text-fill-color:#A1ADBC !important;
+  color:var(--outsub-card-muted) !important;
+  -webkit-text-fill-color:var(--outsub-card-muted) !important;
   font-size:12px;
   overflow-wrap:anywhere;
 }
@@ -487,3 +506,35 @@ html body #outsub-modal[data-mode="source"] .outsub-source-table tbody tr:last-c
 #outsub-form-error{padding:10px 12px;border:1px solid currentColor;border-radius:8px;
  color:var(--sub-error,#982e2e);background:var(--sub-error-bg,#fbe9e7);overflow-wrap:anywhere;font-size:13px}
 #outsub-form-error[hidden]{display:none!important}
+
+/* Card health is a read-only summary, not an extra health check. */
+#outsub-root .outsub-health{
+ font-size:12.5px;line-height:1.55;padding-top:8px;
+ border-top:1px solid var(--outsub-card-border);
+ color:var(--outsub-card-text) !important;overflow-wrap:anywhere;
+}
+#outsub-root .outsub-health-title{display:block;font-weight:600;margin-bottom:3px}
+#outsub-root .outsub-health-online{color:var(--outsub-online) !important;font-weight:600}
+#outsub-root .outsub-health-offline{color:var(--outsub-offline) !important;font-weight:600}
+#outsub-root .outsub-health-unknown{display:block;color:var(--outsub-card-muted) !important;font-size:12px}
+#outsub-root .outsub-health span{-webkit-text-fill-color:currentColor !important}
+#outsub-root .outsub-error{color:var(--outsub-offline) !important}
+
+/* Only the Add Subscription button gets the soft light-theme treatment. */
+html:not(.dark):not([data-theme="dark"]):not([data-theme="ultra-dark"]):not([data-color-skin="graphite"]):not([data-color-skin="emerald"]):not([data-color-skin="aurora"]) body:not(.dark) #mihomo-add-source,
+html[data-color-skin="ivory"] body #mihomo-add-source#mihomo-add-source{
+ --lb-fill:#e4efea !important;--lb-text:#245e49 !important;
+ background:#e4efea !important;background-image:none !important;
+ color:#245e49 !important;-webkit-text-fill-color:#245e49 !important;
+ border:1px solid #91b6a4 !important;box-shadow:none !important;opacity:1 !important;
+ transition:none !important;
+}
+html:not(.dark):not([data-theme="dark"]):not([data-theme="ultra-dark"]):not([data-color-skin="graphite"]):not([data-color-skin="emerald"]):not([data-color-skin="aurora"]) body:not(.dark) #mihomo-add-source:hover:not(:disabled),
+html[data-color-skin="ivory"] body #mihomo-add-source#mihomo-add-source:hover:not(:disabled){
+ background:#d5e7de !important;border-color:#739e8a !important;
+ color:#245e49 !important;-webkit-text-fill-color:#245e49 !important;
+}
+html:not(.dark):not([data-theme="dark"]):not([data-theme="ultra-dark"]):not([data-color-skin="graphite"]):not([data-color-skin="emerald"]):not([data-color-skin="aurora"]) body:not(.dark) #mihomo-add-source:active:not(:disabled),
+html[data-color-skin="ivory"] body #mihomo-add-source#mihomo-add-source:active:not(:disabled){
+ background:#c4dfd0 !important;color:#245e49 !important;-webkit-text-fill-color:#245e49 !important;
+}
